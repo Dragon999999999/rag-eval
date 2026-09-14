@@ -17,6 +17,7 @@ from rag_eval.models.common import (
 )
 from rag_eval.models.enums import (
     Answerability,
+    ArtifactType,
     ContextPolicy,
     CorpusMode,
     ErrorCategory,
@@ -68,6 +69,7 @@ __all__ = [
     "AnswerSpan",
     "Answerability",
     "ArtifactRef",
+    "ArtifactType",
     "BenchmarkCase",
     "BenchmarkManifest",
     "Chunk",

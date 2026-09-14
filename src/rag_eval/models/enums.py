@@ -129,3 +129,18 @@ class EvidenceRelationship(StrEnum):
     CONTRADICTS = "CONTRADICTS"
     NEUTRAL = "NEUTRAL"
     UNKNOWN = "UNKNOWN"
+
+
+class ArtifactType(StrEnum):
+    """Purpose of externally stored immutable artifact bytes."""
+
+    SOURCE_DOCUMENT = "SOURCE_DOCUMENT"
+    RAW_TARGET_REQUEST = "RAW_TARGET_REQUEST"
+    RAW_TARGET_RESPONSE = "RAW_TARGET_RESPONSE"
+    STREAM_EVENTS = "STREAM_EVENTS"
+    RAW_JUDGE_REQUEST = "RAW_JUDGE_REQUEST"
+    RAW_JUDGE_RESPONSE = "RAW_JUDGE_RESPONSE"
+    LOG = "LOG"
+    PARQUET_EXPORT = "PARQUET_EXPORT"
+    REPORT = "REPORT"
+    OTHER = "OTHER"
