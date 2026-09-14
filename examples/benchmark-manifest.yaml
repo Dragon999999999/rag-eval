@@ -1,0 +1,11 @@
+benchmark_id: example-benchmark
+name: example benchmark
+version: "1"
+case_count: 1
+documents:
+  - document_id: example-document
+    filename: example-document.txt
+    mime_type: text/plain
+    path: example-document.txt
+    sha256: 1d674852ee8b8b1b994fcae1de5166f7da13ec0d58f111727dd761eb0c282175
+cases: example-cases.jsonl

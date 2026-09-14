@@ -11,14 +11,28 @@ from rag_eval.db.models import (
     AggregateMetricResultRecord,
     ArtifactRecord,
     AttemptRecord,
+    BenchmarkCaseRecord,
     CaseExecutionRecord,
+    CorpusRecord,
+    DocumentRecord,
     ErrorRecordDB,
     MetricResultRecord,
     RunConfigRecord,
     RunRecord,
+    TargetCapabilityRecord,
     TargetObservationRecord,
+    TargetRecord,
 )
-from rag_eval.models import ArtifactRef, ErrorRecord, MetricResult, TargetObservation
+from rag_eval.models import (
+    ArtifactRef,
+    BenchmarkCase,
+    Document,
+    ErrorRecord,
+    MetricResult,
+    TargetCapabilities,
+    TargetInfo,
+    TargetObservation,
+)
 
 
 def _payload_hash(payload: dict[object, object]) -> str:
@@ -52,6 +66,117 @@ class PersistenceRepository:
         self._session.add(run)
         await self._session.flush()
         return run
+
+    async def persist_target(self, target_id: str, target: TargetInfo) -> TargetRecord:
+        """Create or update stable target identity metadata."""
+        record = await self._session.get(TargetRecord, target_id)
+        if record is None:
+            record = TargetRecord(
+                target_id=target_id,
+                name=target.name,
+                version=target.version,
+                implementation=target.implementation,
+                metadata_json=target.metadata,
+            )
+            self._session.add(record)
+        else:
+            record.name = target.name
+            record.version = target.version
+            record.implementation = target.implementation
+            record.metadata_json = target.metadata
+        await self._session.flush()
+        return record
+
+    async def persist_capabilities(
+        self, target_id: str, capabilities: TargetCapabilities
+    ) -> TargetCapabilityRecord:
+        """Persist the latest canonical capability discovery payload."""
+        record = await self._session.get(TargetCapabilityRecord, target_id)
+        payload = capabilities.model_dump(mode="json")
+        if record is None:
+            record = TargetCapabilityRecord(target_id=target_id, payload=payload)
+            self._session.add(record)
+        else:
+            record.payload = payload
+        await self._session.flush()
+        return record
+
+    async def persist_corpus(self, record: CorpusRecord) -> CorpusRecord:
+        """Persist target corpus identity and current preparation state."""
+        existing = await self._session.get(CorpusRecord, record.corpus_id)
+        if existing is None:
+            self._session.add(record)
+        else:
+            existing.target_id = record.target_id
+            existing.mode = record.mode
+            existing.status = record.status
+            existing.content_hash = record.content_hash
+            existing.metadata_json = record.metadata_json
+            record = existing
+        await self._session.flush()
+        return record
+
+    async def persist_document(
+        self, corpus_id: str, document: Document
+    ) -> DocumentRecord:
+        """Persist canonical document metadata without copying source bytes."""
+        record = await self._session.get(DocumentRecord, document.document_id)
+        if record is None:
+            record = DocumentRecord(
+                document_id=document.document_id,
+                corpus_id=corpus_id,
+                filename=document.filename,
+                mime_type=document.mime_type,
+                sha256=document.sha256,
+                size_bytes=document.size_bytes,
+                artifact_id=document.artifact.artifact_id
+                if document.artifact
+                else None,
+                metadata_json=document.metadata,
+            )
+            self._session.add(record)
+        else:
+            record.corpus_id = corpus_id
+            record.filename = document.filename
+            record.mime_type = document.mime_type
+            record.sha256 = document.sha256
+            record.size_bytes = document.size_bytes
+            record.artifact_id = (
+                document.artifact.artifact_id if document.artifact else None
+            )
+            record.metadata_json = document.metadata
+        await self._session.flush()
+        return record
+
+    async def persist_benchmark_case(
+        self, dataset_id: str, case: BenchmarkCase
+    ) -> BenchmarkCaseRecord:
+        """Persist benchmark truth before any target query is constructed."""
+        record = await self._session.get(BenchmarkCaseRecord, case.case_id)
+        values = {
+            "dataset_id": dataset_id,
+            "query": case.query,
+            "history": [item.model_dump(mode="json") for item in case.history],
+            "reference_answer": case.reference_answer,
+            "gold_evidence": [
+                item.model_dump(mode="json") for item in case.gold_evidence
+            ],
+            "answerability": case.answerability.value if case.answerability else None,
+            "tags": case.tags,
+            "metadata_json": {
+                **case.metadata,
+                "difficulty": case.difficulty,
+                "language": case.language,
+            },
+        }
+        if record is None:
+            record = BenchmarkCaseRecord(case_id=case.case_id, **values)
+            self._session.add(record)
+        else:
+            for name, value in values.items():
+                setattr(record, name, value)
+        await self._session.flush()
+        return record
 
     async def get_run(self, run_id: str) -> RunRecord | None:
         """Retrieve one run by durable identity."""

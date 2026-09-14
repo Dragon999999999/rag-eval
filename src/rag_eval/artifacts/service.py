@@ -43,3 +43,7 @@ class ArtifactService:
     async def get_json(self, artifact: ArtifactRef) -> object:
         """Load UTF-8 JSON through the shared byte retrieval primitive."""
         return json.loads((await self._store.get(artifact)).decode("utf-8"))
+
+    async def get(self, artifact: ArtifactRef) -> bytes:
+        """Return durable artifact bytes without creating a duplicate artifact."""
+        return await self._store.get(artifact)

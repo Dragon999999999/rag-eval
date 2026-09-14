@@ -6,8 +6,8 @@ run:
 dataset:
   manifest: examples/benchmark-manifest.yaml
 target:
-  adapter: http
-  base_url: http://localhost:8080
+  adapter: python
+  python_target: rag_eval.example_target:ExampleTarget
   corpus:
     mode: DOCUMENTS
   parameters:
