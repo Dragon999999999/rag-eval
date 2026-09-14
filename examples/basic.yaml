@@ -1,0 +1,21 @@
+version: "1"
+run:
+  name: basic-local-plan
+  seed: 7
+  tags: [example]
+dataset:
+  manifest: examples/benchmark-manifest.yaml
+target:
+  adapter: http
+  base_url: http://localhost:8080
+  corpus:
+    mode: DOCUMENTS
+  parameters:
+    top_k: 10
+execution:
+  concurrency: 2
+  connect_timeout: 5
+  request_timeout: 30
+  total_timeout: 60
+metrics:
+  mode: all_available

@@ -5,6 +5,15 @@ from urllib.parse import quote_plus
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from rag_eval.config.hashing import canonicalize_config, configuration_hash
+from rag_eval.config.loader import (
+    ConfigurationError,
+    load_experiment_config,
+    resolve_environment_reference,
+)
+from rag_eval.config.matrix import PlannedExperiment, expand_matrix
+from rag_eval.config.models import ExperimentConfig
+
 
 class Settings(BaseSettings):
     """Configuration for local and deployed rag-eval infrastructure.
@@ -55,3 +64,17 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return the process-wide settings instance."""
     return Settings()
+
+
+__all__ = [
+    "ConfigurationError",
+    "ExperimentConfig",
+    "PlannedExperiment",
+    "Settings",
+    "canonicalize_config",
+    "configuration_hash",
+    "expand_matrix",
+    "get_settings",
+    "load_experiment_config",
+    "resolve_environment_reference",
+]

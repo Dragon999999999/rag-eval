@@ -18,6 +18,7 @@ from rag_eval.models.common import (
 from rag_eval.models.enums import (
     Answerability,
     ContextPolicy,
+    CorpusMode,
     ErrorCategory,
     FinishReason,
     MetricStatus,
@@ -75,6 +76,7 @@ __all__ = [
     "ClaimAssessment",
     "ConfidenceSignal",
     "ContextPolicy",
+    "CorpusMode",
     "CreateCorpusRequest",
     "CreateCorpusResponse",
     "Document",

@@ -30,6 +30,17 @@ uv run rag-eval --help
 uv run rag-eval version
 ```
 
+Validate a static experiment definition and inspect its non-executing plan:
+
+```bash
+uv run rag-eval validate examples/basic.yaml
+uv run rag-eval plan examples/basic.yaml
+```
+
+The YAML configuration supports deterministic matrix expansion and stable
+configuration hashes. Secret-bearing values are referenced by environment
+variable name and are not included in plans or configuration identities.
+
 Run the normal unit test suite (it does not require external services):
 
 ```bash
