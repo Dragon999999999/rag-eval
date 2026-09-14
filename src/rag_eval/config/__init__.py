@@ -12,7 +12,7 @@ from rag_eval.config.loader import (
     resolve_environment_reference,
 )
 from rag_eval.config.matrix import PlannedExperiment, expand_matrix
-from rag_eval.config.models import ExperimentConfig
+from rag_eval.config.models import ExperimentConfig, TargetConfig
 
 
 class Settings(BaseSettings):
@@ -71,6 +71,7 @@ __all__ = [
     "ExperimentConfig",
     "PlannedExperiment",
     "Settings",
+    "TargetConfig",
     "canonicalize_config",
     "configuration_hash",
     "expand_matrix",

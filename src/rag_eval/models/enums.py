@@ -144,3 +144,47 @@ class ArtifactType(StrEnum):
     PARQUET_EXPORT = "PARQUET_EXPORT"
     REPORT = "REPORT"
     OTHER = "OTHER"
+
+
+class RunStatus(StrEnum):
+    """Lifecycle state of a benchmark run."""
+
+    PENDING = "PENDING"
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class CaseExecutionStatus(StrEnum):
+    """Lifecycle state of one case execution within a run."""
+
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    TARGET_COMPLETE = "TARGET_COMPLETE"
+    SCORING = "SCORING"
+    COMPLETE = "COMPLETE"
+    FAILED = "FAILED"
+    RETRY_PENDING = "RETRY_PENDING"
+    UNKNOWN = "UNKNOWN"
+
+
+class AttemptStatus(StrEnum):
+    """State of one target attempt within a case execution."""
+
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
+    RESPONSE_RECEIVED = "RESPONSE_RECEIVED"
+    NORMALIZED = "NORMALIZED"
+    SUCCEEDED = "SUCCEEDED"
+    RETRYABLE_FAILURE = "RETRYABLE_FAILURE"
+    PERMANENT_FAILURE = "PERMANENT_FAILURE"
+    UNKNOWN_OUTCOME = "UNKNOWN_OUTCOME"
+
+
+class QueryExecutionMode(StrEnum):
+    """Execution mode for benchmark cases."""
+
+    QUERY = "QUERY"
+    RETRIEVAL = "RETRIEVAL"

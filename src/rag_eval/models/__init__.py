@@ -27,7 +27,7 @@ from rag_eval.models.enums import (
     RequestStatus,
     RetrievalStageType,
 )
-from rag_eval.models.execution import (
+from rag_eval.models.target import (
     Answer,
     AnswerSpan,
     Citation,

@@ -15,7 +15,7 @@ from rag_eval.models.enums import (
     EvidenceRelationship,
     MetricStatus,
 )
-from rag_eval.models.execution import AnswerSpan
+from rag_eval.models.target import AnswerSpan
 
 
 class MetricResult(CanonicalModel):

@@ -7,6 +7,7 @@ import typer
 
 from rag_eval import __version__
 from rag_eval.adapters import TargetAdapterError, create_target_adapter
+from rag_eval.artifacts import ArtifactService, create_artifact_store
 from rag_eval.config import (
     ConfigurationError,
     configuration_hash,
@@ -20,6 +21,9 @@ from rag_eval.db import (
     create_async_engine,
     create_session_factory,
 )
+from rag_eval.db.models import RunRecord
+from rag_eval.execution import BenchmarkExecutor
+from rag_eval.models.enums import RunStatus
 from rag_eval.services import BenchmarkRegistrationService, CorpusPreparationService
 
 app = typer.Typer(
@@ -76,6 +80,37 @@ def plan(
     typer.echo(f"configuration hash: {configuration_hash(experiment)}")
 
 
+@app.command()
+def run(
+    config: Path = CONFIG_ARGUMENT,
+) -> None:
+    """Execute a benchmark run with durable persistence."""
+    try:
+        run_id = asyncio.run(_execute_run(config))
+    except (
+        ConfigurationError,
+        DatasetValidationError,
+        TargetAdapterError,
+        TimeoutError,
+        ValueError,
+    ) as exc:
+        typer.echo(f"run failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(f"run completed: {run_id}")
+
+
+@app.command()
+def status(
+    run_id: str = typer.Argument(..., help="Run identifier to inspect"),
+) -> None:
+    """Display concise status of a persisted run."""
+    try:
+        asyncio.run(_show_run_status(run_id))
+    except (KeyError, ConfigurationError, ValueError) as exc:
+        typer.echo(f"status lookup failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+
+
 @corpus_app.command("prepare")
 def corpus_prepare(config: Path = CONFIG_ARGUMENT) -> None:
     """Validate, register, and prepare a corpus without executing benchmark queries."""
@@ -99,6 +134,81 @@ def corpus_prepare(config: Path = CONFIG_ARGUMENT) -> None:
     typer.echo(f"registered cases: {case_count}")
 
 
+async def _execute_run(config_path: Path) -> str:
+    """Execute a benchmark run and return the run ID."""
+    import uuid
+    
+    experiment = load_experiment_config(config_path)
+    adapter = create_target_adapter(experiment.target)
+    engine = create_async_engine(get_settings())
+    
+    run_id = f"run-{uuid.uuid4().hex}"
+    
+    try:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session, session.begin():
+            repository = PersistenceRepository(session)
+            
+            # Create run record
+            run = RunRecord(
+                run_id=run_id,
+                name=experiment.run.name,
+                status=RunStatus.PENDING.value,
+                config_hash=configuration_hash(experiment),
+                target_id=f"{experiment.target.adapter}-target",
+                seed=experiment.run.seed,
+                tags=experiment.run.tags,
+                metadata_json=experiment.run.metadata,
+            )
+            
+            # Persist canonical config
+            canonical_config = experiment.model_dump(mode="json")
+            await repository.create_run(run, canonical_config)
+            
+            # Persist target identity
+            from rag_eval.models import TargetInfo
+            target_info = TargetInfo(
+                name=f"{experiment.target.adapter}-target",
+                version="1.0",
+                implementation=experiment.target.adapter,
+            )
+            await repository.persist_target(run.target_id, target_info)
+            
+            await session.flush()
+        
+        # Load dataset and execute
+        if experiment.dataset.manifest is None:
+            raise ConfigurationError("run requires dataset.manifest")
+        
+        dataset = NativeBenchmarkDataset(Path(experiment.dataset.manifest))
+        dataset.validate()
+        manifest = dataset.load_manifest()
+        
+        # Create artifact store
+        store = create_artifact_store(get_settings())
+        artifact_service = ArtifactService(store, repository)
+        
+        # Execute benchmark
+        async with session_factory() as session, session.begin():
+            repository = PersistenceRepository(session)
+            executor = BenchmarkExecutor(
+                experiment, adapter, artifact_service, repository, session
+            )
+            result = await executor.execute(run_id, manifest)
+        
+        typer.echo(f"Run {run_id}: {result.completed}/{result.total_cases} completed")
+        if result.failed > 0:
+            typer.echo(f"  Failed: {result.failed}")
+        
+        return run_id
+        
+    finally:
+        close = getattr(adapter, "aclose", None)
+        if close is not None:
+            await close()
+        await engine.dispose()
+
+
 async def _prepare_corpus(experiment: object, dataset: NativeBenchmarkDataset):
     """Wire configuration-owned resources for the CLI corpus preparation command."""
     adapter = create_target_adapter(experiment.target)
@@ -120,4 +230,48 @@ async def _prepare_corpus(experiment: object, dataset: NativeBenchmarkDataset):
         close = getattr(adapter, "aclose", None)
         if close is not None:
             await close()
+        await engine.dispose()
+
+
+async def _show_run_status(run_id: str) -> None:
+    """Display status of a run."""
+    engine = create_async_engine(get_settings())
+    try:
+        session_factory = create_session_factory(engine)
+        async with session_factory() as session:
+            repository = PersistenceRepository(session)
+            run = await repository.get_run(run_id)
+            
+            if run is None:
+                raise KeyError(f"run not found: {run_id}")
+            
+            typer.echo(f"Run: {run.run_id}")
+            typer.echo(f"Status: {run.status}")
+            typer.echo(f"Name: {run.name}")
+            
+            if run.started_at:
+                typer.echo(f"Started: {run.started_at}")
+            if run.finished_at:
+                typer.echo(f"Finished: {run.finished_at}")
+            
+            # Count case executions
+            case_executions = await repository.list_case_executions(run_id)
+            
+            total = len(case_executions)
+            pending = sum(1 for c in case_executions if c.status == "PENDING")
+            running = sum(1 for c in case_executions if c.status == "RUNNING")
+            target_complete = sum(1 for c in case_executions if c.status == "TARGET_COMPLETE")
+            complete = sum(1 for c in case_executions if c.status == "COMPLETE")
+            failed = sum(1 for c in case_executions if c.status == "FAILED")
+            
+            typer.echo()
+            typer.echo("Cases:")
+            typer.echo(f"  total:            {total}")
+            typer.echo(f"  pending:          {pending}")
+            typer.echo(f"  running:          {running}")
+            typer.echo(f"  target_complete:  {target_complete}")
+            typer.echo(f"  complete:         {complete}")
+            typer.echo(f"  failed:           {failed}")
+            
+    finally:
         await engine.dispose()
