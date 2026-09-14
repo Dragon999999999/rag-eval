@@ -1468,16 +1468,16 @@ When changing an existing interface:
 
 ## 27. Git and Commit Guidelines
 
-AI coding agents may create local Git commits for changes they make as part of
-their assigned task.
+AI coding agents must create a local Git commit for completed repository changes
+unless the user explicitly instructs them not to commit, the work is incomplete or broken,
+or committing would include unrelated pre-existing changes that cannot safely be separated.
 
 Creating commits is part of the normal development workflow.
 
 ### 27.1 Commit completed work
 
 When an agent makes source-code, test, configuration, or documentation changes,
-it should normally create a Git commit once the requested unit of work is
-complete and verified.
+it must create a Git commit once the requested unit of work is complete and verified.
 
 Do not create a commit for:
 
