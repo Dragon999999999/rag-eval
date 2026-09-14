@@ -104,8 +104,7 @@ Use type hints for:
 Example:
 
 ```python
-def extract_text(path: Path) -> str:
-    ...
+def extract_text(path: Path) -> str: ...
 ```
 
 Avoid unnecessary type annotations when the type is completely obvious from the
@@ -699,7 +698,7 @@ class ExtractionResult(BaseModel):
 Do not use vague descriptions such as:
 
 ```python
-description="Keywords"
+description = "Keywords"
 ```
 
 when more precise semantics matter.
@@ -1015,15 +1014,13 @@ Use descriptive names.
 Example:
 
 ```python
-def test_validate_pdf_path_rejects_missing_file() -> None:
-    ...
+def test_validate_pdf_path_rejects_missing_file() -> None: ...
 ```
 
 Avoid vague names such as:
 
 ```python
-def test_pdf() -> None:
-    ...
+def test_pdf() -> None: ...
 ```
 
 ### 16.3 External services

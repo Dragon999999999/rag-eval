@@ -1609,68 +1609,56 @@ Conceptually:
 
 ```python
 class TargetAdapter(Protocol):
+    async def capabilities(self) -> TargetCapabilities: ...
 
-    async def capabilities(self) -> TargetCapabilities:
-        ...
-
-    async def health(self) -> HealthStatus:
-        ...
+    async def health(self) -> HealthStatus: ...
 
     async def create_corpus(
         self,
         request: CreateCorpusRequest,
-    ) -> CreateCorpusResponse:
-        ...
+    ) -> CreateCorpusResponse: ...
 
     async def delete_corpus(
         self,
         corpus_id: str,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def upload_document(
         self,
         corpus_id: str,
         document: DocumentUpload,
-    ) -> Operation:
-        ...
+    ) -> Operation: ...
 
     async def upload_chunks(
         self,
         corpus_id: str,
         chunks: AsyncIterator[Chunk],
-    ) -> Operation:
-        ...
+    ) -> Operation: ...
 
     async def get_operation(
         self,
         operation_id: str,
-    ) -> Operation:
-        ...
+    ) -> Operation: ...
 
     async def retrieve(
         self,
         request: RetrieveRequest,
-    ) -> RetrieveResponse:
-        ...
+    ) -> RetrieveResponse: ...
 
     async def query(
         self,
         request: QueryRequest,
-    ) -> QueryResponse:
-        ...
+    ) -> QueryResponse: ...
 
     async def stream_query(
         self,
         request: QueryRequest,
-    ) -> AsyncIterator[QueryEvent]:
-        ...
+    ) -> AsyncIterator[QueryEvent]: ...
 
     async def recover_request(
         self,
         request_id: str,
-    ) -> RequestRecoveryResult:
-        ...
+    ) -> RequestRecoveryResult: ...
 ```
 
 Exact signatures are defined by the implemented Pydantic models and Python protocol.
