@@ -21,6 +21,10 @@ class TargetAdapterError(Exception):
         code: str = "TARGET_ADAPTER_ERROR",
         stage: str | None = None,
         details: dict[str, object] | None = None,
+        retryable: bool = False,
+        retry_after_ms: int | None = None,
+        http_status: int | None = None,
+        provider: dict[str, object] | None = None,
     ) -> None:
         """Create an error with a serializable canonical representation."""
         super().__init__(message)
@@ -30,6 +34,10 @@ class TargetAdapterError(Exception):
             code=code,
             message=message,
             stage=stage,
+            retryable=retryable,
+            retry_after_ms=retry_after_ms,
+            http_status=http_status,
+            provider=provider or {},
             details=details or {},
         )
 
