@@ -12,7 +12,7 @@ from rag_eval.config.loader import (
     resolve_environment_reference,
 )
 from rag_eval.config.matrix import PlannedExperiment, expand_matrix
-from rag_eval.config.models import ExperimentConfig, TargetConfig
+from rag_eval.config.models import ExecutionConfig, ExperimentConfig, RetryConfig, TargetConfig
 
 
 class Settings(BaseSettings):
@@ -68,8 +68,10 @@ def get_settings() -> Settings:
 
 __all__ = [
     "ConfigurationError",
+    "ExecutionConfig",
     "ExperimentConfig",
     "PlannedExperiment",
+    "RetryConfig",
     "Settings",
     "TargetConfig",
     "canonicalize_config",
