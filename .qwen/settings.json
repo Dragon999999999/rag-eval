@@ -4,7 +4,15 @@
       "Bash(uv *)",
       "Bash(cd *)",
       "Bash(head *)",
-      "Bash(tail *)"
+      "Bash(tail *)",
+      "Bash(mv *)",
+      "Bash(git status *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(grep *)"
     ]
   },
   "$version": 4

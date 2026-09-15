@@ -3,6 +3,7 @@
 import hashlib
 import json
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -340,9 +341,35 @@ class PersistenceRepository:
         return record
 
     async def persist_aggregate(
-        self, record: AggregateMetricResultRecord
+        self, aggregate: Any
     ) -> AggregateMetricResultRecord:
-        """Persist a precomputed aggregate without running aggregation logic."""
+        """Persist a precomputed aggregate without running aggregation logic.
+
+        Args:
+            aggregate: AggregateMetricResultModel canonical model.
+
+        Returns:
+            Persisted database record.
+        """
+        from rag_eval.models import AggregateMetricResult as AggregateMetricResultModel
+
+        if isinstance(aggregate, AggregateMetricResultModel):
+            # Convert canonical model to database record
+            record = AggregateMetricResultRecord(
+                aggregate_metric_result_id=f"agr-{aggregate.metric_id}-{aggregate.aggregation}-{aggregate.metric_version}",
+                run_id=aggregate.run_id,
+                metric_id=aggregate.metric_id,
+                metric_version=aggregate.metric_version,
+                aggregation=aggregate.aggregation,
+                value=aggregate.value,
+                status=aggregate.status.value if hasattr(aggregate.status, "value") else str(aggregate.status),
+                reason=None,
+                details=aggregate.distribution,
+            )
+        else:
+            # Already a database record
+            record = aggregate
+
         self._session.add(record)
         await self._session.flush()
         return record

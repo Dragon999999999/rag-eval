@@ -304,6 +304,7 @@ class AggregateMetricResultRecord(Base, TimestampedRecord):
     )
     metric_id: Mapped[str] = mapped_column(String(255), nullable=False)
     metric_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    aggregation: Mapped[str] = mapped_column(String(64), nullable=False)
     value: Mapped[Any | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     reason: Mapped[str | None] = mapped_column(Text)
