@@ -5,7 +5,6 @@ Duplicate registrations are rejected to prevent accidental overwrites.
 """
 
 import logging
-from typing import Protocol
 
 from .base import Metric, MetricDefinition
 

@@ -18,12 +18,14 @@ from typing import Any
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.models import (
     BenchmarkCase,
-    MetricResult as MetricResultModel,
     TargetObservation,
+)
+from rag_eval.models import (
+    MetricResult as MetricResultModel,
 )
 from rag_eval.models.enums import MetricStatus
 
-from .base import Metric, MetricRequirement, MetricResult, MetricScope
+from .base import Metric, MetricRequirement, MetricResult
 from .context import MetricContext
 from .registry import MetricRegistry
 
