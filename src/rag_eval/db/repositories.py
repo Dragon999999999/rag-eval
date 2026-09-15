@@ -346,3 +346,28 @@ class PersistenceRepository:
         self._session.add(record)
         await self._session.flush()
         return record
+
+    async def list_aggregates(self, run_id: str) -> Sequence[AggregateMetricResultRecord]:
+        """List all aggregates for a run."""
+        result = await self._session.scalars(
+            select(AggregateMetricResultRecord)
+            .where(AggregateMetricResultRecord.run_id == run_id)
+            .order_by(AggregateMetricResultRecord.metric_id, AggregateMetricResultRecord.aggregation)
+        )
+        return result.all()
+
+    async def list_metric_results(self, run_id: str) -> Sequence[MetricResultRecord]:
+        """List all metric results for a run."""
+        result = await self._session.scalars(
+            select(MetricResultRecord)
+            .where(MetricResultRecord.run_id == run_id)
+            .order_by(MetricResultRecord.case_id, MetricResultRecord.metric_id)
+        )
+        return result.all()
+
+    async def get_run_config(self, run_id: str) -> RunConfigRecord | None:
+        """Get canonical config for a run."""
+        run = await self._session.get(RunRecord, run_id)
+        if run is None:
+            return None
+        return await self._session.get(RunConfigRecord, run.config_hash)

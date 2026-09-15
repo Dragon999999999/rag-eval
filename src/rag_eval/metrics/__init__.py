@@ -71,6 +71,7 @@ from .retrieval import (
     RPrecision,
 )
 from .service import ScoringResult, ScoringService
+from .stage12 import get_stage12_catalog, register_stage12_metrics
 from .usage import (
     CostPerToken,
     InputTokens,
@@ -97,6 +98,9 @@ __all__ = [
     "MetricRegistry",
     "ScoringService",
     "ScoringResult",
+    # Stage 12 catalog
+    "get_stage12_catalog",
+    "register_stage12_metrics",
     # Answer metrics
     "ExactMatch",
     "NormalizedExactMatch",
