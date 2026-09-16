@@ -13,7 +13,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from rag_eval.db.session import create_async_session_factory
 from rag_eval.metrics.registry import MetricRegistry

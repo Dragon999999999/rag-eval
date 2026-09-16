@@ -7,7 +7,7 @@ They provide stable frontend-facing interfaces even as internal models evolve.
 from datetime import datetime
 from typing import Any, Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 DataT = TypeVar("DataT")
 

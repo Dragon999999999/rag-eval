@@ -16,7 +16,6 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from rag_eval.api.dependencies import get_db_session
 from rag_eval.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -52,7 +51,11 @@ app = FastAPI(
 
 # Configure CORS
 settings = get_settings()
-allowed_origins = settings.cors_origins.split(",") if settings.cors_origins else ["http://localhost:3000"]
+allowed_origins = (
+    settings.cors_origins.split(",")
+    if settings.cors_origins
+    else ["http://localhost:3000"]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -106,8 +109,12 @@ async def health_check() -> dict:
 
 # app.include_router(targets.router, prefix="/api/v1", tags=["targets"])
 # app.include_router(benchmarks.router, prefix="/api/v1", tags=["benchmarks"])
-# app.include_router(metric_configs.router, prefix="/api/v1", tags=["metric-configs"])
-# app.include_router(test_definitions.router, prefix="/api/v1", tags=["test-definitions"])
+# app.include_router(
+#     metric_configs.router, prefix="/api/v1", tags=["metric-configs"]
+# )
+# app.include_router(
+#     test_definitions.router, prefix="/api/v1", tags=["test-definitions"]
+# )
 # app.include_router(runs.router, prefix="/api/v1", tags=["runs"])
 
 

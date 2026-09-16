@@ -11,12 +11,6 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rag_eval.config.models import (
-    ExecutionConfig,
-    ExperimentModel,
-    MetricsConfig,
-    RunConfig,
-)
 from rag_eval.db.models import (
     BenchmarkRecord,
     MetricConfigRecord,
@@ -107,9 +101,7 @@ class TestDefinitionService:
             ValueError: If referenced resources don't exist.
         """
         # Validate references exist
-        await self._validate_references(
-            target_id, benchmark_id, metric_config_id
-        )
+        await self._validate_references(target_id, benchmark_id, metric_config_id)
 
         # Compute hash
         definition_hash = self._compute_definition_hash(
@@ -195,7 +187,7 @@ class TestDefinitionService:
         )
         return result.scalar_one_or_none()
 
-    async def list(
+    async def list_all(
         self,
         limit: int = 100,
         offset: int = 0,
@@ -312,9 +304,7 @@ class TestDefinitionService:
         from rag_eval.db.models import RunRecord
 
         runs_result = await self._session.execute(
-            select(RunRecord).where(
-                RunRecord.test_definition_id == test_definition_id
-            )
+            select(RunRecord).where(RunRecord.test_definition_id == test_definition_id)
         )
         if runs_result.scalars().first():
             return False  # Has dependent runs
@@ -340,12 +330,16 @@ class TestDefinitionService:
         """
         # Load referenced resources
         target_result = await self._session.execute(
-            select(TargetRecord).where(TargetRecord.target_id == test_definition.target_id)
+            select(TargetRecord).where(
+                TargetRecord.target_id == test_definition.target_id
+            )
         )
         target = target_result.scalar_one()
 
         benchmark_result = await self._session.execute(
-            select(BenchmarkRecord).where(BenchmarkRecord.benchmark_id == test_definition.benchmark_id)
+            select(BenchmarkRecord).where(
+                BenchmarkRecord.benchmark_id == test_definition.benchmark_id
+            )
         )
         benchmark = benchmark_result.scalar_one()
 
@@ -448,9 +442,7 @@ class TestDefinitionService:
             # This would contact the target to verify capabilities
             # For now, just mark as not implemented
             result["capabilities_valid"] = True
-            result["warnings"].append(
-                "Capability validation not yet implemented"
-            )
+            result["warnings"].append("Capability validation not yet implemented")
 
         return result
 

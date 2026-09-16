@@ -80,9 +80,7 @@ class MetricConfigService:
         # Validate configuration
         if mode == "explicit":
             if not selected_metrics:
-                raise ValueError(
-                    "explicit mode requires at least one selected metric"
-                )
+                raise ValueError("explicit mode requires at least one selected metric")
             # Validate metrics exist in registry
             for metric_id in selected_metrics:
                 # Check if metric exists (ignore version for now)
@@ -90,9 +88,7 @@ class MetricConfigService:
                     m.definition.metric_id == metric_id
                     for m in self._metric_registry._metrics.values()
                 ):
-                    raise KeyError(
-                        f"Metric '{metric_id}' not found in registry"
-                    )
+                    raise KeyError(f"Metric '{metric_id}' not found in registry")
 
         # Build canonical config for hashing
         canonical_config = {
@@ -139,7 +135,9 @@ class MetricConfigService:
         )
         return result.scalar_one_or_none()
 
-    async def list(self, limit: int = 100, offset: int = 0) -> list[MetricConfigRecord]:
+    async def list_all(
+        self, limit: int = 100, offset: int = 0
+    ) -> list[MetricConfigRecord]:
         """List metric configurations with pagination.
 
         Args:

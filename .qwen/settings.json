@@ -14,7 +14,9 @@
       "Bash(git diff *)",
       "Bash(grep *)",
       "Bash(timeout *)",
-      "Bash(python3 *)"
+      "Bash(python3 *)",
+      "Bash(mkdir *)",
+      "Bash(git restore *)"
     ]
   },
   "$version": 4
