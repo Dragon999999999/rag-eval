@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Semantic Design Tokens
+   ============================================================================ */
+
+:root {
+  /* Backgrounds - near-black base */
+  --color-background: #090a0d;
+  --color-surface: #0f1115;
+  --color-surface-elevated: #15181e;
+  --color-surface-hover: #1a1e26;
+  --color-surface-active: #1f242e;
+
+  /* Borders */
+  --color-border-default: #272c35;
+  --color-border-strong: #3a4150;
+
+  /* Text - cool grays for reduced eye strain */
+  --color-text-primary: #e8eaed;
+  --color-text-secondary: #b0b5c0;
+  --color-text-tertiary: #7a808f;
+  --color-text-disabled: #525866;
+
+  /* Accent - cool blue-purple (~#6677FF) */
+  --color-accent: #6677ff;
+  --color-accent-hover: #7a8aff;
+  --color-accent-active: #5566ee;
+  --color-accent-subtle: rgba(102, 119, 255, 0.1);
+
+  /* Status colors */
+  --color-success: #22c55e;
+  --color-success-bg: rgba(34, 197, 94, 0.1);
+  --color-warning: #f59e0b;
+  --color-warning-bg: rgba(245, 158, 11, 0.1);
+  --color-error: #ef4444;
+  --color-error-bg: rgba(239, 68, 68, 0.1);
+  --color-info: #3b82f6;
+  --color-info-bg: rgba(59, 130, 246, 0.1);
+}
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+@layer base {
+  * {
+    border-color: var(--color-border-default);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family:
+      Inter,
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: var(--color-accent-subtle);
+    color: var(--color-text-primary);
+  }
+
+  /* Scrollbars - subtle dark styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-surface);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-tertiary);
+  }
+
+  /* Focus visible - accessible accent outline */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================================
+   Component Base Styles
+   ============================================================================ */
+
+@layer components {
+  /* Default button style */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply border border-border-default bg-surface-elevated text-text-primary hover:bg-surface-hover;
+  }
+
+  .btn-ghost {
+    @apply text-text-secondary hover:bg-surface-hover;
+  }
+
+  /* Input base */
+  .input {
+    @apply w-full rounded-md border border-border-default bg-surface px-3 py-2 text-sm text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Card surface */
+  .card {
+    @apply rounded-lg border border-border-default bg-surface p-4;
+  }
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+@layer utilities {
+  /* Text truncation */
+  .text-truncate {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap;
+  }
+
+  /* Subtle hover elevation */
+  .hover-elevate {
+    @apply transition-transform duration-200 hover:-translate-y-0.5;
+  }
+}
