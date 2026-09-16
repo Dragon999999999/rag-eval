@@ -3,6 +3,8 @@ import { AppShell } from "@/components/layout/app-shell";
 import { DesignSystemShowcase } from "@/app/design-system/showcase";
 import { DashboardPage } from "@/pages/dashboard-page";
 import { TargetsPage, TargetDetailPage } from "@/pages/targets-page";
+import { TargetCreatePage } from "@/features/targets/pages/target-create-page";
+import { TargetEditPage } from "@/features/targets/pages/target-edit-page";
 import { DatasetsPage, DatasetDetailPage } from "@/pages/datasets-page";
 import { TestsPage, TestDetailPage } from "@/pages/tests-page";
 import { ResultsPage } from "@/pages/results-page";
@@ -28,7 +30,9 @@ const routes: RouteObject[] = [
 
       // Targets
       { path: "targets", element: <TargetsPage /> },
+      { path: "targets/new", element: <TargetCreatePage /> },
       { path: "targets/:targetId", element: <TargetDetailPage /> },
+      { path: "targets/:targetId/edit", element: <TargetEditPage /> },
 
       // Datasets
       { path: "datasets", element: <DatasetsPage /> },
