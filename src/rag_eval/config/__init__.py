@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     )
 
     environment: str = "development"
+    debug: bool = False
     postgres_host: str = "localhost"
     postgres_port: int = 5433
     postgres_database: str = "rag_eval"
@@ -43,6 +44,11 @@ class Settings(BaseSettings):
     s3_secret_key: str = "minioadmin"
     s3_bucket: str = "rag-eval-artifacts"
     s3_region: str = "us-east-1"
+
+    # API configuration
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    api_key: str | None = None
+    api_key_required: bool = False
 
     @property
     def async_database_url(self) -> str:

@@ -82,6 +82,11 @@ class RunRecord(Base, TimestampedRecord):
     target_id: Mapped[str | None] = mapped_column(
         ForeignKey("targets.target_id", ondelete="SET NULL"), index=True
     )
+    # Stage 15: Link to test definition (nullable for backward compatibility with CLI-created runs)
+    test_definition_id: Mapped[str | None] = mapped_column(
+        ForeignKey("test_definitions.test_definition_id", ondelete="SET NULL"),
+        index=True,
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     seed: Mapped[int | None] = mapped_column(Integer)
@@ -340,3 +345,119 @@ class ErrorRecordDB(Base, TimestampedRecord):
         ForeignKey("artifacts.artifact_id")
     )
     details: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+
+
+# ============================================================================
+# Stage 15: Frontend-Facing Domain Resources
+# ============================================================================
+
+
+class BenchmarkRecord(Base, TimestampedRecord):
+    """Reusable benchmark definition with manifest reference.
+
+    Stores benchmark metadata and provenance without duplicating case data.
+    Cases remain in benchmark_cases table linked by dataset_id.
+    """
+
+    __tablename__ = "benchmarks"
+
+    benchmark_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    version: Mapped[str] = mapped_column(String(64), nullable=False)
+    manifest_path: Mapped[str | None] = mapped_column(Text)
+    manifest_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    schema_version: Mapped[str] = mapped_column(String(64), default="1.0")
+    source: Mapped[str | None] = mapped_column(Text)
+    provenance: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    case_count: Mapped[int | None] = mapped_column(Integer)
+    document_count: Mapped[int | None] = mapped_column(Integer)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+
+
+class MetricConfigRecord(Base, TimestampedRecord):
+    """Reusable named metric configuration with full parameters.
+
+    Stores which metrics to run, their parameters, judge configuration,
+    and retrieval stage settings. Full configuration per user preference.
+    """
+
+    __tablename__ = "metric_configs"
+
+    metric_config_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    mode: Mapped[str] = mapped_column(String(64), nullable=False)  # all_available or explicit
+    selected_metrics: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, nullable=False
+    )
+    metric_parameters: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    judge_config: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    retrieval_config: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    config_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+class TestDefinitionRecord(Base, TimestampedRecord):
+    """Reusable test definition referencing target, benchmark, and metric config.
+
+    Defines evaluation intent: "Evaluate this Target against this Benchmark
+    using this MetricConfig under these execution settings."
+
+    Does not contain execution state (belongs to EvaluationRun).
+    """
+
+    __tablename__ = "test_definitions"
+
+    test_definition_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    description: Mapped[str | None] = mapped_column(Text)
+
+    # Foreign keys to reusable resources
+    target_id: Mapped[str] = mapped_column(
+        ForeignKey("targets.target_id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    benchmark_id: Mapped[str] = mapped_column(
+        ForeignKey("benchmarks.benchmark_id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    metric_config_id: Mapped[str] = mapped_column(
+        ForeignKey("metric_configs.metric_config_id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # Execution configuration
+    execution_config: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+    seed: Mapped[int | None] = mapped_column(Integer)
+
+    # Tags and metadata
+    tags: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+
+    # Semantic hash for change detection
+    definition_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+
+# Add test_definition_id to RunRecord for linking runs to definitions
+# This is a new column that will be added via migration
+# For now, we document it here - the migration will add it
+# Note: This is handled in the migration file, not by modifying RunRecord directly
+# since RunRecord already exists in the codebase
