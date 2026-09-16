@@ -12,7 +12,9 @@
       "Bash(git status)",
       "Bash(git log *)",
       "Bash(git diff *)",
-      "Bash(grep *)"
+      "Bash(grep *)",
+      "Bash(timeout *)",
+      "Bash(python3 *)"
     ]
   },
   "$version": 4

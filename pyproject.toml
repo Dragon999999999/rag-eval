@@ -26,9 +26,12 @@ rag-eval = "rag_eval.cli:app"
 
 [dependency-groups]
 dev = [
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "ruff>=0.8",
+    "uvicorn>=0.53.0",
 ]
 
 [build-system]
