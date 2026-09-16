@@ -1,16 +1,32 @@
-import { Link } from "react-router-dom";
+import { MobileMenuTrigger } from "./sidebar";
 
-export function Header() {
+interface HeaderProps {
+  onMobileMenuToggle: () => void;
+}
+
+/**
+ * Application header with mobile menu trigger.
+ *
+ * On desktop: minimal header with optional actions
+ * On mobile: hamburger menu trigger + app label
+ */
+export function Header({ onMobileMenuToggle }: HeaderProps) {
   return (
-    <header className="bg-surface/95 supports-[backdrop-filter]:bg-surface/60 sticky top-0 z-50 border-b border-border-default backdrop-blur">
-      <div className="flex h-12 items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-lg font-semibold text-text-primary">
-            RAG-Eval
-          </Link>
+    <header className="sticky top-0 z-40 border-b border-border-default bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-12 items-center gap-4 px-4">
+        {/* Mobile menu trigger - hidden on desktop */}
+        <div className="flex lg:hidden">
+          <MobileMenuTrigger onClick={onMobileMenuToggle} />
         </div>
+
+        {/* Page title area - can be customized per page */}
+        <div className="flex-1" />
+
+        {/* Optional header actions */}
         <div className="flex items-center gap-4">
-          <span className="text-xs text-text-tertiary">v0.1.0</span>
+          <span className="hidden text-xs text-text-tertiary sm:inline">
+            v0.2.0
+          </span>
         </div>
       </div>
     </header>
