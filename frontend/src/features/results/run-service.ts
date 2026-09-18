@@ -25,6 +25,12 @@ import type {
 
 const MOCK_DELAY_MS = 400;
 
+/** Error with code and status properties */
+interface ServiceError extends Error {
+  code?: string;
+  status?: number;
+}
+
 /** Transform AttemptDetail to AttemptSummary */
 function toAttemptSummary(detail: AttemptDetail): AttemptSummary {
   return {
@@ -46,7 +52,7 @@ function toMetricResultSummary(detail: MetricResultDetail): MetricResultSummary 
     metric_version: detail.metric_version,
     status: detail.status,
     has_value: detail.value != null,
-    value_summary: detail.value != null ? String(detail.value) : null,
+    value_summary: detail.value != null ? JSON.stringify(detail.value) : null,
   };
 }
 
@@ -57,7 +63,7 @@ function toAggregateResultSummary(detail: AggregateResultDetail): AggregateResul
     metric_version: detail.metric_version,
     aggregation: detail.aggregation,
     status: detail.status,
-    value_summary: detail.value != null ? String(detail.value) : null,
+    value_summary: detail.value != null ? JSON.stringify(detail.value) : null,
   };
 }
 
@@ -251,8 +257,8 @@ export const RunService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -267,8 +273,8 @@ export const RunService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -300,15 +306,15 @@ export const RunService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
     if (run.status !== "running" && run.status !== "queued") {
       const error = new Error(`Run cannot be cancelled: ${run.status}`);
-      (error as any).code = "RUN_CANNOT_CANCEL";
-      (error as any).status = 400;
+      (error as ServiceError).code = "RUN_CANNOT_CANCEL";
+      (error as ServiceError).status = 400;
       throw error;
     }
 
@@ -368,8 +374,8 @@ export const RunService = {
 
     if (!caseExec) {
       const error = new Error(`Case not found: ${caseId} in run ${runId}`);
-      (error as any).code = "CASE_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "CASE_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -404,8 +410,8 @@ export const RunService = {
     const attempt = mockAttempts.get(attemptId);
     if (!attempt) {
       const error = new Error(`Attempt not found: ${attemptId}`);
-      (error as any).code = "ATTEMPT_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "ATTEMPT_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -470,8 +476,8 @@ export const RunService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -512,8 +518,8 @@ export const RunService = {
 
     if (!runA || !runB) {
       const error = new Error("One or both runs not found");
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -582,19 +588,19 @@ export const RunService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
     if (run.status !== "completed") {
       const error = new Error("Can only export completed runs");
-      (error as any).code = "RUN_NOT_COMPLETED";
-      (error as any).status = 400;
+      (error as ServiceError).code = "RUN_NOT_COMPLETED";
+      (error as ServiceError).status = 400;
       throw error;
     }
 
-    const exportId = `export-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const exportId = `export-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     const files = request.formats.map((format) => ({
       filename: `${runId}.${format}`,
       format,
