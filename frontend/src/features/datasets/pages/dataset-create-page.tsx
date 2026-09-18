@@ -60,7 +60,7 @@ export function DatasetCreatePage() {
 
       <Page.Content>
         <div className="mx-auto max-w-2xl">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} className="space-y-6">
             {createDataset.error && (
               <Alert variant="error">
                 <AlertDescription>{createDataset.error.message}</AlertDescription>
