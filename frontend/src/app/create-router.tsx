@@ -7,7 +7,7 @@ import { TargetCreatePage } from "@/features/targets/pages/target-create-page";
 import { TargetEditPage } from "@/features/targets/pages/target-edit-page";
 import { DatasetsPage, DatasetDetailPage } from "@/pages/datasets-page";
 import { DatasetCreatePage } from "@/features/datasets/pages/dataset-create-page";
-import { TestsPage, TestDetailPage } from "@/pages/tests-page";
+import { TestsPage, TestDetailPage, TestCreatePage, TestEditPage } from "@/pages/tests-page";
 import { ResultsPage } from "@/pages/results-page";
 import { RunDetailPage, RunCaseDetailPage } from "@/pages/runs-page";
 import { SettingsPage } from "@/pages/settings-page";
@@ -42,7 +42,9 @@ const routes: RouteObject[] = [
 
       // Tests
       { path: "tests", element: <TestsPage /> },
+      { path: "tests/new", element: <TestCreatePage /> },
       { path: "tests/:testId", element: <TestDetailPage /> },
+      { path: "tests/:testId/edit", element: <TestEditPage /> },
 
       // Results / Runs
       { path: "results", element: <ResultsPage /> },
