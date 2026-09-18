@@ -58,9 +58,7 @@ export function truncateQuery(query: string, maxLength: number = 80): string {
 /** Format case count with suffix for large numbers */
 export function formatCaseCount(count: number | null | undefined): string {
   if (count == null) return "0 cases";
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (count < 1000) return `${String(count)} cases`;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (count < 1000000) return `${(count / 1000).toFixed(1)}k cases`;
   return `${(count / 1000000).toFixed(1)}M cases`;
 }
