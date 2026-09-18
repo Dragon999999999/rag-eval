@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getMockDashboardSummary, getMockEmptyDashboard, getMockReadyDashboard } from "./mocks";
+import {
+  getMockDashboardSummary,
+  getMockEmptyDashboard,
+  getMockReadyDashboard,
+} from "./mocks";
 
 describe("Dashboard mocks", () => {
   it("returns valid dashboard summary", () => {

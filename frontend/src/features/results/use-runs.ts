@@ -16,7 +16,8 @@ export const runKeys = {
   cases: (runId: string) => [...runKeys.detail(runId), "cases"] as const,
   caseList: (runId: string, filters?: Record<string, unknown>) =>
     [...runKeys.cases(runId), "list", filters] as const,
-  case: (runId: string, caseId: string) => [...runKeys.cases(runId), "case", caseId] as const,
+  case: (runId: string, caseId: string) =>
+    [...runKeys.cases(runId), "case", caseId] as const,
   attempts: (runId: string, caseId: string) =>
     [...runKeys.case(runId, caseId), "attempts"] as const,
   attempt: (runId: string, caseId: string, attemptId: string) =>
@@ -57,7 +58,10 @@ export function useRun(runId: string) {
 }
 
 /** Hook to get run progress */
-export function useRunProgress(runId: string, options?: { refetchInterval?: number | false }) {
+export function useRunProgress(
+  runId: string,
+  options?: { refetchInterval?: number | false }
+) {
   return useQuery({
     queryKey: runKeys.progress(runId),
     queryFn: () => RunService.getRunProgress(runId),
@@ -85,14 +89,17 @@ export function useCancelRun() {
 }
 
 /** Hook to get cases for a run */
-export function useRunCases(runId: string, filters?: {
-  limit?: number;
-  offset?: number;
-  status?: string;
-  search?: string;
-  tags?: string[];
-  answerability?: string;
-}) {
+export function useRunCases(
+  runId: string,
+  filters?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    search?: string;
+    tags?: string[];
+    answerability?: string;
+  }
+) {
   return useQuery({
     queryKey: runKeys.caseList(runId, filters),
     queryFn: () => RunService.getRunCases(runId, filters),
@@ -168,7 +175,13 @@ export function useExportRun() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ runId, request }: { runId: string; request: ExportRequest }) => {
+    mutationFn: async ({
+      runId,
+      request,
+    }: {
+      runId: string;
+      request: ExportRequest;
+    }) => {
       return await RunService.exportRun(runId, request);
     },
     onSuccess: (_, { runId }) => {

@@ -57,9 +57,7 @@ export function PageHeader({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-text-primary">{title}</h1>
-          {description && (
-            <p className="text-sm text-text-tertiary">{description}</p>
-          )}
+          {description && <p className="text-sm text-text-tertiary">{description}</p>}
         </div>
         {actions && <div className="flex-shrink-0">{actions}</div>}
       </div>
@@ -77,9 +75,7 @@ export interface PageContentProps {
  * Use for the main content below the page header.
  */
 export function PageContent({ children, className }: PageContentProps) {
-  return (
-    <div className={cn("flex-1 px-6 py-6", className)}>{children}</div>
-  );
+  return <div className={cn("flex-1 px-6 py-6", className)}>{children}</div>;
 }
 
 /**

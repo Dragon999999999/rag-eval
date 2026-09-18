@@ -15,11 +15,7 @@ export function TargetEditPage() {
   const { targetId } = useParams<{ targetId: string }>();
   const navigate = useNavigate();
 
-  const {
-    data: target,
-    isLoading,
-    error,
-  } = useTarget(targetId ?? "");
+  const { data: target, isLoading, error } = useTarget(targetId ?? "");
 
   const updateTarget = useUpdateTarget(targetId ?? "", {
     onSuccess: (data) => {
@@ -65,7 +61,7 @@ export function TargetEditPage() {
         />
         <Page.Content>
           <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-surface p-6">
+            <div className="border-border rounded-lg border bg-surface p-6">
               <Spinner />
             </div>
           </div>

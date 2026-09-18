@@ -5,16 +5,20 @@
  */
 
 /** Run status - canonical backend values */
-export type RunStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
+export type RunStatus =
+  "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
 
 /** Case execution status */
-export type CaseStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
+export type CaseStatus =
+  "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
 
 /** Attempt status */
-export type AttemptStatus = "running" | "completed" | "failed" | "cancelled" | "timeout" | "unknown";
+export type AttemptStatus =
+  "running" | "completed" | "failed" | "cancelled" | "timeout" | "unknown";
 
 /** Metric result status */
-export type MetricStatus = "computed" | "unavailable_missing_input" | "not_applicable" | "failed" | "skipped";
+export type MetricStatus =
+  "computed" | "unavailable_missing_input" | "not_applicable" | "failed" | "skipped";
 
 /** Run summary for listing */
 export interface RunSummary {

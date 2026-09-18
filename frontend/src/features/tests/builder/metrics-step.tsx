@@ -34,14 +34,19 @@ export function MetricsStep({
   const { data: metrics, isLoading, error } = useMetrics();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [compatibilityResults, setCompatibilityResults] = useState<Record<string, { compatible: boolean; reason?: string }>>({});
+  const [compatibilityResults, setCompatibilityResults] = useState<
+    Record<string, { compatible: boolean; reason?: string }>
+  >({});
 
   const configName = form.watch("metric_config_name");
   const selectedMetrics = form.watch("selected_metrics");
   const mode = form.watch("mode");
 
   const setConfigName = (name: string) => {
-    form.setValue("metric_config_name", name, { shouldValidate: true, shouldDirty: true });
+    form.setValue("metric_config_name", name, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const toggleMetric = (metricId: string) => {
@@ -49,7 +54,10 @@ export function MetricsStep({
     const updated = current.includes(metricId)
       ? current.filter((id) => id !== metricId)
       : [...current, metricId];
-    form.setValue("selected_metrics", updated, { shouldValidate: true, shouldDirty: true });
+    form.setValue("selected_metrics", updated, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const setMode = (newMode: "all_available" | "explicit") => {
@@ -84,9 +92,7 @@ export function MetricsStep({
   if (error) {
     return (
       <Alert variant="error">
-        <AlertDescription>
-          An error occurred while fetching metrics.
-        </AlertDescription>
+        <AlertDescription>An error occurred while fetching metrics.</AlertDescription>
       </Alert>
     );
   }
@@ -97,9 +103,10 @@ export function MetricsStep({
 
   // Group metrics by category
   const categories = Array.from(new Set(metrics.map((m) => m.category ?? "Other")));
-  const filteredMetrics = selectedCategory === "all"
-    ? metrics
-    : metrics.filter((m) => m.category === selectedCategory);
+  const filteredMetrics =
+    selectedCategory === "all"
+      ? metrics
+      : metrics.filter((m) => m.category === selectedCategory);
 
   return (
     <div className="space-y-4">
@@ -128,7 +135,7 @@ export function MetricsStep({
         <div className="space-y-3">
           <Label>Selection Mode</Label>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-2">
               <Checkbox
                 checked={mode === "explicit"}
                 onCheckedChange={() => setMode("explicit")}
@@ -141,7 +148,7 @@ export function MetricsStep({
               </div>
             </label>
 
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-2">
               <Checkbox
                 checked={mode === "all_available"}
                 onCheckedChange={() => setMode("all_available")}
@@ -161,7 +168,7 @@ export function MetricsStep({
       {mode === "explicit" && (
         <Surface className="p-0">
           <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-            <div className="border-b border-border px-4">
+            <div className="border-border border-b px-4">
               <TabsList>
                 <TabsTrigger value="all">All</TabsTrigger>
                 {categories.map((category) => (
@@ -181,7 +188,7 @@ export function MetricsStep({
                 return (
                   <div
                     key={metric.metric_id}
-                    className={`flex items-start gap-3 rounded-md border p-3 mb-3 transition-colors ${
+                    className={`mb-3 flex items-start gap-3 rounded-md border p-3 transition-colors ${
                       isSelected ? "border-accent bg-surface-hover" : "border-border"
                     } ${!isCompatible ? "opacity-50" : ""}`}
                   >
@@ -215,9 +222,7 @@ export function MetricsStep({
                         )}
                       </div>
                       {!isCompatible && compat?.reason && (
-                        <p className="mt-2 text-xs text-destructive">
-                          {compat.reason}
-                        </p>
+                        <p className="text-destructive mt-2 text-xs">{compat.reason}</p>
                       )}
                     </div>
                   </div>
@@ -253,10 +258,7 @@ export function MetricsStep({
         <Button variant="secondary" onClick={onPrevious}>
           Back
         </Button>
-        <Button
-          onClick={onNext}
-          disabled={!configName || selectedMetrics.length === 0}
-        >
+        <Button onClick={onNext} disabled={!configName || selectedMetrics.length === 0}>
           Next: Execution Settings
         </Button>
       </div>

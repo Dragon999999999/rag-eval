@@ -17,14 +17,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useRun, useRunComparison } from "../use-runs";
-import { getRunStatusVariant, formatMetricValue, formatMetricDelta, getDeltaVariant } from "../run-formatters";
+import {
+  getRunStatusVariant,
+  formatMetricValue,
+  formatMetricDelta,
+  getDeltaVariant,
+} from "../run-formatters";
 
 export function RunComparePage() {
   const { runId, otherRunId } = useParams<{ runId: string; otherRunId: string }>();
 
   const { data: runA, isLoading: runALoading } = useRun(runId || "");
   const { data: runB, isLoading: runBLoading } = useRun(otherRunId || "");
-  const { data: comparison, isLoading: comparisonLoading, error: comparisonError } = useRunComparison(runId || "", otherRunId || "");
+  const {
+    data: comparison,
+    isLoading: comparisonLoading,
+    error: comparisonError,
+  } = useRunComparison(runId || "", otherRunId || "");
 
   const isLoading = runALoading || runBLoading || comparisonLoading;
 
@@ -45,7 +54,9 @@ export function RunComparePage() {
       <Page>
         <Page.Content>
           <Alert variant="error">
-            <AlertDescription>Comparison not available or error loading comparison.</AlertDescription>
+            <AlertDescription>
+              Comparison not available or error loading comparison.
+            </AlertDescription>
           </Alert>
         </Page.Content>
       </Page>
@@ -124,28 +135,49 @@ export function RunComparePage() {
                     <TableRow key={idx}>
                       <TableCell>
                         <div>
-                          <div className="font-medium text-text-primary">{metricComp.metric_id}</div>
-                          <div className="text-xs text-text-tertiary">v{metricComp.metric_version}</div>
+                          <div className="font-medium text-text-primary">
+                            {metricComp.metric_id}
+                          </div>
+                          <div className="text-xs text-text-tertiary">
+                            v{metricComp.metric_version}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-text-tertiary">{metricComp.aggregation}</span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <span className="font-medium text-text-primary">
-                          {formatMetricValue(metricComp.run_a_value, metricComp.metric_id)}
+                        <span className="text-sm text-text-tertiary">
+                          {metricComp.aggregation}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium text-text-primary">
-                          {formatMetricValue(metricComp.run_b_value, metricComp.metric_id)}
+                          {formatMetricValue(
+                            metricComp.run_a_value,
+                            metricComp.metric_id
+                          )}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className={`font-medium ${
-                          variant === "success" ? "text-success" : variant === "error" ? "text-error" : "text-text-secondary"
-                        }`}>
-                          {formatMetricDelta(metricComp.absolute_delta, metricComp.direction)}
+                        <span className="font-medium text-text-primary">
+                          {formatMetricValue(
+                            metricComp.run_b_value,
+                            metricComp.metric_id
+                          )}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span
+                          className={`font-medium ${
+                            variant === "success"
+                              ? "text-success"
+                              : variant === "error"
+                                ? "text-error"
+                                : "text-text-secondary"
+                          }`}
+                        >
+                          {formatMetricDelta(
+                            metricComp.absolute_delta,
+                            metricComp.direction
+                          )}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">

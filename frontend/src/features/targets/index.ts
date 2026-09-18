@@ -12,7 +12,17 @@ export { CapabilityList } from "./components/capability-list";
 export { ConnectionTestResult } from "./components/connection-test-result";
 export { TargetStatus } from "./components/target-status";
 
-export { useTargetList, useTarget, useCreateTarget, useUpdateTarget, useDeleteTarget, useTargetCapabilities, useRefreshCapabilities, useTestConnection, targetQueryKeys, } from "./use-targets";
+export {
+  useTargetList,
+  useTarget,
+  useCreateTarget,
+  useUpdateTarget,
+  useDeleteTarget,
+  useTargetCapabilities,
+  useRefreshCapabilities,
+  useTestConnection,
+  targetQueryKeys,
+} from "./use-targets";
 
 export { TargetService } from "./target-service";
 
@@ -29,4 +39,13 @@ export type {
   TargetFormState,
 } from "./target-types";
 
-export { formatAdapterType, formatCorpusMode, formatTargetEndpoint, formatRelativeTime, getConnectionStatus, getCapabilityBadges, isValidPythonTarget, isValidUrl, } from "./target-formatters";
+export {
+  formatAdapterType,
+  formatCorpusMode,
+  formatTargetEndpoint,
+  formatRelativeTime,
+  getConnectionStatus,
+  getCapabilityBadges,
+  isValidPythonTarget,
+  isValidUrl,
+} from "./target-formatters";

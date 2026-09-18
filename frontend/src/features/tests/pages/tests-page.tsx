@@ -22,12 +22,7 @@ import { formatRelativeTime, formatExecutionConfig } from "../test-formatters";
 import type { TestDefinitionInfo } from "../test-types";
 
 export function TestsPage() {
-  const {
-    data: tests,
-    isLoading,
-    error,
-    refetch,
-  } = useTests();
+  const { data: tests, isLoading, error, refetch } = useTests();
 
   if (isLoading) {
     return (
@@ -42,7 +37,12 @@ export function TestsPage() {
       <Alert variant="error">
         <AlertDescription>
           An error occurred while fetching tests.
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="ml-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetch()}
+            className="ml-4"
+          >
             Retry
           </Button>
         </AlertDescription>
@@ -112,7 +112,7 @@ function TestRow({ test }: TestRowProps) {
         <div>
           <div className="font-medium text-text-primary">{test.name}</div>
           {test.description && (
-            <div className="text-xs text-text-tertiary line-clamp-1">
+            <div className="line-clamp-1 text-xs text-text-tertiary">
               {test.description}
             </div>
           )}
@@ -137,14 +137,15 @@ function TestRow({ test }: TestRowProps) {
       <TableCell>
         <div className="flex flex-wrap gap-1">
           {test.tags?.slice(0, 3).map((tag) => (
-            <span key={tag} className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary">
+            <span
+              key={tag}
+              className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
+            >
               {tag}
             </span>
           ))}
           {test.tags && test.tags.length > 3 && (
-            <span className="text-xs text-text-tertiary">
-              +{test.tags.length - 3}
-            </span>
+            <span className="text-xs text-text-tertiary">+{test.tags.length - 3}</span>
           )}
         </div>
       </TableCell>

@@ -28,7 +28,17 @@ import {
 import { toast } from "@/lib/toast";
 import { Waypoints, Copy, Trash2 } from "lucide-react";
 import { IconButton } from "@/components/ui/icon-button";
-import { Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function TargetDetailPage() {
   const { targetId } = useParams<{ targetId: string }>();
@@ -58,12 +68,14 @@ export function TargetDetailPage() {
   });
 
   // Connection test result for display
-  const connectionTestResult = refreshCapabilities.data ? {
-    success: true,
-    target_id: targetId ?? "",
-    response_time_ms: 100, // Mock - real impl would get from backend
-    tested_at: new Date().toISOString(),
-  } : undefined;
+  const connectionTestResult = refreshCapabilities.data
+    ? {
+        success: true,
+        target_id: targetId ?? "",
+        response_time_ms: 100, // Mock - real impl would get from backend
+        tested_at: new Date().toISOString(),
+      }
+    : undefined;
 
   const deleteTarget = useDeleteTarget({
     onSuccess: () => {
@@ -165,7 +177,11 @@ export function TargetDetailPage() {
             </Button>
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-error hover:text-error">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-error hover:text-error"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
@@ -219,10 +235,7 @@ export function TargetDetailPage() {
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <InfoRow label="Name" value={target.name} />
               <InfoRow label="Version" value={target.version ?? "—"} />
-              <InfoRow
-                label="Adapter Type"
-                value={formatAdapterType(target.adapter)}
-              />
+              <InfoRow label="Adapter Type" value={formatAdapterType(target.adapter)} />
               <InfoRow
                 label="Corpus Mode"
                 value={formatCorpusMode(target.corpus_mode)}
@@ -238,10 +251,7 @@ export function TargetDetailPage() {
                   />
                 }
               />
-              <InfoRow
-                label="Created"
-                value={formatRelativeTime(target.created_at)}
-              />
+              <InfoRow label="Created" value={formatRelativeTime(target.created_at)} />
               <InfoRow
                 label="Last Updated"
                 value={formatRelativeTime(target.updated_at)}
@@ -267,10 +277,7 @@ export function TargetDetailPage() {
                 </>
               )}
               {target.adapter === "python" && (
-                <InfoRow
-                  label="Python Target"
-                  value={target.python_target ?? "—"}
-                />
+                <InfoRow label="Python Target" value={target.python_target ?? "—"} />
               )}
               {target.implementation && (
                 <InfoRow label="Implementation" value={target.implementation} />

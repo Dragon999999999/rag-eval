@@ -32,12 +32,7 @@ import { RunComparison } from "./run-comparison";
 import { QuickActions } from "./quick-actions";
 
 export function DashboardPage() {
-  const {
-    data,
-    isLoading,
-    refetch,
-    dashboardState,
-  } = useDashboardSummary();
+  const { data, isLoading, refetch, dashboardState } = useDashboardSummary();
 
   // Loading state
   if (isLoading || dashboardState === "loading") {
@@ -147,9 +142,7 @@ export function DashboardPage() {
           )}
 
           {/* Recent Runs */}
-          {data && data.recentRuns.length > 0 && (
-            <RecentRuns runs={data.recentRuns} />
-          )}
+          {data && data.recentRuns.length > 0 && <RecentRuns runs={data.recentRuns} />}
 
           {/* Run Comparison */}
           {data && data.latestComparison && (

@@ -30,7 +30,11 @@ export function DatasetCreatePage() {
     },
   });
 
-  const { register, handleSubmit, formState: { errors } } = useForm<DatasetFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<DatasetFormValues>({
     defaultValues: {
       name: "",
       version: "1.0",
@@ -45,7 +49,11 @@ export function DatasetCreatePage() {
       version: data.version,
       schema_version: "1.0",
       source: data.source || undefined,
-      tags: data.tags?.split(",").map((t) => t.trim()).filter(Boolean) ?? [],
+      tags:
+        data.tags
+          ?.split(",")
+          .map((t) => t.trim())
+          .filter(Boolean) ?? [],
       metadata: {},
     });
   };
@@ -60,7 +68,12 @@ export function DatasetCreatePage() {
 
       <Page.Content>
         <div className="mx-auto max-w-2xl">
-          <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }} className="space-y-6">
+          <form
+            onSubmit={(e) => {
+              void handleSubmit(onSubmit)(e);
+            }}
+            className="space-y-6"
+          >
             {createDataset.error && (
               <Alert variant="error">
                 <AlertDescription>{createDataset.error.message}</AlertDescription>
@@ -110,7 +123,7 @@ export function DatasetCreatePage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 border-t border-border pt-6">
+            <div className="border-border flex items-center gap-4 border-t pt-6">
               <Button type="submit" disabled={createDataset.isPending}>
                 {createDataset.isPending ? "Creating..." : "Create Dataset"}
               </Button>

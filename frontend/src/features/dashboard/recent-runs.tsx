@@ -58,14 +58,16 @@ interface RecentRunRowProps {
 }
 
 function RecentRunRow({ run }: RecentRunRowProps) {
-  const statusMap: Record<RunStatus, "success" | "warning" | "error" | "info" | "neutral"> =
-    {
-      queued: "neutral",
-      running: "info",
-      completed: "success",
-      failed: "error",
-      cancelled: "neutral",
-    };
+  const statusMap: Record<
+    RunStatus,
+    "success" | "warning" | "error" | "info" | "neutral"
+  > = {
+    queued: "neutral",
+    running: "info",
+    completed: "success",
+    failed: "error",
+    cancelled: "neutral",
+  };
 
   const keyResult = run.keyMetrics?.[0];
 
@@ -79,12 +81,8 @@ function RecentRunRow({ run }: RecentRunRowProps) {
           {run.testName}
         </Link>
       </TableCell>
-      <TableCell className="text-text-secondary">
-        {run.targetName}
-      </TableCell>
-      <TableCell className="text-text-secondary">
-        {run.datasetName}
-      </TableCell>
+      <TableCell className="text-text-secondary">{run.targetName}</TableCell>
+      <TableCell className="text-text-secondary">{run.datasetName}</TableCell>
       <TableCell>
         <StatusBadge status={statusMap[run.status]} showDot>
           {run.status.charAt(0).toUpperCase() + run.status.slice(1)}

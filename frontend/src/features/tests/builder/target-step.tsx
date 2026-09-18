@@ -16,7 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTargetList } from "@/features/targets/use-targets";
-import { formatAdapterType, getCapabilityBadges } from "@/features/targets/target-formatters";
+import {
+  formatAdapterType,
+  getCapabilityBadges,
+} from "@/features/targets/target-formatters";
 import type { Target } from "@/features/targets/target-types";
 import type { UseFormReturn } from "react-hook-form";
 import type { TestBuilderValues } from "../test-builder-form";
@@ -27,12 +30,7 @@ interface TargetStepProps {
 }
 
 export function TargetStep({ form, onNext }: TargetStepProps) {
-  const {
-    data: targets,
-    isLoading,
-    error,
-    refetch,
-  } = useTargetList();
+  const { data: targets, isLoading, error, refetch } = useTargetList();
 
   const selectedTargetId = form.watch("target_id");
   const setSelectedTargetId = (targetId: string) => {
@@ -59,7 +57,12 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
       <Alert variant="error">
         <AlertDescription>
           An error occurred while fetching targets.
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="ml-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetch()}
+            className="ml-4"
+          >
             Retry
           </Button>
         </AlertDescription>
@@ -119,10 +122,7 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
       </Surface>
 
       <div className="flex justify-end">
-        <Button
-          onClick={onNext}
-          disabled={!selectedTargetId}
-        >
+        <Button onClick={onNext} disabled={!selectedTargetId}>
           Next: Select Dataset
         </Button>
       </div>

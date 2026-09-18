@@ -11,7 +11,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Surface } from "@/components/layout/surface";
-import { useTestBuilderForm, BuilderStep, STEP_METADATA, getNextStep, getPreviousStep } from "../test-builder-form";
+import {
+  useTestBuilderForm,
+  BuilderStep,
+  STEP_METADATA,
+  getNextStep,
+  getPreviousStep,
+} from "../test-builder-form";
 import { TargetStep } from "./target-step";
 import { DatasetStep } from "./dataset-step";
 import { MetricsStep } from "./metrics-step";
@@ -68,11 +74,7 @@ export function TestBuilder({}: TestBuilderProps) {
 
       case BuilderStep.DATASET:
         return (
-          <DatasetStep
-            form={form}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-          />
+          <DatasetStep form={form} onPrevious={handlePrevious} onNext={handleNext} />
         );
 
       case BuilderStep.METRICS:
@@ -88,11 +90,7 @@ export function TestBuilder({}: TestBuilderProps) {
 
       case BuilderStep.EXECUTION:
         return (
-          <ExecutionStep
-            form={form}
-            onPrevious={handlePrevious}
-            onNext={handleNext}
-          />
+          <ExecutionStep form={form} onPrevious={handlePrevious} onNext={handleNext} />
         );
 
       case BuilderStep.REVIEW:
@@ -128,11 +126,11 @@ export function TestBuilder({}: TestBuilderProps) {
                   disabled={!canNavigate}
                   className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
                     isCurrent
-                      ? "bg-accent text-accent-foreground"
+                      ? "text-accent-foreground bg-accent"
                       : isPast
                         ? "bg-surface-hover text-text-primary"
                         : "text-text-tertiary"
-                  } ${canNavigate && !isCurrent ? "hover:bg-surface-hover cursor-pointer" : "cursor-default"}`}
+                  } ${canNavigate && !isCurrent ? "cursor-pointer hover:bg-surface-hover" : "cursor-default"}`}
                 >
                   <div
                     className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
@@ -145,15 +143,15 @@ export function TestBuilder({}: TestBuilderProps) {
                   >
                     {isPast ? "✓" : stepNum}
                   </div>
-                  <div className="hidden md:block text-left">
+                  <div className="hidden text-left md:block">
                     <div className="text-sm font-medium">{stepMeta.title}</div>
-                    <div className="text-xs text-text-tertiary">{STEP_METADATA[step as BuilderStep].description}</div>
+                    <div className="text-xs text-text-tertiary">
+                      {STEP_METADATA[step as BuilderStep].description}
+                    </div>
                   </div>
                 </button>
 
-                {stepNum < 5 && (
-                  <div className="mx-2 h-px w-8 flex-1 bg-border" />
-                )}
+                {stepNum < 5 && <div className="bg-border mx-2 h-px w-8 flex-1" />}
               </div>
             );
           })}

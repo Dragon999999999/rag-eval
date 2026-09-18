@@ -13,11 +13,7 @@ export type CorpusMode = "DOCUMENTS" | "CHUNKS" | "EXTERNAL";
 
 /** Target connection status derived from backend state */
 export type TargetConnectionStatus =
-  | "connected"
-  | "disconnected"
-  | "unknown"
-  | "testing"
-  | "configuration-error";
+  "connected" | "disconnected" | "unknown" | "testing" | "configuration-error";
 
 /** Target identity information */
 export interface Target {
@@ -138,17 +134,17 @@ export interface TargetFormState {
   name: string;
   description?: string;
   adapter: TargetAdapterType;
-  
+
   // HTTP adapter fields
   base_url?: string;
   auth_type?: "none" | "bearer" | "api-key";
   bearer_token?: string;
   api_key?: string;
   api_key_header?: string;
-  
+
   // Python adapter fields
   python_target?: string;
-  
+
   // Common fields
   corpus_mode: CorpusMode;
   version?: string;

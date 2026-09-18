@@ -31,8 +31,14 @@ export function ReviewStep({
   const planTest = usePlanTest();
 
   const [isSaving, setIsSaving] = useState(false);
-  const [validationResult, setValidationResult] = useState<{ valid: boolean; errors: string[] } | null>(null);
-  const [plan, setPlan] = useState<{ estimated_cases: number; estimated_requests: number } | null>(null);
+  const [validationResult, setValidationResult] = useState<{
+    valid: boolean;
+    errors: string[];
+  } | null>(null);
+  const [plan, setPlan] = useState<{
+    estimated_cases: number;
+    estimated_requests: number;
+  } | null>(null);
 
   const formValues = form.getValues();
 
@@ -40,14 +46,17 @@ export function ReviewStep({
     setIsSaving(true);
     try {
       const formValues = form.getValues();
-      
+
       // Validate first
       const validation = await validateTest.mutateAsync({
         name: formValues.name,
         target_id: formValues.target_id,
         benchmark_id: formValues.benchmark_id,
         metric_config_id: formValues.metric_config_name,
-        execution_config: formValues.execution_config as unknown as Record<string, unknown>,
+        execution_config: formValues.execution_config as unknown as Record<
+          string,
+          unknown
+        >,
         seed: formValues.seed ?? null,
         tags: formValues.tags,
         metadata: formValues.metadata,
@@ -65,7 +74,10 @@ export function ReviewStep({
         target_id: formValues.target_id,
         benchmark_id: formValues.benchmark_id,
         metric_config_id: formValues.metric_config_name,
-        execution_config: formValues.execution_config as unknown as Record<string, unknown>,
+        execution_config: formValues.execution_config as unknown as Record<
+          string,
+          unknown
+        >,
         seed: formValues.seed ?? null,
         tags: formValues.tags,
         metadata: formValues.metadata,
@@ -98,7 +110,9 @@ export function ReviewStep({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-text-primary">Review Configuration</h2>
+        <h2 className="text-lg font-semibold text-text-primary">
+          Review Configuration
+        </h2>
         <p className="text-sm text-text-tertiary">
           Review your test configuration before saving.
         </p>
@@ -106,17 +120,21 @@ export function ReviewStep({
 
       {/* Basic Information */}
       <Surface className="p-4">
-        <h3 className="mb-3 text-sm font-medium text-text-primary">Basic Information</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-primary">
+          Basic Information
+        </h3>
         <div className="space-y-3">
           <div className="space-y-2">
             <Label htmlFor="review-name">Test Name</Label>
             <Input
               id="review-name"
               value={formValues.name}
-              onChange={(e) => form.setValue("name", e.target.value, { shouldValidate: true })}
+              onChange={(e) =>
+                form.setValue("name", e.target.value, { shouldValidate: true })
+              }
             />
             {!formValues.name && (
-              <p className="text-xs text-destructive">Test name is required</p>
+              <p className="text-destructive text-xs">Test name is required</p>
             )}
           </div>
 
@@ -125,7 +143,11 @@ export function ReviewStep({
             <Textarea
               id="review-description"
               value={formValues.description ?? ""}
-              onChange={(e) => form.setValue("description", e.target.value || null, { shouldValidate: true })}
+              onChange={(e) =>
+                form.setValue("description", e.target.value || null, {
+                  shouldValidate: true,
+                })
+              }
               placeholder="Describe the purpose of this test..."
               rows={3}
             />
@@ -162,7 +184,10 @@ export function ReviewStep({
           </div>
           <div className="flex flex-wrap gap-1">
             {selectedMetrics.map((metricId) => (
-              <span key={metricId} className="rounded bg-surface-hover px-1.5 py-0.5 text-xs text-text-tertiary">
+              <span
+                key={metricId}
+                className="rounded bg-surface-hover px-1.5 py-0.5 text-xs text-text-tertiary"
+              >
                 {metricId}
               </span>
             ))}
@@ -172,7 +197,9 @@ export function ReviewStep({
 
       {/* Execution Settings */}
       <Surface className="p-4">
-        <h3 className="mb-3 text-sm font-medium text-text-primary">Execution Settings</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-primary">
+          Execution Settings
+        </h3>
         <div className="grid gap-3 md:grid-cols-3">
           <div>
             <Label className="text-xs text-text-tertiary">Concurrency</Label>
@@ -180,7 +207,9 @@ export function ReviewStep({
           </div>
           <div>
             <Label className="text-xs text-text-tertiary">Timeout</Label>
-            <div className="mt-1 text-text-primary">{executionConfig.timeout_per_request}s</div>
+            <div className="mt-1 text-text-primary">
+              {executionConfig.timeout_per_request}s
+            </div>
           </div>
           <div>
             <Label className="text-xs text-text-tertiary">Retries</Label>
@@ -188,11 +217,13 @@ export function ReviewStep({
           </div>
           <div>
             <Label className="text-xs text-text-tertiary">Failure Policy</Label>
-            <div className="mt-1 text-text-primary capitalize">{executionConfig.failure_policy}</div>
+            <div className="mt-1 capitalize text-text-primary">
+              {executionConfig.failure_policy}
+            </div>
           </div>
           <div>
             <Label className="text-xs text-text-tertiary">Case Scope</Label>
-            <div className="mt-1 text-text-primary capitalize">
+            <div className="mt-1 capitalize text-text-primary">
               {formValues.case_scope?.mode ?? "all"}
             </div>
           </div>
@@ -213,7 +244,10 @@ export function ReviewStep({
           <h3 className="mb-3 text-sm font-medium text-text-primary">Tags</h3>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag, index) => (
-              <span key={index} className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary">
+              <span
+                key={index}
+                className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
+              >
                 {tag}
               </span>
             ))}
@@ -224,8 +258,10 @@ export function ReviewStep({
       {/* Validation Errors */}
       {validationResult && !validationResult.valid && (
         <Surface className="border-destructive p-4">
-          <h3 className="mb-2 text-sm font-medium text-destructive">Validation Errors</h3>
-          <ul className="list-inside list-disc text-sm text-destructive">
+          <h3 className="text-destructive mb-2 text-sm font-medium">
+            Validation Errors
+          </h3>
+          <ul className="text-destructive list-inside list-disc text-sm">
             {validationResult.errors.map((error, index) => (
               <li key={index}>{error}</li>
             ))}
@@ -236,7 +272,9 @@ export function ReviewStep({
       {/* Execution Plan Estimate */}
       {plan && (
         <Surface className="p-4">
-          <h3 className="mb-2 text-sm font-medium text-text-primary">Execution Estimate</h3>
+          <h3 className="mb-2 text-sm font-medium text-text-primary">
+            Execution Estimate
+          </h3>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <Label className="text-xs text-text-tertiary">Estimated Cases</Label>
@@ -245,7 +283,9 @@ export function ReviewStep({
               </div>
             </div>
             <div>
-              <Label className="text-xs text-text-tertiary">Estimated API Requests</Label>
+              <Label className="text-xs text-text-tertiary">
+                Estimated API Requests
+              </Label>
               <div className="mt-1 text-lg font-semibold text-text-primary">
                 {plan.estimated_requests.toLocaleString()}
               </div>

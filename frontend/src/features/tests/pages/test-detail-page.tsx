@@ -26,7 +26,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, FlaskConical, Play, Trash2, Edit } from "lucide-react";
 import { useTest, useTestRuns, useDeleteTest, useRunTest } from "../use-tests";
-import { formatRunStatus, getRunStatusVariant, formatRelativeTime, formatExecutionConfig } from "../test-formatters";
+import {
+  formatRunStatus,
+  getRunStatusVariant,
+  formatRelativeTime,
+  formatExecutionConfig,
+} from "../test-formatters";
 import type { EvaluationRunSummary } from "../test-types";
 
 export function TestDetailPage() {
@@ -34,7 +39,11 @@ export function TestDetailPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"overview" | "runs">("overview");
 
-  const { data: test, isLoading: testLoading, error: testError } = useTest(testId || "");
+  const {
+    data: test,
+    isLoading: testLoading,
+    error: testError,
+  } = useTest(testId || "");
   const { data: runs, isLoading: runsLoading } = useTestRuns(testId || "");
   const deleteTest = useDeleteTest();
   const runTest = useRunTest();
@@ -82,9 +91,7 @@ export function TestDetailPage() {
       <Page>
         <Page.Content>
           <Alert variant="error">
-            <AlertDescription>
-              Test not found or error loading test.
-            </AlertDescription>
+            <AlertDescription>Test not found or error loading test.</AlertDescription>
           </Alert>
         </Page.Content>
       </Page>
@@ -129,11 +136,11 @@ export function TestDetailPage() {
       <Page.Content>
         <div className="space-y-6">
           {/* Tabs */}
-          <div className="flex border-b border-border">
+          <div className="border-border flex border-b">
             <button
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === "overview"
-                  ? "border-b-2 border-accent text-accent-foreground"
+                  ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
               onClick={() => setActiveTab("overview")}
@@ -143,7 +150,7 @@ export function TestDetailPage() {
             <button
               className={`px-4 py-2 text-sm font-medium transition-colors ${
                 activeTab === "runs"
-                  ? "border-b-2 border-accent text-accent-foreground"
+                  ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
               onClick={() => setActiveTab("runs")}
@@ -155,19 +162,27 @@ export function TestDetailPage() {
           {activeTab === "overview" && (
             <div className="space-y-4">
               <Surface className="p-4">
-                <h3 className="mb-3 text-sm font-medium text-text-primary">Configuration</h3>
+                <h3 className="mb-3 text-sm font-medium text-text-primary">
+                  Configuration
+                </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <div className="text-xs text-text-tertiary">Target</div>
-                    <div className="font-medium text-text-primary">{test.target_id}</div>
+                    <div className="font-medium text-text-primary">
+                      {test.target_id}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-text-tertiary">Dataset</div>
-                    <div className="font-medium text-text-primary">{test.benchmark_id}</div>
+                    <div className="font-medium text-text-primary">
+                      {test.benchmark_id}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-text-tertiary">Metric Config</div>
-                    <div className="font-medium text-text-primary">{test.metric_config_id}</div>
+                    <div className="font-medium text-text-primary">
+                      {test.metric_config_id}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-text-tertiary">Execution</div>
@@ -197,7 +212,10 @@ export function TestDetailPage() {
                     <div className="text-xs text-text-tertiary">Tags</div>
                     <div className="flex flex-wrap gap-1">
                       {test.tags?.map((tag) => (
-                        <span key={tag} className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary">
+                        <span
+                          key={tag}
+                          className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
+                        >
                           {tag}
                         </span>
                       ))}

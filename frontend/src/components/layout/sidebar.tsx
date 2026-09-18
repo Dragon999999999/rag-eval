@@ -25,7 +25,10 @@ export function Sidebar() {
       </div>
 
       {/* Primary Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3" aria-label="Primary navigation">
+      <nav
+        className="flex-1 space-y-1 overflow-y-auto p-3"
+        aria-label="Primary navigation"
+      >
         {PRIMARY_NAVIGATION.map((item) => (
           <SidebarNavItem
             key={item.path}
@@ -37,7 +40,10 @@ export function Sidebar() {
       </nav>
 
       {/* Secondary Navigation */}
-      <nav className="space-y-1 border-t border-border-default p-3" aria-label="Secondary navigation">
+      <nav
+        className="space-y-1 border-t border-border-default p-3"
+        aria-label="Secondary navigation"
+      >
         {SECONDARY_NAVIGATION.map((item) => (
           <SidebarNavItem
             key={item.path}
@@ -97,12 +103,7 @@ export function MobileMenuTrigger({
       )}
       aria-label="Toggle navigation menu"
     >
-      <svg
-        className="h-5 w-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
+      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"

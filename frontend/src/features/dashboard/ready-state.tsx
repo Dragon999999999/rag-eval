@@ -58,12 +58,7 @@ interface ResourceReadyProps {
   href: string;
 }
 
-function ResourceReady({
-  label,
-  secondary,
-  icon: Icon,
-  href,
-}: ResourceReadyProps) {
+function ResourceReady({ label, secondary, icon: Icon, href }: ResourceReadyProps) {
   return (
     <a href={href}>
       <Surface className="group p-6 transition-colors hover:bg-surface-hover">
@@ -77,9 +72,7 @@ function ResourceReady({
               <p className="font-medium text-text-primary">{label}</p>
             </div>
             {secondary && (
-              <p className="mt-1 truncate text-sm text-text-tertiary">
-                {secondary}
-              </p>
+              <p className="mt-1 truncate text-sm text-text-tertiary">{secondary}</p>
             )}
           </div>
         </div>

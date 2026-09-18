@@ -37,8 +37,7 @@ export function RunComparison({ comparison }: RunComparisonProps) {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-text-secondary">
-              <span className="font-medium">{comparison.comparisonName}</span>{" "}
-              vs{" "}
+              <span className="font-medium">{comparison.comparisonName}</span> vs{" "}
               <span className="font-medium">{comparison.baselineName}</span>
             </p>
             <p className="text-xs text-text-tertiary">

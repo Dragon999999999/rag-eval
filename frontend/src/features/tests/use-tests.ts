@@ -215,7 +215,8 @@ export function useMetricCompatibility() {
       metricId: string;
       targetCapabilities: Record<string, boolean>;
       datasetFeatures: Record<string, boolean>;
-    }) => MetricService.checkCompatibility(metricId, targetCapabilities, datasetFeatures),
+    }) =>
+      MetricService.checkCompatibility(metricId, targetCapabilities, datasetFeatures),
   });
 }
 

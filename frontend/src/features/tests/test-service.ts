@@ -228,7 +228,10 @@ export const TestService = {
   },
 
   /** Update a test definition */
-  async updateTest(testId: string, data: TestDefinitionUpdate): Promise<TestDefinitionInfo> {
+  async updateTest(
+    testId: string,
+    data: TestDefinitionUpdate
+  ): Promise<TestDefinitionInfo> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -376,8 +379,13 @@ export const TestService = {
     if (run.status === "running") {
       run.progress = {
         ...run.progress!,
-        complete_cases: Math.min(run.progress!.total_cases, run.progress!.complete_cases + 10),
-        percent: Math.round((run.progress!.complete_cases / run.progress!.total_cases) * 100),
+        complete_cases: Math.min(
+          run.progress!.total_cases,
+          run.progress!.complete_cases + 10
+        ),
+        percent: Math.round(
+          (run.progress!.complete_cases / run.progress!.total_cases) * 100
+        ),
       };
     }
 
@@ -391,7 +399,9 @@ export const TestService = {
 
     return Array.from(mockRuns.values())
       .filter((run) => run.test_definition_id === testId)
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      .sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
   },
 };
 
@@ -403,7 +413,10 @@ export const MetricService = {
   },
 
   /** Get a single metric definition */
-  async getMetric(metricId: string, version = "1.0"): Promise<MetricDefinition | undefined> {
+  async getMetric(
+    metricId: string,
+    version = "1.0"
+  ): Promise<MetricDefinition | undefined> {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
     return mockMetrics.find((m) => m.metric_id === metricId && m.version === version);
   },

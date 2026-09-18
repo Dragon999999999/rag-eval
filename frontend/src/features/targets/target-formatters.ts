@@ -3,7 +3,12 @@
  *
  * Centralized formatting logic for target display.
  */
-import type { Target, TargetConnectionStatus, TargetAdapterType, CorpusMode } from "./target-types";
+import type {
+  Target,
+  TargetConnectionStatus,
+  TargetAdapterType,
+  CorpusMode,
+} from "./target-types";
 
 /**
  * Format adapter type for display.

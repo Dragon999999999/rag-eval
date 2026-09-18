@@ -7,7 +7,13 @@ import { Surface } from "@/components/layout/surface";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { UseFormReturn } from "react-hook-form";
 import type { TestBuilderValues } from "../test-builder-form";
 
@@ -25,25 +31,39 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
 
   const updateConfig = <K extends keyof typeof executionConfig>(
     key: K,
-    value: typeof executionConfig[K]
+    value: (typeof executionConfig)[K]
   ) => {
-    form.setValue("execution_config", { ...executionConfig, [key]: value }, { shouldValidate: true, shouldDirty: true });
+    form.setValue(
+      "execution_config",
+      { ...executionConfig, [key]: value },
+      { shouldValidate: true, shouldDirty: true }
+    );
   };
 
   const setSeed = (value: string) => {
     const num = parseInt(value);
-    form.setValue("seed", isNaN(num) ? null : num, { shouldValidate: true, shouldDirty: true });
+    form.setValue("seed", isNaN(num) ? null : num, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const addTag = () => {
     if (tagInput.trim()) {
-      form.setValue("tags", [...tags, tagInput.trim()], { shouldValidate: true, shouldDirty: true });
+      form.setValue("tags", [...tags, tagInput.trim()], {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
       setTagInput("");
     }
   };
 
   const removeTag = (index: number) => {
-    form.setValue("tags", tags.filter((_, i) => i !== index), { shouldValidate: true, shouldDirty: true });
+    form.setValue(
+      "tags",
+      tags.filter((_, i) => i !== index),
+      { shouldValidate: true, shouldDirty: true }
+    );
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -74,7 +94,9 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               min="1"
               max="32"
               value={executionConfig.concurrency}
-              onChange={(e) => updateConfig("concurrency", parseInt(e.target.value) || 1)}
+              onChange={(e) =>
+                updateConfig("concurrency", parseInt(e.target.value) || 1)
+              }
             />
             <p className="text-xs text-text-tertiary">
               Number of parallel requests (1-32)
@@ -89,7 +111,9 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               min="1"
               max="300"
               value={executionConfig.timeout_per_request}
-              onChange={(e) => updateConfig("timeout_per_request", parseInt(e.target.value) || 30)}
+              onChange={(e) =>
+                updateConfig("timeout_per_request", parseInt(e.target.value) || 30)
+              }
             />
             <p className="text-xs text-text-tertiary">
               Maximum time to wait for each request
@@ -100,7 +124,9 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
 
       {/* Retry and Failure Policy */}
       <Surface className="p-4">
-        <h3 className="mb-4 text-sm font-medium text-text-primary">Retry & Failure Handling</h3>
+        <h3 className="mb-4 text-sm font-medium text-text-primary">
+          Retry & Failure Handling
+        </h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="retries">Retries per Case</Label>
@@ -121,7 +147,9 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Label htmlFor="failure-policy">On Failure</Label>
             <Select
               value={executionConfig.failure_policy}
-              onValueChange={(value: "continue" | "abort") => updateConfig("failure_policy", value)}
+              onValueChange={(value: "continue" | "abort") =>
+                updateConfig("failure_policy", value)
+              }
             >
               <SelectTrigger id="failure-policy">
                 <SelectValue />
@@ -152,7 +180,9 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Switch
               id="store-raw"
               checked={executionConfig.store_raw_responses}
-              onCheckedChange={(checked) => updateConfig("store_raw_responses", checked)}
+              onCheckedChange={(checked) =>
+                updateConfig("store_raw_responses", checked)
+              }
             />
           </div>
 
@@ -244,9 +274,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
         <Button variant="secondary" onClick={onPrevious}>
           Back
         </Button>
-        <Button onClick={onNext}>
-          Next: Review
-        </Button>
+        <Button onClick={onNext}>Next: Review</Button>
       </div>
     </div>
   );

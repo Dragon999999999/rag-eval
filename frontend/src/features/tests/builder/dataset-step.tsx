@@ -30,22 +30,23 @@ interface DatasetStepProps {
 }
 
 export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
-  const {
-    data: datasets,
-    isLoading,
-    error,
-    refetch,
-  } = useDatasetList();
+  const { data: datasets, isLoading, error, refetch } = useDatasetList();
 
   const selectedBenchmarkId = form.watch("benchmark_id");
   const caseScope = form.watch("case_scope");
 
   const setSelectedBenchmarkId = (benchmarkId: string) => {
-    form.setValue("benchmark_id", benchmarkId, { shouldValidate: true, shouldDirty: true });
+    form.setValue("benchmark_id", benchmarkId, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const setCaseScope = (scope: CaseScope) => {
-    form.setValue("case_scope", scope as any, { shouldValidate: true, shouldDirty: true });
+    form.setValue("case_scope", scope as any, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   if (isLoading) {
@@ -68,7 +69,12 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
       <Alert variant="error">
         <AlertDescription>
           An error occurred while fetching datasets.
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="ml-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetch()}
+            className="ml-4"
+          >
             Retry
           </Button>
         </AlertDescription>
@@ -129,7 +135,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
         <Surface className="p-4">
           <h3 className="mb-3 text-sm font-medium text-text-primary">Case Scope</h3>
           <div className="space-y-3">
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="radio"
                 name="case_scope_mode"
@@ -145,13 +151,17 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
               </div>
             </label>
 
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "sample"}
                 onChange={() =>
-                  setCaseScope({ mode: "sample", sample_size: 50, seed: Math.floor(Math.random() * 10000) })
+                  setCaseScope({
+                    mode: "sample",
+                    sample_size: 50,
+                    seed: Math.floor(Math.random() * 10000),
+                  })
                 }
                 className="mt-1 h-4 w-4"
               />
@@ -196,7 +206,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
               </div>
             </label>
 
-            <label className="flex items-start gap-3 cursor-pointer">
+            <label className="flex cursor-pointer items-start gap-3">
               <input
                 type="radio"
                 name="case_scope_mode"
@@ -275,14 +285,15 @@ function DatasetRow({ dataset, isSelected, onSelect }: DatasetRowProps) {
       <TableCell>
         <div className="flex flex-wrap gap-1">
           {tags.slice(0, 3).map((tag: string) => (
-            <span key={tag} className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary">
+            <span
+              key={tag}
+              className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
+            >
               {tag}
             </span>
           ))}
           {tags.length > 3 && (
-            <span className="text-xs text-text-tertiary">
-              +{tags.length - 3}
-            </span>
+            <span className="text-xs text-text-tertiary">+{tags.length - 3}</span>
           )}
         </div>
       </TableCell>

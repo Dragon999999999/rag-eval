@@ -12,7 +12,7 @@ interface HeaderProps {
  */
 export function Header({ onMobileMenuToggle }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border-default bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 border-b border-border-default backdrop-blur">
       <div className="flex h-12 items-center gap-4 px-4">
         {/* Mobile menu trigger - hidden on desktop */}
         <div className="flex lg:hidden">
@@ -24,9 +24,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
 
         {/* Optional header actions */}
         <div className="flex items-center gap-4">
-          <span className="hidden text-xs text-text-tertiary sm:inline">
-            v0.2.0
-          </span>
+          <span className="hidden text-xs text-text-tertiary sm:inline">v0.2.0</span>
         </div>
       </div>
     </header>

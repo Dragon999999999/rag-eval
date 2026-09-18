@@ -27,7 +27,10 @@ export enum BuilderStep {
 /**
  * Step metadata for UI display.
  */
-export const STEP_METADATA: Record<BuilderStep, { title: string; description: string }> = {
+export const STEP_METADATA: Record<
+  BuilderStep,
+  { title: string; description: string }
+> = {
   [BuilderStep.TARGET]: {
     title: "Select Target",
     description: "Choose the target system to evaluate",
@@ -86,9 +89,7 @@ const metricsStepSchema = z.object({
     .string({ required_error: "Metric configuration name is required" })
     .min(1, "Name must be at least 1 character"),
   mode: z.enum(["all_available", "explicit"]).default("explicit"),
-  selected_metrics: z
-    .array(z.string())
-    .min(1, "At least one metric must be selected"),
+  selected_metrics: z.array(z.string()).min(1, "At least one metric must be selected"),
   metric_parameters: z.record(z.unknown()).default({}),
   judge_config: z.record(z.unknown()).default({}),
   retrieval_config: z.record(z.unknown()).default({}),
@@ -228,19 +229,17 @@ export function formValuesToTestDefinition(
 /**
  * Convert TestDefinition to form values (for editing).
  */
-export function testDefinitionToFormValues(
-  test: {
-    name: string;
-    description?: string | null;
-    target_id: string;
-    benchmark_id: string;
-    metric_config_id: string;
-    execution_config?: Record<string, unknown>;
-    seed?: number | null;
-    tags?: string[];
-    metadata?: Record<string, unknown>;
-  }
-): Partial<TestBuilderValues> {
+export function testDefinitionToFormValues(test: {
+  name: string;
+  description?: string | null;
+  target_id: string;
+  benchmark_id: string;
+  metric_config_id: string;
+  execution_config?: Record<string, unknown>;
+  seed?: number | null;
+  tags?: string[];
+  metadata?: Record<string, unknown>;
+}): Partial<TestBuilderValues> {
   return {
     name: test.name,
     description: test.description ?? null,
@@ -251,8 +250,10 @@ export function testDefinitionToFormValues(
       concurrency: (test.execution_config?.concurrency as number) ?? 4,
       timeout_per_request: (test.execution_config?.timeout_per_request as number) ?? 30,
       retries: (test.execution_config?.retries as number) ?? 2,
-      failure_policy: (test.execution_config?.failure_policy as "continue" | "abort") ?? "continue",
-      store_raw_responses: (test.execution_config?.store_raw_responses as boolean) ?? false,
+      failure_policy:
+        (test.execution_config?.failure_policy as "continue" | "abort") ?? "continue",
+      store_raw_responses:
+        (test.execution_config?.store_raw_responses as boolean) ?? false,
       store_traces: (test.execution_config?.store_traces as boolean) ?? false,
       store_usage: (test.execution_config?.store_usage as boolean) ?? false,
     },

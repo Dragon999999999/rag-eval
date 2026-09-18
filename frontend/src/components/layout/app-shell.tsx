@@ -27,7 +27,7 @@ export function AppShell() {
         <div className="fixed inset-0 z-50 flex lg:hidden">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm"
+            className="bg-background/80 fixed inset-0 backdrop-blur-sm"
             onClick={() => {
               setMobileMenuOpen(false);
             }}
@@ -40,9 +40,7 @@ export function AppShell() {
               <div className="flex h-6 w-6 items-center justify-center rounded-sm bg-accent text-xs font-bold text-white">
                 R
               </div>
-              <span className="text-sm font-semibold text-text-primary">
-                RAG-Eval
-              </span>
+              <span className="text-sm font-semibold text-text-primary">RAG-Eval</span>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               <Sidebar />
@@ -53,9 +51,11 @@ export function AppShell() {
 
       {/* Main content area */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Header onMobileMenuToggle={() => {
-          setMobileMenuOpen(true);
-        }} />
+        <Header
+          onMobileMenuToggle={() => {
+            setMobileMenuOpen(true);
+          }}
+        />
         <main className="flex-1 overflow-auto">
           <Outlet />
         </main>

@@ -19,9 +19,7 @@ export function LatestResults({ latestRun }: LatestResultsProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium text-text-primary">
-          Latest Results
-        </h2>
+        <h2 className="text-base font-medium text-text-primary">Latest Results</h2>
         <Button variant="secondary" size="sm" asChild>
           <Link to={`/runs/${latestRun.runId}`}>View Run</Link>
         </Button>
@@ -56,11 +54,7 @@ export function LatestResults({ latestRun }: LatestResultsProps) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {latestRun.metrics.map((metric) => {
             const deltaInfo = metric.delta
-              ? formatDelta(
-                  metric.delta.value,
-                  metric.delta.direction,
-                  metric.unit
-                )
+              ? formatDelta(metric.delta.value, metric.delta.direction, metric.unit)
               : undefined;
 
             return (

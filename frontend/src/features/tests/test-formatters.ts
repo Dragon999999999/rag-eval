@@ -64,7 +64,9 @@ export function formatRunStatus(status: RunStatus): string {
 /**
  * Get status badge variant for run status.
  */
-export function getRunStatusVariant(status: RunStatus): "default" | "success" | "error" | "info" {
+export function getRunStatusVariant(
+  status: RunStatus
+): "default" | "success" | "error" | "info" {
   switch (status) {
     case "completed":
       return "success";
@@ -108,7 +110,9 @@ export function formatProgress(progress: EvaluationRunSummary["progress"]): stri
 /**
  * Format compatibility issue severity.
  */
-export function formatCompatibilitySeverity(severity: CompatibilityIssue["severity"]): string {
+export function formatCompatibilitySeverity(
+  severity: CompatibilityIssue["severity"]
+): string {
   return severity === "error" ? "Error" : "Warning";
 }
 

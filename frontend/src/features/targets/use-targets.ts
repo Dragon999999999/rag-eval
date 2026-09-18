@@ -11,7 +11,12 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { TargetService } from "./target-service";
-import type { Target, TargetCreate, TargetUpdate, TargetCapabilities } from "./target-types";
+import type {
+  Target,
+  TargetCreate,
+  TargetUpdate,
+  TargetCapabilities,
+} from "./target-types";
 
 /**
  * Query key factory for targets.
@@ -34,10 +39,7 @@ export const targetQueryKeys = {
  */
 export function useTargetList(
   filters?: { status?: string; type?: string; search?: string },
-  options?: Omit<
-    UseQueryOptions<Target[], Error>,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<Target[], Error>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: targetQueryKeys.list(filters ?? {}),
@@ -134,10 +136,7 @@ export function useDeleteTarget(options?: {
  */
 export function useTargetCapabilities(
   targetId: string,
-  options?: Omit<
-    UseQueryOptions<TargetCapabilities, Error>,
-    "queryKey" | "queryFn"
-  >
+  options?: Omit<UseQueryOptions<TargetCapabilities, Error>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: targetQueryKeys.capabilities(targetId),
@@ -160,10 +159,7 @@ export function useRefreshCapabilities(options?: {
     mutationFn: async (targetId: string) => {
       const capabilities = await TargetService.refreshCapabilities(targetId);
       // Update capabilities cache
-      queryClient.setQueryData(
-        targetQueryKeys.capabilities(targetId),
-        capabilities
-      );
+      queryClient.setQueryData(targetQueryKeys.capabilities(targetId), capabilities);
       return capabilities;
     },
     onSuccess: () => {

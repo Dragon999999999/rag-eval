@@ -12,9 +12,7 @@ interface ResourceSummarySectionProps {
   resources: ResourceSummary;
 }
 
-export function ResourceSummarySection({
-  resources,
-}: ResourceSummarySectionProps) {
+export function ResourceSummarySection({ resources }: ResourceSummarySectionProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <ResourceCard
@@ -63,14 +61,12 @@ function ResourceCard({
     <Link to={href}>
       <Surface className="group p-4 transition-colors hover:bg-surface-hover">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent-subtle transition-colors group-hover:bg-accent-subtle/80">
+          <div className="group-hover:bg-accent-subtle/80 flex h-10 w-10 items-center justify-center rounded-md bg-accent-subtle transition-colors">
             <Icon className="h-5 w-5 text-accent" />
           </div>
           <div>
             <p className="text-sm font-medium text-text-secondary">{label}</p>
-            <p className="text-lg font-semibold text-text-primary">
-              {count}
-            </p>
+            <p className="text-lg font-semibold text-text-primary">{count}</p>
             {secondaryLabel && (
               <p className="text-xs text-text-tertiary">{secondaryLabel}</p>
             )}

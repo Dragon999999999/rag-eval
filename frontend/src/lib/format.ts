@@ -61,10 +61,7 @@ export function formatRelativeTime(isoString: string): string {
 /**
  * Format metric value with optional unit.
  */
-export function formatMetricValue(
-  value: number | string,
-  unit?: string
-): string {
+export function formatMetricValue(value: number | string, unit?: string): string {
   if (typeof value === "number") {
     // Format small decimals with more precision
     if (value < 1 && value > 0) {

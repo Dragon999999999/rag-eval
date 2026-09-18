@@ -44,12 +44,8 @@ export function DashboardPage() {
                   <Server className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Targets
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    No targets configured
-                  </p>
+                  <p className="text-sm font-medium text-text-secondary">Targets</p>
+                  <p className="text-xs text-text-tertiary">No targets configured</p>
                 </div>
               </div>
             </Card>
@@ -60,12 +56,8 @@ export function DashboardPage() {
                   <Database className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Datasets
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    No datasets available
-                  </p>
+                  <p className="text-sm font-medium text-text-secondary">Datasets</p>
+                  <p className="text-xs text-text-tertiary">No datasets available</p>
                 </div>
               </div>
             </Card>
@@ -76,12 +68,8 @@ export function DashboardPage() {
                   <FlaskConical className="h-5 w-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-text-secondary">
-                    Tests
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    No tests configured
-                  </p>
+                  <p className="text-sm font-medium text-text-secondary">Tests</p>
+                  <p className="text-xs text-text-tertiary">No tests configured</p>
                 </div>
               </div>
             </Card>

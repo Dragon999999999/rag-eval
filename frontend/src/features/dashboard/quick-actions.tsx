@@ -10,9 +10,7 @@ import { Surface } from "@/components/layout/surface";
 export function QuickActions() {
   return (
     <section className="space-y-4">
-      <h2 className="text-base font-medium text-text-primary">
-        Quick Actions
-      </h2>
+      <h2 className="text-base font-medium text-text-primary">Quick Actions</h2>
 
       <Surface className="p-4">
         <div className="flex flex-wrap gap-3">

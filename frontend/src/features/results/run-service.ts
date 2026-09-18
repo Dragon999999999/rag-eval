@@ -40,8 +40,8 @@ function toAttemptSummary(detail: AttemptDetail): AttemptSummary {
     request_id: detail.request_id,
     started_at: detail.started_at,
     finished_at: detail.finished_at,
-    retryable: detail.metadata?.retryable as boolean ?? null,
-    error_summary: detail.metadata?.error as string ?? null,
+    retryable: (detail.metadata?.retryable as boolean) ?? null,
+    error_summary: (detail.metadata?.error as string) ?? null,
   };
 }
 
@@ -57,7 +57,9 @@ function toMetricResultSummary(detail: MetricResultDetail): MetricResultSummary 
 }
 
 /** Transform AggregateResultDetail to AggregateResultSummary */
-function toAggregateResultSummary(detail: AggregateResultDetail): AggregateResultSummary {
+function toAggregateResultSummary(
+  detail: AggregateResultDetail
+): AggregateResultSummary {
   return {
     metric_id: detail.metric_id,
     metric_version: detail.metric_version,
@@ -241,7 +243,9 @@ export const RunService = {
     }
 
     // Sort by created_at descending
-    runs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    runs.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     // Apply pagination
     const limit = filters?.limit ?? 100;
@@ -281,7 +285,9 @@ export const RunService = {
     const now = Date.now();
     const started = run.started_at ? new Date(run.started_at).getTime() : now;
     const finished = run.finished_at ? new Date(run.finished_at).getTime() : now;
-    const elapsed = run.finished_at ? (finished - started) / 1000 : (now - started) / 1000;
+    const elapsed = run.finished_at
+      ? (finished - started) / 1000
+      : (now - started) / 1000;
 
     return {
       run_id: run.run_id,
@@ -290,8 +296,13 @@ export const RunService = {
       complete_cases: run.complete_cases ?? 0,
       failed_cases: run.failed_cases ?? 0,
       pending_cases: run.pending_cases ?? 0,
-      running_cases: Math.max(0, (run.total_cases ?? 0) - (run.complete_cases ?? 0) - (run.failed_cases ?? 0)),
-      progress_percent: run.total_cases ? Math.round(((run.complete_cases ?? 0) / run.total_cases) * 100) : 0,
+      running_cases: Math.max(
+        0,
+        (run.total_cases ?? 0) - (run.complete_cases ?? 0) - (run.failed_cases ?? 0)
+      ),
+      progress_percent: run.total_cases
+        ? Math.round(((run.complete_cases ?? 0) / run.total_cases) * 100)
+        : 0,
       started_at: run.started_at,
       finished_at: run.finished_at,
       elapsed_seconds: Math.round(elapsed),
@@ -325,19 +336,24 @@ export const RunService = {
   },
 
   /** Get cases for a run with pagination */
-  async getRunCases(runId: string, filters?: {
-    limit?: number;
-    offset?: number;
-    status?: string;
-    search?: string;
-    tags?: string[];
-    answerability?: string;
-  }): Promise<{ cases: CaseExecutionSummary[]; total: number }> {
+  async getRunCases(
+    runId: string,
+    filters?: {
+      limit?: number;
+      offset?: number;
+      status?: string;
+      search?: string;
+      tags?: string[];
+      answerability?: string;
+    }
+  ): Promise<{ cases: CaseExecutionSummary[]; total: number }> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
     // Get all case executions for this run
-    let cases = Array.from(mockCaseExecutions.values()).filter((c) => c.run_id === runId);
+    let cases = Array.from(mockCaseExecutions.values()).filter(
+      (c) => c.run_id === runId
+    );
 
     // Apply filters
     if (filters?.status) {
@@ -403,7 +419,11 @@ export const RunService = {
   },
 
   /** Get detailed attempt information */
-  async getAttempt(_runId: string, _caseId: string, attemptId: string): Promise<AttemptDetail> {
+  async getAttempt(
+    _runId: string,
+    _caseId: string,
+    attemptId: string
+  ): Promise<AttemptDetail> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -419,7 +439,11 @@ export const RunService = {
   },
 
   /** Get target observation for a case/attempt */
-  async getObservation(runId: string, caseId: string, _attemptId?: string): Promise<TargetObservationDetail | null> {
+  async getObservation(
+    runId: string,
+    caseId: string,
+    _attemptId?: string
+  ): Promise<TargetObservationDetail | null> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -451,8 +475,9 @@ export const RunService = {
       return [];
     }
 
-    const metrics = Array.from(mockMetricResults.values())
-      .filter((m) => m.case_execution_id === caseExec.case_execution_id);
+    const metrics = Array.from(mockMetricResults.values()).filter(
+      (m) => m.case_execution_id === caseExec.case_execution_id
+    );
 
     return metrics.map(toMetricResultSummary);
   },
@@ -462,8 +487,9 @@ export const RunService = {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
-    const aggregates = Array.from(mockAggregateResults.values())
-      .filter((a) => a.run_id === runId);
+    const aggregates = Array.from(mockAggregateResults.values()).filter(
+      (a) => a.run_id === runId
+    );
 
     return aggregates.map(toAggregateResultSummary);
   },
@@ -499,7 +525,11 @@ export const RunService = {
       retrieval_metrics: { recall_at_5: 0.91, mrr: 0.85 },
       citation_metrics: { citation_recall: 0.88, citation_precision: 0.92 },
       performance_metrics: { latency_ms: 820, tokens_per_second: 45 },
-      usage_metrics: { total_tokens: 125000, input_tokens: 95000, output_tokens: 30000 },
+      usage_metrics: {
+        total_tokens: 125000,
+        input_tokens: 95000,
+        output_tokens: 30000,
+      },
       cost_metrics: { total_cost_usd: 2.45 },
       reliability_metrics: { success_rate: 0.992 },
       started_at: run.started_at,

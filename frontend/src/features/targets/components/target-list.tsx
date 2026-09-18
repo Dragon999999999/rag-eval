@@ -36,12 +36,7 @@ export function TargetList({}: TargetListProps) {
   const typeFilter = searchParams.get("type") ?? "";
   const statusFilter = searchParams.get("status") ?? "";
 
-  const {
-    data: targets,
-    isLoading,
-    error,
-    refetch,
-  } = useTargetList();
+  const { data: targets, isLoading, error, refetch } = useTargetList();
 
   // Client-side filtering (backend doesn't support server-side search yet)
   const filteredTargets = targets?.filter((target: Target) => {
@@ -95,7 +90,12 @@ export function TargetList({}: TargetListProps) {
       <Alert variant="error">
         <AlertDescription>
           An error occurred while fetching targets.
-          <Button variant="secondary" size="sm" onClick={() => refetch()} className="ml-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => refetch()}
+            className="ml-4"
+          >
             Retry
           </Button>
         </AlertDescription>
@@ -123,11 +123,7 @@ export function TargetList({}: TargetListProps) {
         title="No matching targets"
         description="Try adjusting your search or filters."
         action={
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setSearchParams({})}
-          >
+          <Button variant="secondary" size="sm" onClick={() => setSearchParams({})}>
             Clear filters
           </Button>
         }
@@ -150,7 +146,7 @@ export function TargetList({}: TargetListProps) {
         <select
           value={typeFilter}
           onChange={(e) => handleTypeChange(e.target.value)}
-          className="h-9 rounded-md border border-border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-ring"
+          className="border-border focus:ring-ring h-9 rounded-md border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2"
         >
           <option value="">All Types</option>
           <option value="http">HTTP</option>
@@ -216,7 +212,10 @@ function TargetRow({ target }: TargetRowProps) {
         </span>
       </TableCell>
       <TableCell>
-        <div className="truncate text-sm text-text-secondary" title={formatTargetEndpoint(target)}>
+        <div
+          className="truncate text-sm text-text-secondary"
+          title={formatTargetEndpoint(target)}
+        >
           {formatTargetEndpoint(target)}
         </div>
       </TableCell>

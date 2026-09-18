@@ -54,7 +54,7 @@ function initializeMockData() {
 
   // Initialize cases for this dataset
   const qkdCases = new Map<string, BenchmarkCase>();
-  
+
   // Add sample cases
   for (let i = 1; i <= 10; i++) {
     const caseId = `case-${String(i).padStart(3, "0")}`;
@@ -63,14 +63,19 @@ function initializeMockData() {
       query: `What is quantum key distribution case ${String(i)}?`,
       history: i % 3 === 0 ? [{ role: "user" as const, content: "Explain QKD" }] : [],
       reference_answer: i % 2 === 0 ? `Reference answer for case ${String(i)}` : null,
-      gold_evidence: i % 2 === 0 ? [{
-        evidence_id: `ev-${String(i)}`,
-        document_id: "qkd-paper.pdf",
-        page: 14,
-        start_char: 100,
-        end_char: 250,
-        text: "Quantum key distribution uses quantum mechanics...",
-      }] : [],
+      gold_evidence:
+        i % 2 === 0
+          ? [
+              {
+                evidence_id: `ev-${String(i)}`,
+                document_id: "qkd-paper.pdf",
+                page: 14,
+                start_char: 100,
+                end_char: 250,
+                text: "Quantum key distribution uses quantum mechanics...",
+              },
+            ]
+          : [],
       answerability: i % 5 === 0 ? "UNANSWERABLE" : "ANSWERABLE",
       tags: i % 3 === 0 ? ["advanced"] : ["basic"],
       difficulty: i % 4 === 0 ? "hard" : "easy",
@@ -279,8 +284,10 @@ export const DatasetService = {
       throw error;
     }
 
-    const caseId = data.case_id ?? `case-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
-    
+    const caseId =
+      data.case_id ??
+      `case-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
+
     const caseData: BenchmarkCase = {
       case_id: caseId,
       query: data.query,
@@ -295,7 +302,7 @@ export const DatasetService = {
     };
 
     cases.set(caseId, caseData);
-    
+
     // Update dataset case count
     const dataset = mockDatasets.get(datasetId);
     if (dataset) {
@@ -307,7 +314,11 @@ export const DatasetService = {
   },
 
   /** Update a case */
-  async updateCase(datasetId: string, caseId: string, data: CaseUpdate): Promise<BenchmarkCase> {
+  async updateCase(
+    datasetId: string,
+    caseId: string,
+    data: CaseUpdate
+  ): Promise<BenchmarkCase> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -365,7 +376,7 @@ export const DatasetService = {
     }
 
     cases.delete(caseId);
-    
+
     // Update dataset case count
     const dataset = mockDatasets.get(datasetId);
     if (dataset) {
@@ -414,10 +425,7 @@ export const DatasetService = {
   },
 
   /** Import dataset from file */
-  async importDataset(
-    _file: File,
-    _format?: ImportFormat
-  ): Promise<ImportResult> {
+  async importDataset(_file: File, _format?: ImportFormat): Promise<ImportResult> {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 1000));
 
     // Mock import - in real impl would upload file to backend
@@ -431,11 +439,16 @@ export const DatasetService = {
       total_cases: totalCases,
       valid_cases: totalCases - invalidCases,
       invalid_cases: invalidCases,
-      errors: invalidCases > 0 ? [{
-        case_id: "case-001",
-        field: "query",
-        message: "Query is required",
-      }] : [],
+      errors:
+        invalidCases > 0
+          ? [
+              {
+                case_id: "case-001",
+                field: "query",
+                message: "Query is required",
+              },
+            ]
+          : [],
     };
   },
 

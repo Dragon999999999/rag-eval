@@ -24,13 +24,7 @@ export const dashboardQueryKeys = {
  * - Stale time for performance
  */
 export function useDashboardSummary() {
-  const {
-    data,
-    isLoading,
-    error,
-    refetch,
-    isRefetching,
-  } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: dashboardQueryKeys.summary(),
     queryFn: getDashboardSummary,
     staleTime: 1000 * 30, // 30 seconds

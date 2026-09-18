@@ -59,9 +59,11 @@ describe("Toast system", () => {
     render(
       <ToastProvider>
         <div>
-          <button onClick={() => {
-            toast.success("Programmatic toast");
-          }}>
+          <button
+            onClick={() => {
+              toast.success("Programmatic toast");
+            }}
+          >
             Trigger
           </button>
         </div>
@@ -78,9 +80,11 @@ describe("Toast system", () => {
     render(
       <ToastProvider>
         <div>
-          <button onClick={() => {
-            toast.error("Error occurred");
-          }}>
+          <button
+            onClick={() => {
+              toast.error("Error occurred");
+            }}
+          >
             Show Error
           </button>
         </div>
@@ -97,9 +101,11 @@ describe("Toast system", () => {
     render(
       <ToastProvider>
         <div>
-          <button onClick={() => {
-            toast.info("Info message");
-          }}>
+          <button
+            onClick={() => {
+              toast.info("Info message");
+            }}
+          >
             Show Info
           </button>
         </div>
@@ -116,9 +122,11 @@ describe("Toast system", () => {
     render(
       <ToastProvider>
         <div>
-          <button onClick={() => {
-            toast.warning("Warning message");
-          }}>
+          <button
+            onClick={() => {
+              toast.warning("Warning message");
+            }}
+          >
             Show Warning
           </button>
         </div>

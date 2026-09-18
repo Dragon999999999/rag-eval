@@ -7,7 +7,12 @@ import { TargetCreatePage } from "@/features/targets/pages/target-create-page";
 import { TargetEditPage } from "@/features/targets/pages/target-edit-page";
 import { DatasetsPage, DatasetDetailPage } from "@/pages/datasets-page";
 import { DatasetCreatePage } from "@/features/datasets/pages/dataset-create-page";
-import { TestsPage, TestDetailPage, TestCreatePage, TestEditPage } from "@/pages/tests-page";
+import {
+  TestsPage,
+  TestDetailPage,
+  TestCreatePage,
+  TestEditPage,
+} from "@/pages/tests-page";
 import { ResultsPage } from "@/pages/results-page";
 import { RunDetailPage, RunCaseDetailPage } from "@/pages/runs-page";
 import { RunComparePage } from "@/pages/runs-page";

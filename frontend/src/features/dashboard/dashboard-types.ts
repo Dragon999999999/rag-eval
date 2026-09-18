@@ -6,18 +6,10 @@
  */
 
 /** Direction semantics for metric deltas */
-export type MetricDirection =
-  | "higher-is-better"
-  | "lower-is-better"
-  | "neutral";
+export type MetricDirection = "higher-is-better" | "lower-is-better" | "neutral";
 
 /** Run status values */
-export type RunStatus =
-  | "queued"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
+export type RunStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
 
 /** Resource summary counts */
 export interface ResourceSummary {

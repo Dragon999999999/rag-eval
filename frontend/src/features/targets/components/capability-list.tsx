@@ -17,7 +17,7 @@ export function CapabilityList({ capabilities, className }: CapabilityListProps)
     <Surface className={className}>
       <div className="space-y-4">
         <h3 className="text-base font-medium text-text-primary">Capabilities</h3>
-        
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Core capabilities */}
           <CapabilityGroup
@@ -98,9 +98,10 @@ function CapabilityGroup({ title, items, capabilities }: CapabilityGroupProps) {
       <ul className="space-y-1">
         {items.map((item) => {
           let value: unknown;
-          
+
           if (item.nested) {
-            const nested = capabilities[item.key] as Record<string, unknown> | undefined;
+            const nested = capabilities[item.key] as
+              Record<string, unknown> | undefined;
             value = nested?.[item.nested];
           } else {
             value = capabilities[item.key];

@@ -4,9 +4,11 @@
 import type { Answerability, DatasetInfo, BenchmarkCase } from "./dataset-types";
 
 /** Format answerability for display */
-export function formatAnswerability(answerability: Answerability | null | undefined): string {
+export function formatAnswerability(
+  answerability: Answerability | null | undefined
+): string {
   if (!answerability) return "Unknown";
-  
+
   switch (answerability) {
     case "ANSWERABLE":
       return "Answerable";
@@ -22,9 +24,11 @@ export function formatAnswerability(answerability: Answerability | null | undefi
 }
 
 /** Get answerability badge variant */
-export function getAnswerabilityVariant(answerability: Answerability | null | undefined): "success" | "error" | "warning" | "neutral" {
+export function getAnswerabilityVariant(
+  answerability: Answerability | null | undefined
+): "success" | "error" | "warning" | "neutral" {
   if (!answerability) return "neutral";
-  
+
   switch (answerability) {
     case "ANSWERABLE":
       return "success";
@@ -41,7 +45,7 @@ export function getAnswerabilityVariant(answerability: Answerability | null | un
 /** Format difficulty for display */
 export function formatDifficulty(difficulty: string | null | undefined): string {
   if (!difficulty) return "—";
-  
+
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
 }
 
@@ -60,19 +64,26 @@ export function formatCaseCount(count: number | null | undefined): string {
 }
 
 /** Get validation status */
-export function getValidationStatus(valid: number, total: number): "valid" | "invalid" | "unknown" {
+export function getValidationStatus(
+  valid: number,
+  total: number
+): "valid" | "invalid" | "unknown" {
   if (total === 0) return "unknown";
   if (valid === total) return "valid";
   return "invalid";
 }
 
 /** Get evidence count from case */
-export function getEvidenceCount(caseData: Pick<BenchmarkCase, "gold_evidence">): number {
+export function getEvidenceCount(
+  caseData: Pick<BenchmarkCase, "gold_evidence">
+): number {
   return caseData.gold_evidence != null ? caseData.gold_evidence.length : 0;
 }
 
 /** Get history message count */
-export function getHistoryMessageCount(caseData: Pick<BenchmarkCase, "history">): number {
+export function getHistoryMessageCount(
+  caseData: Pick<BenchmarkCase, "history">
+): number {
   return caseData.history != null ? caseData.history.length : 0;
 }
 
