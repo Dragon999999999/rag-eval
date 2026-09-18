@@ -77,9 +77,9 @@ export function useCancelRun() {
     },
     onSuccess: (runId) => {
       // Invalidate run detail and progress
-      queryClient.invalidateQueries({ queryKey: runKeys.detail(runId) });
-      queryClient.invalidateQueries({ queryKey: runKeys.progress(runId) });
-      queryClient.invalidateQueries({ queryKey: runKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: runKeys.detail(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.progress(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.lists() });
     },
   });
 }
@@ -172,7 +172,7 @@ export function useExportRun() {
       return await RunService.exportRun(runId, request);
     },
     onSuccess: (_, { runId }) => {
-      queryClient.invalidateQueries({ queryKey: runKeys.detail(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.detail(runId) });
     },
   });
 }
