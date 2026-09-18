@@ -182,19 +182,19 @@ export function RunComparePage() {
               <div>
                 <div className="text-xs text-text-tertiary">Improved</div>
                 <div className="text-2xl font-semibold text-success">
-                  {comparison.summary.total_improved as number ?? 0}
+                  {Number(comparison.summary.total_improved) ?? 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Regressed</div>
                 <div className="text-2xl font-semibold text-error">
-                  {comparison.summary.total_regressed as number ?? 0}
+                  {Number(comparison.summary.total_regressed) ?? 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Unchanged</div>
                 <div className="text-2xl font-semibold text-text-primary">
-                  {comparison.summary.total_unchanged as number ?? 0}
+                  {Number(comparison.summary.total_unchanged) ?? 0}
                 </div>
               </div>
             </div>
@@ -203,10 +203,10 @@ export function RunComparePage() {
           {/* Actions */}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" asChild>
-              <Link to={`/runs/${runId}`}>Back to Run A</Link>
+              <Link to={`/runs/${String(runId)}`}>Back to Run A</Link>
             </Button>
             <Button variant="secondary" asChild>
-              <Link to={`/runs/${otherRunId}`}>Back to Run B</Link>
+              <Link to={`/runs/${String(otherRunId)}`}>Back to Run B</Link>
             </Button>
           </div>
         </div>

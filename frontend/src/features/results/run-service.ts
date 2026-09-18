@@ -34,8 +34,8 @@ function toAttemptSummary(detail: AttemptDetail): AttemptSummary {
     request_id: detail.request_id,
     started_at: detail.started_at,
     finished_at: detail.finished_at,
-    retryable: detail.metadata?.retryable as boolean | null ?? null,
-    error_summary: detail.metadata?.error as string | null ?? null,
+    retryable: (detail.metadata?.retryable as boolean) ?? null,
+    error_summary: (detail.metadata?.error as string) ?? null,
   };
 }
 
@@ -45,8 +45,8 @@ function toMetricResultSummary(detail: MetricResultDetail): MetricResultSummary 
     metric_id: detail.metric_id,
     metric_version: detail.metric_version,
     status: detail.status,
-    has_value: detail.value !== null && detail.value !== undefined,
-    value_summary: detail.value !== null && detail.value !== undefined ? String(detail.value) : null,
+    has_value: detail.value != null,
+    value_summary: detail.value != null ? String(detail.value) : null,
   };
 }
 
@@ -57,7 +57,7 @@ function toAggregateResultSummary(detail: AggregateResultDetail): AggregateResul
     metric_version: detail.metric_version,
     aggregation: detail.aggregation,
     status: detail.status,
-    value_summary: detail.value !== null && detail.value !== undefined ? String(detail.value) : null,
+    value_summary: detail.value != null ? String(detail.value) : null,
   };
 }
 

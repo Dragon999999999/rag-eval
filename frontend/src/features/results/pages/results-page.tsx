@@ -129,7 +129,7 @@ export function ResultsPage() {
             title="No evaluation results"
             description="Run evaluations to see results and analysis here."
             action={
-              <Button onClick={() => void navigate("/tests/new")}>
+              <Button onClick={() => navigate("/tests/new")}>
                 Create Test
               </Button>
             }
@@ -153,7 +153,7 @@ export function ResultsPage() {
             <div className="w-64">
               <SearchInput
                 value={search}
-                onChange={(e) => void handleSearchChange(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder="Search runs..."
               />
             </div>
@@ -205,7 +205,7 @@ export function ResultsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={page <= 1}
-                onClick={() => void handlePageChange(page - 1)}
+                onClick={async () => { await handlePageChange(page - 1); }}
               >
                 Previous
               </Button>
@@ -213,7 +213,7 @@ export function ResultsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={runs.length < limit}
-                onClick={() => void handlePageChange(page + 1)}
+                onClick={async () => { await handlePageChange(page + 1); }}
               >
                 Next
               </Button>
@@ -236,7 +236,7 @@ function RunRow({ run }: RunRowProps) {
 
   // Get a representative metric value
   const keyResult = run.status === "completed" && run.progress_percent !== undefined
-    ? `${run.progress_percent}% complete`
+    ? `${run.progress_percent.toFixed(0)}% complete`
     : "—";
 
   return (

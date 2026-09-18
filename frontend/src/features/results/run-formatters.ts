@@ -113,7 +113,7 @@ export function formatMetricStatus(status: MetricStatus): string {
  */
 export function formatProgress(progress: RunProgress | null | undefined): string {
   if (!progress) return "No data";
-  return `${progress.complete_cases}/${progress.total_cases} (${progress.progress_percent}%)`;
+  return `${progress.complete_cases}/${progress.total_cases} (${progress.progress_percent.toFixed(0)}%)`;
 }
 
 /**
@@ -123,18 +123,18 @@ export function formatElapsedTime(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return "—";
 
   if (seconds < 60) {
-    return `${Math.round(seconds)}s`;
+    return `${Math.round(seconds).toFixed(0)}s`;
   }
 
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.round(seconds % 60);
-    return `${mins}m ${secs}s`;
+    return `${mins.toFixed(0)}m ${secs.toFixed(0)}s`;
   }
 
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return `${hours}h ${mins}m`;
+  return `${hours.toFixed(0)}h ${mins.toFixed(0)}m`;
 }
 
 /**
@@ -151,9 +151,9 @@ export function formatRelativeTime(dateString: string | null): string {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 60) return `${diffMins.toFixed(0)}m ago`;
+  if (diffHours < 24) return `${diffHours.toFixed(0)}h ago`;
+  if (diffDays < 7) return `${diffDays.toFixed(0)}d ago`;
 
   return date.toLocaleDateString();
 }
@@ -172,7 +172,7 @@ export function formatMetricValue(value: unknown, metricId?: string): string {
 
     // Latency
     if (metricId?.includes("latency")) {
-      return `${Math.round(value)}ms`;
+      return `${Math.round(value).toFixed(0)}ms`;
     }
 
     // Tokens
@@ -213,7 +213,7 @@ export function formatMetricDelta(
   const sign = delta > 0 ? "+" : "";
   const deltaStr = typeof delta === "number" ? `${sign}${delta.toFixed(3)}` : String(delta);
 
-  if (relativePercent !== null && relativePercent !== undefined) {
+  if (relativePercent != null) {
     const relSign = relativePercent > 0 ? "+" : "";
     return `${deltaStr} (${relSign}${relativePercent.toFixed(1)}%)`;
   }
@@ -229,7 +229,7 @@ export function getDeltaVariant(
   delta: number | null
   // direction: "higher_is_better" | "lower_is_better" | "neutral"
 ): "success" | "error" | "neutral" {
-  if (delta === null || delta === undefined) {
+  if (delta == null) {
     return "neutral";
   }
 
