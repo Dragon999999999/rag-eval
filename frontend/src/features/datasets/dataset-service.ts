@@ -21,6 +21,12 @@ import type {
 
 const MOCK_DELAY_MS = 400;
 
+/** Error with code and status properties */
+interface ServiceError extends Error {
+  code?: string;
+  status?: number;
+}
+
 /** In-memory mock dataset store */
 const mockDatasets = new Map<string, DatasetInfo>();
 const mockCases = new Map<string, Map<string, BenchmarkCase>>(); // datasetId -> caseId -> case
@@ -54,11 +60,11 @@ function initializeMockData() {
     const caseId = `case-${String(i).padStart(3, "0")}`;
     qkdCases.set(caseId, {
       case_id: caseId,
-      query: `What is quantum key distribution case ${i}?`,
+      query: `What is quantum key distribution case ${String(i)}?`,
       history: i % 3 === 0 ? [{ role: "user" as const, content: "Explain QKD" }] : [],
-      reference_answer: i % 2 === 0 ? `Reference answer for case ${i}` : null,
+      reference_answer: i % 2 === 0 ? `Reference answer for case ${String(i)}` : null,
       gold_evidence: i % 2 === 0 ? [{
-        evidence_id: `ev-${i}`,
+        evidence_id: `ev-${String(i)}`,
         document_id: "qkd-paper.pdf",
         page: 14,
         start_char: 100,
@@ -110,9 +116,9 @@ export const DatasetService = {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
     const dataset = mockDatasets.get(datasetId);
     if (!dataset) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
     return dataset;
@@ -123,7 +129,7 @@ export const DatasetService = {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
-    const datasetId = `dataset-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const datasetId = `dataset-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
 
     const dataset: DatasetInfo = {
@@ -151,9 +157,9 @@ export const DatasetService = {
 
     const existing = mockDatasets.get(datasetId);
     if (!existing) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -175,9 +181,9 @@ export const DatasetService = {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
     if (!mockDatasets.has(datasetId)) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -195,9 +201,9 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -211,7 +217,8 @@ export const DatasetService = {
 
     // Apply tag filter
     if (params?.tag) {
-      allCases = allCases.filter((c) => c.tags.includes(params.tag!));
+      const tag = params.tag;
+      allCases = allCases.filter((c) => c.tags.includes(tag));
     }
 
     const total = allCases.length;
@@ -242,17 +249,17 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
     const caseData = cases.get(caseId);
     if (!caseData) {
-      const error = new Error(`Case not found: ${caseId}`);
-      (error as any).code = "CASE_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
+      error.code = "CASE_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -266,13 +273,13 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
-    const caseId = data.case_id ?? `case-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const caseId = data.case_id ?? `case-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     
     const caseData: BenchmarkCase = {
       case_id: caseId,
@@ -306,17 +313,17 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
     const existing = cases.get(caseId);
     if (!existing) {
-      const error = new Error(`Case not found: ${caseId}`);
-      (error as any).code = "CASE_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
+      error.code = "CASE_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -344,16 +351,16 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
     if (!cases.has(caseId)) {
-      const error = new Error(`Case not found: ${caseId}`);
-      (error as any).code = "CASE_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
+      error.code = "CASE_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -374,9 +381,9 @@ export const DatasetService = {
 
     const cases = mockCases.get(datasetId);
     if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
@@ -414,7 +421,7 @@ export const DatasetService = {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 1000));
 
     // Mock import - in real impl would upload file to backend
-    const datasetId = `dataset-import-${Date.now()}`;
+    const datasetId = `dataset-import-${String(Date.now())}`;
     const totalCases = Math.floor(Math.random() * 100) + 50;
     const invalidCases = Math.floor(Math.random() * 5);
 
@@ -439,9 +446,9 @@ export const DatasetService = {
 
     const dataset = mockDatasets.get(datasetId);
     if (!dataset) {
-      const error = new Error(`Dataset not found: ${datasetId}`);
-      (error as any).code = "DATASET_NOT_FOUND";
-      (error as any).status = 404;
+      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
+      error.code = "DATASET_NOT_FOUND";
+      error.status = 404;
       throw error;
     }
 
