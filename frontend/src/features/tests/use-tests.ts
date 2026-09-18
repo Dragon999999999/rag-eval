@@ -101,7 +101,6 @@ export function useDeleteTest() {
       // Remove from cache
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.removeQueries({ queryKey: testKeys.detail(deletedId) });
-      // Invalidate lists
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: testKeys.lists() });
     },

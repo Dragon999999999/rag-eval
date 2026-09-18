@@ -123,8 +123,7 @@ export function ReviewStep({
             <Input
               id="review-name"
               value={formValues.name}
-              onChange={(e) => { form.setValue("name", e.target.value, { shouldValidate: true }); }
-              }
+              onChange={(e) => { form.setValue("name", e.target.value, { shouldValidate: true }); }}
             />
             {!formValues.name && (
               <p className="text-destructive text-xs">Test name is required</p>
@@ -138,8 +137,7 @@ export function ReviewStep({
               value={formValues.description ?? ""}
               onChange={(e) => { form.setValue("description", e.target.value || null, {
                   shouldValidate: true,
-                }); }
-              }
+                }); }}
               placeholder="Describe the purpose of this test..."
               rows={3}
             />
@@ -294,13 +292,13 @@ export function ReviewStep({
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            onClick={() => handleSubmit(false)}
+            onClick={() => { void handleSubmit(false); }}
             disabled={isSaving || !formValues.name}
           >
             {isSaving ? <Spinner size="sm" /> : "Save Test"}
           </Button>
           <Button
-            onClick={() => handleSubmit(true)}
+            onClick={() => { void handleSubmit(true); }}
             disabled={isSaving || !formValues.name}
           >
             {isSaving ? <Spinner size="sm" /> : "Save & Run"}

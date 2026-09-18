@@ -40,7 +40,7 @@ export function TestsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { void refetch(); }}
             className="ml-4"
           >
             Retry

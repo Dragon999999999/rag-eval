@@ -20,7 +20,7 @@ export function TargetEditPage() {
   const updateTarget = useUpdateTarget(targetId ?? "", {
     onSuccess: (data) => {
       toast.success(`Target updated: ${data.name}`);
-      navigate(`/targets/${targetId}`);
+      navigate(`/targets/${targetId ?? ''}`);
     },
     onError: (error) => {
       toast.error(`Failed to update target: ${error.message}`);
@@ -45,7 +45,7 @@ export function TargetEditPage() {
   };
 
   const handleCancel = () => {
-    navigate(`/targets/${targetId}`);
+    navigate(`/targets/${targetId ?? ''}`);
   };
 
   if (isLoading) {
@@ -106,7 +106,7 @@ export function TargetEditPage() {
         description={`Editing ${target.name}`}
         breadcrumbs={[
           { label: "Targets", href: "/targets" },
-          { label: target.name, href: `/targets/${targetId}` },
+          { label: target.name, href: `/targets/${targetId ?? ''}` },
           { label: "Edit", href: "#" },
         ]}
       />

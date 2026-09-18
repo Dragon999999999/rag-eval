@@ -106,7 +106,7 @@ export function TestDetailPage() {
         breadcrumbs={[{ label: "Tests", href: "/tests" }]}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={handleRunAgain}>
+            <Button variant="secondary" onClick={() => { void handleRunAgain(); }}>
               <Play className="mr-2 h-4 w-4" />
               Run Again
             </Button>
@@ -123,7 +123,7 @@ export function TestDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleDelete}>
+                <DropdownMenuItem onClick={() => { void handleDelete(); }}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
@@ -255,7 +255,7 @@ export function TestDetailPage() {
                   title="No runs yet"
                   description="Run this test to see execution history here."
                   action={
-                    <Button onClick={handleRunAgain}>
+                    <Button onClick={() => { void handleRunAgain(); }}>
                       <Play className="mr-2 h-4 w-4" />
                       Run Test
                     </Button>

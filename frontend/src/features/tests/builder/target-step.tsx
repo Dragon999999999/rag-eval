@@ -60,7 +60,7 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { void refetch(); }}
             className="ml-4"
           >
             Retry
@@ -140,8 +140,11 @@ function TargetRow({ target, isSelected, onSelect }: TargetRowProps) {
   const capabilities = getCapabilityBadges({
     query: true,
     retrieval: true,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
     citations: (target.metadata?.capabilities as any)?.citations ?? false,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
     usage: (target.metadata?.capabilities as any)?.usage ? { tokens: true } : undefined,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
     target_trace: (target.metadata?.capabilities as any)?.trace ?? false,
   });
 

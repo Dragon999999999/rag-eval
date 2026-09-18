@@ -76,7 +76,7 @@ export function useCreateTarget(options?: {
     mutationFn: (data: TargetCreate) => TargetService.createTarget(data),
     onSuccess: (data) => {
       // Invalidate list and navigate to detail
-      queryClient.invalidateQueries({ queryKey: targetQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: targetQueryKeys.lists() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -99,8 +99,8 @@ export function useUpdateTarget(
     mutationFn: (data: TargetUpdate) => TargetService.updateTarget(targetId, data),
     onSuccess: (data) => {
       // Invalidate detail and list
-      queryClient.invalidateQueries({ queryKey: targetQueryKeys.detail(targetId) });
-      queryClient.invalidateQueries({ queryKey: targetQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: targetQueryKeys.detail(targetId) });
+      void queryClient.invalidateQueries({ queryKey: targetQueryKeys.lists() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -123,7 +123,9 @@ export function useDeleteTarget(options?: {
     },
     onSuccess: (targetId) => {
       // Remove from cache and invalidate lists
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.removeQueries({ queryKey: targetQueryKeys.detail(targetId) });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: targetQueryKeys.lists() });
       options?.onSuccess?.();
     },

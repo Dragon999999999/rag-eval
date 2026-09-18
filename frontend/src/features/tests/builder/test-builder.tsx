@@ -29,6 +29,7 @@ interface TestBuilderProps {
   testDefinitionId?: string;
 }
 
+// eslint-disable-next-line no-empty-pattern
 export function TestBuilder({}: TestBuilderProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<BuilderStep>(BuilderStep.TARGET);
@@ -116,13 +117,15 @@ export function TestBuilder({}: TestBuilderProps) {
           {Object.values(BuilderStep).map((step, index) => {
             const stepNum = index + 1;
             const isCurrent = step === currentStep;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
             const isPast = stepNum < (currentStep);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
             const canNavigate = stepNum <= (currentStep);
 
             return (
               <div key={step} className="flex items-center">
                 <button
-                  onClick={() => canNavigate && handleStepClick(step as BuilderStep)}
+                  onClick={() => { if (canNavigate) handleStepClick(step as BuilderStep); }}
                   disabled={!canNavigate}
                   className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
                     isCurrent

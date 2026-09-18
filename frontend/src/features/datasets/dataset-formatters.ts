@@ -105,9 +105,9 @@ export function formatRelativeTime(isoString: string): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSecs < 60) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 60) return `${String(diffMins)}m ago`;
+  if (diffHours < 24) return `${String(diffHours)}h ago`;
+  if (diffDays < 7) return `${String(diffDays)}d ago`;
 
   return date.toLocaleDateString();
 }

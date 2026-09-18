@@ -60,7 +60,7 @@ export function TargetDetailPage() {
   const refreshCapabilities = useRefreshCapabilities({
     onSuccess: () => {
       toast.success("Connection test successful");
-      refetchCapabilities();
+      void refetchCapabilities();
     },
     onError: (error) => {
       toast.error(`Connection test failed: ${error.message}`);
@@ -100,10 +100,10 @@ export function TargetDetailPage() {
     }
   };
 
-  const handleCopyEndpoint = () => {
+  const handleCopyEndpoint = async () => {
     if (target) {
       const endpoint = formatTargetEndpoint(target);
-      navigator.clipboard.writeText(endpoint);
+      await navigator.clipboard.writeText(endpoint);
       toast.success("Endpoint copied to clipboard");
     }
   };
@@ -173,7 +173,7 @@ export function TargetDetailPage() {
               {refreshCapabilities.isPending ? "Testing..." : "Test Connection"}
             </Button>
             <Button variant="secondary" size="sm" asChild>
-              <Link to={`/targets/${targetId}/edit`}>Edit</Link>
+              <Link to={`/targets/${String(targetId)}/edit`}>Edit</Link>
             </Button>
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <DialogTrigger asChild>
@@ -246,7 +246,7 @@ export function TargetDetailPage() {
                 action={
                   <IconButton
                     icon={<Copy className="h-4 w-4" />}
-                    onClick={handleCopyEndpoint}
+                    onClick={() => { void handleCopyEndpoint(); }}
                     aria-label="Copy endpoint"
                   />
                 }

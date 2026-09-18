@@ -28,8 +28,10 @@ import {
 import { useTargetList } from "../use-targets";
 import type { Target } from "../target-types";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface TargetListProps {}
 
+// eslint-disable-next-line no-empty-pattern
 export function TargetList({}: TargetListProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const search = searchParams.get("search") ?? "";
@@ -93,7 +95,7 @@ export function TargetList({}: TargetListProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { void refetch(); }}
             className="ml-4"
           >
             Retry
@@ -271,6 +273,7 @@ function TargetListSkeleton() {
           </TableRow>
         </TableHeader>
         <TableBody>
+          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
           {[...Array(5)].map((_, i) => (
             <TableRow key={i}>
               <TableCell>
