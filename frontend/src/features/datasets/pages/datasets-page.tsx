@@ -59,7 +59,7 @@ export function DatasetsPage() {
             title="Unable to load datasets"
             description="An error occurred while fetching datasets."
             action={
-              <Button variant="secondary" onClick={() => refetch()}>
+              <Button variant="secondary" onClick={() => void refetch()}>
                 Retry
               </Button>
             }
@@ -199,7 +199,7 @@ function DatasetListSkeleton() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {[...Array(5)].map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <TableRow key={i}>
               <TableCell>
                 <Skeleton className="h-4 w-32" />

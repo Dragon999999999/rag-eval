@@ -20,6 +20,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { useDataset, useCaseList, useDeleteDataset, useValidateDataset } from "../use-datasets";
+import type { Answerability } from "../dataset-types";
 import {
   formatCaseCount,
   formatRelativeTime,
@@ -132,20 +133,20 @@ export function DatasetDetailPage() {
     <Page>
       <Page.Header
         title={dataset.name}
-        description={`${formatCaseCount(dataset.case_count)} · Version ${dataset.version}`}
+        description={`${formatCaseCount(dataset.case_count ?? 0)} · Version ${String(dataset.version)}`}
         breadcrumbs={[{ label: "Datasets", href: "/datasets" }]}
         actions={
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => validateDataset.mutate(datasetId!)}
+              onClick={() => { if (datasetId) void validateDataset.mutate(datasetId); }}
               disabled={validateDataset.isPending}
             >
               {validateDataset.isPending ? "Validating..." : "Validate"}
             </Button>
             <Button variant="secondary" size="sm" asChild>
-              <Link to={`/datasets/${datasetId}/cases/new`}>Add Case</Link>
+              <Link to={`/datasets/${String(datasetId)}/cases/new`}>Add Case</Link>
             </Button>
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
               <DialogTrigger asChild>
@@ -258,8 +259,8 @@ export function DatasetDetailPage() {
                 {/* Pagination */}
                 <div className="flex items-center justify-between border-t border-border p-4">
                   <p className="text-sm text-text-tertiary">
-                    Showing {caseData.offset + 1}–{Math.min(caseData.offset + caseData.limit, caseData.total)} of{" "}
-                    {caseData.total}
+                    Showing {String(caseData.offset + 1)}–{String(Math.min(caseData.offset + caseData.limit, caseData.total))} of{" "}
+                    {String(caseData.total)}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -301,7 +302,7 @@ export function DatasetDetailPage() {
                   action={
                     !search && (
                       <Button asChild>
-                        <Link to={`/datasets/${datasetId}/cases/new`}>Add Case</Link>
+                        <Link to={`/datasets/${String(datasetId)}/cases/new`}>Add Case</Link>
                       </Button>
                     )
                   }
@@ -331,7 +332,7 @@ function InfoRow({ label, value }: InfoRowProps) {
 
 interface CaseRowProps {
   datasetId: string;
-  caseSummary: { case_id: string; query: string; answerability: any; tags: string[] };
+  caseSummary: { case_id: string; query: string; answerability: Answerability | null | undefined; tags: string[] };
 }
 
 function CaseRow({ datasetId, caseSummary }: CaseRowProps) {
