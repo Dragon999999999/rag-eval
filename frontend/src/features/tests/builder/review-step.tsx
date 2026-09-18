@@ -53,10 +53,7 @@ export function ReviewStep({
         target_id: formValues.target_id,
         benchmark_id: formValues.benchmark_id,
         metric_config_id: formValues.metric_config_name,
-        execution_config: formValues.execution_config as unknown as Record<
-          string,
-          unknown
-        >,
+        execution_config: formValues.execution_config,
         seed: formValues.seed ?? null,
         tags: formValues.tags,
         metadata: formValues.metadata,
@@ -74,10 +71,7 @@ export function ReviewStep({
         target_id: formValues.target_id,
         benchmark_id: formValues.benchmark_id,
         metric_config_id: formValues.metric_config_name,
-        execution_config: formValues.execution_config as unknown as Record<
-          string,
-          unknown
-        >,
+        execution_config: formValues.execution_config,
         seed: formValues.seed ?? null,
         tags: formValues.tags,
         metadata: formValues.metadata,
@@ -129,8 +123,7 @@ export function ReviewStep({
             <Input
               id="review-name"
               value={formValues.name}
-              onChange={(e) =>
-                form.setValue("name", e.target.value, { shouldValidate: true })
+              onChange={(e) => { form.setValue("name", e.target.value, { shouldValidate: true }); }
               }
             />
             {!formValues.name && (
@@ -143,10 +136,9 @@ export function ReviewStep({
             <Textarea
               id="review-description"
               value={formValues.description ?? ""}
-              onChange={(e) =>
-                form.setValue("description", e.target.value || null, {
+              onChange={(e) => { form.setValue("description", e.target.value || null, {
                   shouldValidate: true,
-                })
+                }); }
               }
               placeholder="Describe the purpose of this test..."
               rows={3}

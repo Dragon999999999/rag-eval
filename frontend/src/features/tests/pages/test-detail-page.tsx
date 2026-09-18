@@ -65,7 +65,7 @@ export function TestDetailPage() {
     try {
       const run = await runTest.mutateAsync({
         test_definition_id: testId,
-        name: `${test?.name} - Run ${new Date().toLocaleDateString()}`,
+        name: `${test?.name ?? 'Test'} - Run ${new Date().toLocaleDateString()}`,
       });
 
       navigate(`/runs/${run.run_id}`);
@@ -111,7 +111,7 @@ export function TestDetailPage() {
               Run Again
             </Button>
             <Button variant="secondary" asChild>
-              <Link to={`/tests/${testId}/edit`}>
+              <Link to={`/tests/${String(testId)}/edit`}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit
               </Link>
@@ -143,7 +143,7 @@ export function TestDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("overview")}
+              onClick={() => { setActiveTab("overview"); }}
             >
               Overview
             </button>
@@ -153,7 +153,7 @@ export function TestDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("runs")}
+              onClick={() => { setActiveTab("runs"); }}
             >
               Runs ({runs?.length ?? 0})
             </button>
@@ -211,7 +211,7 @@ export function TestDetailPage() {
                   <div>
                     <div className="text-xs text-text-tertiary">Tags</div>
                     <div className="flex flex-wrap gap-1">
-                      {test.tags?.map((tag) => (
+                      {test.tags.map((tag) => (
                         <span
                           key={tag}
                           className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
@@ -219,7 +219,7 @@ export function TestDetailPage() {
                           {tag}
                         </span>
                       ))}
-                      {(!test.tags || test.tags.length === 0) && (
+                      {test.tags.length === 0 && (
                         <span className="text-sm text-text-tertiary">None</span>
                       )}
                     </div>

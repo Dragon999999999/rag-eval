@@ -39,7 +39,7 @@ export const targetQueryKeys = {
  */
 export function useTargetList(
   filters?: { status?: string; type?: string; search?: string },
-  options?: Omit<UseQueryOptions<Target[], Error>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<Target[]>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: targetQueryKeys.list(filters ?? {}),
@@ -53,7 +53,7 @@ export function useTargetList(
  */
 export function useTarget(
   targetId: string,
-  options?: Omit<UseQueryOptions<Target, Error>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<Target>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: targetQueryKeys.detail(targetId),
@@ -136,7 +136,7 @@ export function useDeleteTarget(options?: {
  */
 export function useTargetCapabilities(
   targetId: string,
-  options?: Omit<UseQueryOptions<TargetCapabilities, Error>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<TargetCapabilities>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: targetQueryKeys.capabilities(targetId),

@@ -203,7 +203,7 @@ export function TargetDetailPage() {
                   <DialogFooter>
                     <Button
                       variant="secondary"
-                      onClick={() => setShowDeleteDialog(false)}
+                      onClick={() => { setShowDeleteDialog(false); }}
                     >
                       Cancel
                     </Button>

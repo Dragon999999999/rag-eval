@@ -136,7 +136,7 @@ function TestRow({ test }: TestRowProps) {
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
-          {test.tags?.slice(0, 3).map((tag) => (
+          {test.tags.slice(0, 3).map((tag) => (
             <span
               key={tag}
               className="border-border rounded border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary"
@@ -144,7 +144,7 @@ function TestRow({ test }: TestRowProps) {
               {tag}
             </span>
           ))}
-          {test.tags && test.tags.length > 3 && (
+          {test.tags.length > 3 && (
             <span className="text-xs text-text-tertiary">+{test.tags.length - 3}</span>
           )}
         </div>

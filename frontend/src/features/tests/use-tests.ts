@@ -63,8 +63,8 @@ export function useCreateTest() {
     onSuccess: (newTest) => {
       // Invalidate lists to trigger refetch
       void queryClient.invalidateQueries({ queryKey: testKeys.lists() });
-      // Prefetch the detail
-      void queryClient.prefetchQuery({
+      // Prefetch the detail using query() instead of deprecated prefetchQuery
+      void queryClient.query({
         queryKey: testKeys.detail(newTest.test_definition_id),
         queryFn: () => TestService.getTest(newTest.test_definition_id),
       });
@@ -99,9 +99,11 @@ export function useDeleteTest() {
     mutationFn: (testId: string) => TestService.deleteTest(testId),
     onSuccess: (_, deletedId) => {
       // Remove from cache
-      void queryClient.removeQueries({ queryKey: testKeys.detail(deletedId) });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      queryClient.removeQueries({ queryKey: testKeys.detail(deletedId) });
       // Invalidate lists
-      void queryClient.invalidateQueries({ queryKey: testKeys.lists() });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      queryClient.invalidateQueries({ queryKey: testKeys.lists() });
     },
   });
 }

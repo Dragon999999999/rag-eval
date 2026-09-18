@@ -130,7 +130,9 @@ export function DatasetCreatePage() {
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => navigate("/datasets")}
+                onClick={() => {
+                  navigate("/datasets");
+                }}
               >
                 Cancel
               </Button>

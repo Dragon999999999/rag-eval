@@ -220,7 +220,7 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("overview")}
+              onClick={() => { setActiveTab("overview"); }}
             >
               Overview
             </button>
@@ -230,7 +230,7 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("cases")}
+              onClick={() => { setActiveTab("cases"); }}
             >
               Cases
             </button>
@@ -240,7 +240,7 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("metrics")}
+              onClick={() => { setActiveTab("metrics"); }}
             >
               Metrics
             </button>
@@ -365,9 +365,7 @@ export function RunDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link
-                              to={`/runs/${String(runId)}/cases/${String(caseExec.case_id)}`}
-                            >
+                            <Link to={`/runs/${String(runId)}/cases/${caseExec.case_id}`}>
                               View
                             </Link>
                           </Button>

@@ -116,7 +116,7 @@ export function useDeleteDataset(options?: {
       return datasetId;
     },
     onSuccess: (datasetId) => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+       
       queryClient.removeQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
@@ -220,7 +220,7 @@ export function useDeleteCase(
       return caseId;
     },
     onSuccess: () => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+       
       queryClient.removeQueries({ queryKey: datasetQueryKeys.case(datasetId, caseId) });
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: datasetQueryKeys.cases(datasetId) });

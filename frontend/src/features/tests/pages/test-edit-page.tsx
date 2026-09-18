@@ -15,7 +15,7 @@ export function TestEditPage() {
         description="Modify the test configuration."
         breadcrumbs={[
           { label: "Tests", href: "/tests" },
-          { label: testId || "", href: `/tests/${testId}` },
+          { label: testId || "", href: `/tests/${String(testId)}` },
         ]}
       />
 

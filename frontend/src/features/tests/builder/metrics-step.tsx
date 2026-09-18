@@ -124,7 +124,7 @@ export function MetricsStep({
           <Input
             id="config-name"
             value={configName}
-            onChange={(e) => setConfigName(e.target.value)}
+            onChange={(e) => { setConfigName(e.target.value); }}
             placeholder="e.g., Grounding + Answer Quality"
           />
         </div>
@@ -138,7 +138,7 @@ export function MetricsStep({
             <label className="flex cursor-pointer items-center gap-2">
               <Checkbox
                 checked={mode === "explicit"}
-                onCheckedChange={() => setMode("explicit")}
+                onCheckedChange={() => { setMode("explicit"); }}
               />
               <div>
                 <div className="font-medium text-text-primary">Explicit Selection</div>
@@ -151,7 +151,7 @@ export function MetricsStep({
             <label className="flex cursor-pointer items-center gap-2">
               <Checkbox
                 checked={mode === "all_available"}
-                onCheckedChange={() => setMode("all_available")}
+                onCheckedChange={() => { setMode("all_available"); }}
               />
               <div>
                 <div className="font-medium text-text-primary">All Available</div>
@@ -194,7 +194,7 @@ export function MetricsStep({
                   >
                     <Checkbox
                       checked={isSelected}
-                      onCheckedChange={() => toggleMetric(metric.metric_id)}
+                      onCheckedChange={() => { toggleMetric(metric.metric_id); }}
                       disabled={!isCompatible}
                     />
                     <div className="flex-1">

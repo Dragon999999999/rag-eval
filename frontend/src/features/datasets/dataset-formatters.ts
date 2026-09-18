@@ -58,7 +58,9 @@ export function truncateQuery(query: string, maxLength: number = 80): string {
 /** Format case count with suffix for large numbers */
 export function formatCaseCount(count: number | null | undefined): string {
   if (count == null) return "0 cases";
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (count < 1000) return `${String(count)} cases`;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (count < 1000000) return `${(count / 1000).toFixed(1)}k cases`;
   return `${(count / 1000000).toFixed(1)}M cases`;
 }
@@ -77,14 +79,14 @@ export function getValidationStatus(
 export function getEvidenceCount(
   caseData: Pick<BenchmarkCase, "gold_evidence">
 ): number {
-  return caseData.gold_evidence != null ? caseData.gold_evidence.length : 0;
+  return caseData.gold_evidence.length;
 }
 
 /** Get history message count */
 export function getHistoryMessageCount(
   caseData: Pick<BenchmarkCase, "history">
 ): number {
-  return caseData.history != null ? caseData.history.length : 0;
+  return caseData.history.length;
 }
 
 /** Format dataset name with version */
@@ -103,9 +105,9 @@ export function formatRelativeTime(isoString: string): string {
   const diffDays = Math.floor(diffHours / 24);
 
   if (diffSecs < 60) return "just now";
-  if (diffMins < 60) return `${String(diffMins)}m ago`;
-  if (diffHours < 24) return `${String(diffHours)}h ago`;
-  if (diffDays < 7) return `${String(diffDays)}d ago`;
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
 
   return date.toLocaleDateString();
 }

@@ -30,7 +30,7 @@ export function formatMetricScope(scope: MetricScope): string {
  * Format metric ID for display (extract readable name).
  */
 export function formatMetricName(metric: MetricDefinition): string {
-  return metric.display_name ?? metric.metric_id.split(".").pop() ?? metric.metric_id;
+  return metric.display_name || metric.metric_id.split(".").pop() || metric.metric_id;
 }
 
 /**
@@ -104,7 +104,7 @@ export function formatProgress(progress: EvaluationRunSummary["progress"]): stri
   if (!progress) return "No progress data";
 
   const { complete_cases, total_cases, percent } = progress;
-  return `${complete_cases}/${total_cases} (${percent}%)`;
+  return `${String(complete_cases)}/${String(total_cases)} (${String(percent)}%)`;
 }
 
 /**
@@ -156,19 +156,20 @@ export function formatExecutionConfig(config: Record<string, unknown>): string {
   const parts: string[] = [];
 
   if (typeof config.concurrency === "number") {
-    parts.push(`${config.concurrency} concurrent`);
+    parts.push(`${String(config.concurrency)} concurrent`);
   }
 
   if (typeof config.timeout_per_request === "number") {
-    parts.push(`${config.timeout_per_request}s timeout`);
+    parts.push(`${String(config.timeout_per_request)}s timeout`);
   }
 
   if (typeof config.retries === "number") {
-    parts.push(`${config.retries} retries`);
+    parts.push(`${String(config.retries)} retries`);
   }
 
   if (config.failure_policy) {
-    parts.push(`on failure: ${config.failure_policy}`);
+    const policy = typeof config.failure_policy === 'string' ? config.failure_policy : 'unknown';
+    parts.push(`on failure: ${policy}`);
   }
 
   return parts.join(" · ") || "Default";
@@ -186,9 +187,9 @@ export function formatRelativeTime(dateString: string): string {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (diffMins < 60) return `${String(diffMins)}m ago`;
+  if (diffHours < 24) return `${String(diffHours)}h ago`;
+  if (diffDays < 7) return `${String(diffDays)}d ago`;
 
   return date.toLocaleDateString();
 }

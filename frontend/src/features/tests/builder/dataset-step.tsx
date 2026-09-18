@@ -43,7 +43,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
   };
 
   const setCaseScope = (scope: CaseScope) => {
-    form.setValue("case_scope", scope as any, {
+    form.setValue("case_scope", scope, {
       shouldValidate: true,
       shouldDirty: true,
     });
@@ -72,7 +72,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { void refetch(); }}
             className="ml-4"
           >
             Retry
@@ -124,7 +124,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 key={dataset.dataset_id}
                 dataset={dataset}
                 isSelected={selectedBenchmarkId === dataset.dataset_id}
-                onSelect={() => setSelectedBenchmarkId(dataset.dataset_id)}
+                onSelect={() => { setSelectedBenchmarkId(dataset.dataset_id); }}
               />
             ))}
           </TableBody>
@@ -140,7 +140,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "all"}
-                onChange={() => setCaseScope({ mode: "all" })}
+                onChange={() => { setCaseScope({ mode: "all" }); }}
                 className="mt-1 h-4 w-4"
               />
               <div className="flex-1">
@@ -156,13 +156,13 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "sample"}
-                onChange={() =>
+                onChange={() => {
                   setCaseScope({
                     mode: "sample",
                     sample_size: 50,
                     seed: Math.floor(Math.random() * 10000),
-                  })
-                }
+                  });
+                }}
                 className="mt-1 h-4 w-4"
               />
               <div className="flex-1">
@@ -176,13 +176,13 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                       type="number"
                       min="1"
                       value={caseScope.sample_size}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setCaseScope({
                           mode: "sample",
                           sample_size: parseInt(e.target.value) || 1,
                           seed: caseScope.seed,
-                        })
-                      }
+                        });
+                      }}
                       className="h-8 w-24"
                       placeholder="Sample size"
                     />
@@ -191,13 +191,13 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                       type="number"
                       min="0"
                       value={caseScope.seed ?? ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setCaseScope({
                           mode: "sample",
                           sample_size: caseScope.sample_size ?? 50,
                           seed: parseInt(e.target.value) || undefined,
-                        })
-                      }
+                        });
+                      }}
                       className="h-8 w-32"
                       placeholder="Seed (optional)"
                     />
@@ -211,7 +211,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "filtered"}
-                onChange={() => setCaseScope({ mode: "filtered", filters: {} })}
+                onChange={() => { setCaseScope({ mode: "filtered", filters: {} }); }}
                 className="mt-1 h-4 w-4"
               />
               <div className="flex-1">
@@ -253,8 +253,8 @@ interface DatasetRowProps {
 }
 
 function DatasetRow({ dataset, isSelected, onSelect }: DatasetRowProps) {
-  const caseCount = dataset.case_count ?? 0;
-  const tags = dataset.tags ?? [];
+  const caseCount = dataset.case_count;
+  const tags = dataset.tags;
 
   return (
     <TableRow

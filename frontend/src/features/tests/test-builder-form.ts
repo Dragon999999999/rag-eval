@@ -9,7 +9,8 @@
  * 5. Review
  */
 import { z } from "zod";
-import { useForm, UseFormReturn } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import type { UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { TestDefinitionCreate } from "./test-types";
 
@@ -219,7 +220,7 @@ export function formValuesToTestDefinition(
     target_id: values.target_id,
     benchmark_id: values.benchmark_id,
     metric_config_id: values.metric_config_name,
-    execution_config: values.execution_config as unknown as Record<string, unknown>,
+    execution_config: values.execution_config,
     seed: values.seed ?? null,
     tags: values.tags,
     metadata: values.metadata,
@@ -247,15 +248,13 @@ export function testDefinitionToFormValues(test: {
     benchmark_id: test.benchmark_id,
     metric_config_name: test.metric_config_id,
     execution_config: {
-      concurrency: (test.execution_config?.concurrency as number) ?? 4,
-      timeout_per_request: (test.execution_config?.timeout_per_request as number) ?? 30,
-      retries: (test.execution_config?.retries as number) ?? 2,
-      failure_policy:
-        (test.execution_config?.failure_policy as "continue" | "abort") ?? "continue",
-      store_raw_responses:
-        (test.execution_config?.store_raw_responses as boolean) ?? false,
-      store_traces: (test.execution_config?.store_traces as boolean) ?? false,
-      store_usage: (test.execution_config?.store_usage as boolean) ?? false,
+      concurrency: test.execution_config?.concurrency ?? 4,
+      timeout_per_request: test.execution_config?.timeout_per_request ?? 30,
+      retries: test.execution_config?.retries ?? 2,
+      failure_policy: test.execution_config?.failure_policy ?? "continue",
+      store_raw_responses: test.execution_config?.store_raw_responses ?? false,
+      store_traces: test.execution_config?.store_traces ?? false,
+      store_usage: test.execution_config?.store_usage ?? false,
     },
     seed: test.seed ?? null,
     tags: test.tags ?? [],
@@ -268,7 +267,7 @@ export function testDefinitionToFormValues(test: {
  */
 export function getNextStep(currentStep: BuilderStep): BuilderStep | null {
   if (currentStep >= BuilderStep.REVIEW) return null;
-  return (currentStep + 1) as BuilderStep;
+  return (currentStep + 1);
 }
 
 /**
@@ -276,7 +275,7 @@ export function getNextStep(currentStep: BuilderStep): BuilderStep | null {
  */
 export function getPreviousStep(currentStep: BuilderStep): BuilderStep | null {
   if (currentStep <= BuilderStep.TARGET) return null;
-  return (currentStep - 1) as BuilderStep;
+  return (currentStep - 1);
 }
 
 /**

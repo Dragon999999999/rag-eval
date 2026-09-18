@@ -114,7 +114,7 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
                 key={target.targetId}
                 target={target}
                 isSelected={selectedTargetId === target.targetId}
-                onSelect={() => setSelectedTargetId(target.targetId)}
+                onSelect={() => { setSelectedTargetId(target.targetId); }}
               />
             ))}
           </TableBody>

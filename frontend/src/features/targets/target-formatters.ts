@@ -88,11 +88,11 @@ export function formatRelativeTime(isoString: string): string {
   if (diffSecs < 60) {
     return "just now";
   } else if (diffMins < 60) {
-    return `${diffMins}m ago`;
+    return `${String(diffMins)}m ago`;
   } else if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return `${String(diffHours)}h ago`;
   } else if (diffDays < 7) {
-    return `${diffDays}d ago`;
+    return `${String(diffDays)}d ago`;
   }
 
   return date.toLocaleDateString();

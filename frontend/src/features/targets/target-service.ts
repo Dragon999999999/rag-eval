@@ -12,10 +12,15 @@ import type {
   TargetConnectionTestResult,
 } from "./target-types";
 
-/**
- * Simulated delay for mock service.
- */
+/** Simulated delay for mock service. */
 const MOCK_DELAY_MS = 400;
+
+/** Error with code and status properties */
+interface ServiceError extends Error {
+  code?: string;
+  status?: number;
+  field?: string;
+}
 
 /**
  * In-memory mock target store for development.
@@ -136,8 +141,8 @@ export const TargetService = {
     const target = mockTargets.get(targetId);
     if (!target) {
       const error = new Error(`Target not found: ${targetId}`);
-      (error as any).code = "TARGET_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TARGET_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
     return target;
@@ -153,19 +158,19 @@ export const TargetService = {
     // Validate adapter-specific fields
     if (data.adapter === "http" && !data.base_url) {
       const error = new Error("Base URL is required for HTTP adapter");
-      (error as any).code = "VALIDATION_ERROR";
-      (error as any).field = "base_url";
+      (error as ServiceError).code = "VALIDATION_ERROR";
+      (error as ServiceError).field = "base_url";
       throw error;
     }
 
     if (data.adapter === "python" && !data.python_target) {
       const error = new Error("Python target is required for Python adapter");
-      (error as any).code = "VALIDATION_ERROR";
-      (error as any).field = "python_target";
+      (error as ServiceError).code = "VALIDATION_ERROR";
+      (error as ServiceError).field = "python_target";
       throw error;
     }
 
-    const targetId = `target-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const targetId = `target-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
 
     const target: Target = {
@@ -198,8 +203,8 @@ export const TargetService = {
     const existing = mockTargets.get(targetId);
     if (!existing) {
       const error = new Error(`Target not found: ${targetId}`);
-      (error as any).code = "TARGET_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TARGET_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -226,8 +231,8 @@ export const TargetService = {
 
     if (!mockTargets.has(targetId)) {
       const error = new Error(`Target not found: ${targetId}`);
-      (error as any).code = "TARGET_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TARGET_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -244,15 +249,15 @@ export const TargetService = {
 
     if (!mockTargets.has(targetId)) {
       const error = new Error(`Target not found: ${targetId}`);
-      (error as any).code = "TARGET_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TARGET_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
     const capabilities = mockCapabilities.get(targetId);
     if (!capabilities) {
       const error = new Error("Capabilities not discovered. Test connection first.");
-      (error as any).code = "CAPABILITIES_NOT_DISCOVERED";
+      (error as ServiceError).code = "CAPABILITIES_NOT_DISCOVERED";
       throw error;
     }
 
@@ -264,13 +269,13 @@ export const TargetService = {
    */
   async refreshCapabilities(targetId: string): Promise<TargetCapabilities> {
     initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 500)); // Simulate network call
+    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 500));
 
     const target = mockTargets.get(targetId);
     if (!target) {
       const error = new Error(`Target not found: ${targetId}`);
-      (error as any).code = "TARGET_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TARGET_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 

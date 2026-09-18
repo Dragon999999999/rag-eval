@@ -17,6 +17,12 @@ import type {
 
 const MOCK_DELAY_MS = 400;
 
+/** Error with code and status properties */
+interface ServiceError extends Error {
+  code?: string;
+  status?: number;
+}
+
 /** In-memory mock test store */
 const mockTests = new Map<string, TestDefinitionInfo>();
 const mockRuns = new Map<string, EvaluationRunSummary>();
@@ -192,8 +198,8 @@ export const TestService = {
     const test = mockTests.get(testId);
     if (!test) {
       const error = new Error(`Test definition not found: ${testId}`);
-      (error as any).code = "TEST_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TEST_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
     return test;
@@ -204,7 +210,7 @@ export const TestService = {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
-    const testId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const testId = `test-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
 
     const test: TestDefinitionInfo = {
@@ -238,8 +244,8 @@ export const TestService = {
     const existing = mockTests.get(testId);
     if (!existing) {
       const error = new Error(`Test definition not found: ${testId}`);
-      (error as any).code = "TEST_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TEST_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -268,8 +274,8 @@ export const TestService = {
 
     if (!mockTests.has(testId)) {
       const error = new Error(`Test definition not found: ${testId}`);
-      (error as any).code = "TEST_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "TEST_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
@@ -336,7 +342,7 @@ export const TestService = {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 500));
 
-    const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const runId = `run-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date().toISOString();
 
     const run: EvaluationRunSummary = {
@@ -370,21 +376,28 @@ export const TestService = {
     const run = mockRuns.get(runId);
     if (!run) {
       const error = new Error(`Run not found: ${runId}`);
-      (error as any).code = "RUN_NOT_FOUND";
-      (error as any).status = 404;
+      (error as ServiceError).code = "RUN_NOT_FOUND";
+      (error as ServiceError).status = 404;
       throw error;
     }
 
     // Simulate progress for running runs
     if (run.status === "running") {
+      const progress = run.progress ?? {
+        total_cases: 250,
+        complete_cases: 0,
+        failed_cases: 0,
+        pending_cases: 250,
+        percent: 0,
+      };
       run.progress = {
-        ...run.progress!,
+        ...progress,
         complete_cases: Math.min(
-          run.progress!.total_cases,
-          run.progress!.complete_cases + 10
+          progress.total_cases,
+          progress.complete_cases + 10
         ),
         percent: Math.round(
-          (run.progress!.complete_cases / run.progress!.total_cases) * 100
+          (progress.complete_cases / progress.total_cases) * 100
         ),
       };
     }
@@ -499,7 +512,7 @@ export const MetricService = {
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
     // Mock - in real impl would check existing configs or create new
-    const configId = `mc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const configId = `mc-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
     return { metric_config_id: configId, created: true };
   },
 };

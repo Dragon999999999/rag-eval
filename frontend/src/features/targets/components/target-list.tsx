@@ -123,7 +123,7 @@ export function TargetList({}: TargetListProps) {
         title="No matching targets"
         description="Try adjusting your search or filters."
         action={
-          <Button variant="secondary" size="sm" onClick={() => setSearchParams({})}>
+          <Button variant="secondary" size="sm" onClick={() => { setSearchParams({}); }}>
             Clear filters
           </Button>
         }
@@ -138,14 +138,14 @@ export function TargetList({}: TargetListProps) {
         <div className="w-64">
           <SearchInput
             value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
+            onChange={(e) => { handleSearchChange(e.target.value); }}
             placeholder="Search targets..."
           />
         </div>
 
         <select
           value={typeFilter}
-          onChange={(e) => handleTypeChange(e.target.value)}
+          onChange={(e) => { handleTypeChange(e.target.value); }}
           className="border-border focus:ring-ring h-9 rounded-md border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2"
         >
           <option value="">All Types</option>

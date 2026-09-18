@@ -116,8 +116,8 @@ export function TestBuilder({}: TestBuilderProps) {
           {Object.values(BuilderStep).map((step, index) => {
             const stepNum = index + 1;
             const isCurrent = step === currentStep;
-            const isPast = stepNum < (currentStep as unknown as number);
-            const canNavigate = stepNum <= (currentStep as unknown as number);
+            const isPast = stepNum < (currentStep);
+            const canNavigate = stepNum <= (currentStep);
 
             return (
               <div key={step} className="flex items-center">

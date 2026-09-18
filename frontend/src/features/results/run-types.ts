@@ -178,7 +178,8 @@ export interface MetricResultDetail {
   case_id: string | null;
   metric_id: string;
   metric_version: string;
-  value: unknown | null;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  value: unknown;
   status: MetricStatus;
   reason: string | null;
   details: Record<string, unknown>;
@@ -202,7 +203,8 @@ export interface AggregateResultDetail {
   metric_id: string;
   metric_version: string;
   aggregation: string;
-  value: unknown | null;
+  // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+  value: unknown;
   status: MetricStatus;
   reason: string | null;
   details: Record<string, unknown>;

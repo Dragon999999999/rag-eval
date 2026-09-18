@@ -94,8 +94,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               min="1"
               max="32"
               value={executionConfig.concurrency}
-              onChange={(e) =>
-                updateConfig("concurrency", parseInt(e.target.value) || 1)
+              onChange={(e) => { updateConfig("concurrency", parseInt(e.target.value) || 1); }
               }
             />
             <p className="text-xs text-text-tertiary">
@@ -111,8 +110,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               min="1"
               max="300"
               value={executionConfig.timeout_per_request}
-              onChange={(e) =>
-                updateConfig("timeout_per_request", parseInt(e.target.value) || 30)
+              onChange={(e) => { updateConfig("timeout_per_request", parseInt(e.target.value) || 30); }
               }
             />
             <p className="text-xs text-text-tertiary">
@@ -136,7 +134,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               min="0"
               max="10"
               value={executionConfig.retries}
-              onChange={(e) => updateConfig("retries", parseInt(e.target.value) || 0)}
+              onChange={(e) => { updateConfig("retries", parseInt(e.target.value) || 0); }}
             />
             <p className="text-xs text-text-tertiary">
               Number of retry attempts on failure
@@ -147,8 +145,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Label htmlFor="failure-policy">On Failure</Label>
             <Select
               value={executionConfig.failure_policy}
-              onValueChange={(value: "continue" | "abort") =>
-                updateConfig("failure_policy", value)
+              onValueChange={(value: "continue" | "abort") => { updateConfig("failure_policy", value); }
               }
             >
               <SelectTrigger id="failure-policy">
@@ -180,8 +177,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Switch
               id="store-raw"
               checked={executionConfig.store_raw_responses}
-              onCheckedChange={(checked) =>
-                updateConfig("store_raw_responses", checked)
+              onCheckedChange={(checked) => { updateConfig("store_raw_responses", checked); }
               }
             />
           </div>
@@ -196,7 +192,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Switch
               id="store-traces"
               checked={executionConfig.store_traces}
-              onCheckedChange={(checked) => updateConfig("store_traces", checked)}
+              onCheckedChange={(checked) => { updateConfig("store_traces", checked); }}
             />
           </div>
 
@@ -210,7 +206,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
             <Switch
               id="store-usage"
               checked={executionConfig.store_usage}
-              onCheckedChange={(checked) => updateConfig("store_usage", checked)}
+              onCheckedChange={(checked) => { updateConfig("store_usage", checked); }}
             />
           </div>
         </div>
@@ -227,7 +223,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               type="number"
               min="0"
               value={seed ?? ""}
-              onChange={(e) => setSeed(e.target.value)}
+              onChange={(e) => { setSeed(e.target.value); }}
               placeholder="For reproducible sampling"
             />
             <p className="text-xs text-text-tertiary">
@@ -241,7 +237,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
               <Input
                 id="tags"
                 value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
+                onChange={(e) => { setTagInput(e.target.value); }}
                 onKeyDown={handleKeyDown}
                 placeholder="Add a tag..."
                 className="flex-1"
@@ -256,7 +252,7 @@ export function ExecutionStep({ form, onPrevious, onNext }: ExecutionStepProps) 
                   <span
                     key={index}
                     className="inline-flex cursor-pointer items-center rounded-md bg-surface-hover px-2 py-0.5 text-xs font-medium text-text-secondary transition-colors"
-                    onClick={() => removeTag(index)}
+                    onClick={() => { removeTag(index); }}
                   >
                     {tag} ×
                   </span>
