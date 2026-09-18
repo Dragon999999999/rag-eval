@@ -90,7 +90,7 @@ export function RunDetailPage() {
         actions={
           <div className="flex gap-2">
             {isRunning && (
-              <Button variant="secondary" onClick={handleCancel}>
+              <Button variant="secondary" onClick={() => void handleCancel()}>
                 <Pause className="mr-2 h-4 w-4" />
                 Cancel Run
               </Button>
@@ -193,7 +193,7 @@ export function RunDetailPage() {
                   ? "border-b-2 border-accent text-accent-foreground"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("overview")}
+              onClick={() => void setActiveTab("overview")}
             >
               Overview
             </button>
@@ -203,7 +203,7 @@ export function RunDetailPage() {
                   ? "border-b-2 border-accent text-accent-foreground"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("cases")}
+              onClick={() => void setActiveTab("cases")}
             >
               Cases
             </button>
@@ -213,7 +213,7 @@ export function RunDetailPage() {
                   ? "border-b-2 border-accent text-accent-foreground"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => setActiveTab("metrics")}
+              onClick={() => void setActiveTab("metrics")}
             >
               Metrics
             </button>
@@ -313,7 +313,7 @@ export function RunDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/runs/${runId}/cases/${caseExec.case_id}`}>View</Link>
+                            <Link to={`/runs/${String(runId)}/cases/${String(caseExec.case_id)}`}>View</Link>
                           </Button>
                         </TableCell>
                       </TableRow>

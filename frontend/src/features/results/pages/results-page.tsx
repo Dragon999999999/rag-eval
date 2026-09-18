@@ -106,7 +106,7 @@ export function ResultsPage() {
           <Alert variant="error">
             <AlertDescription>
               An error occurred while fetching results.
-              <Button variant="secondary" size="sm" onClick={() => refetch()} className="ml-4">
+              <Button variant="secondary" size="sm" onClick={() => void refetch()} className="ml-4">
                 Retry
               </Button>
             </AlertDescription>
@@ -129,7 +129,7 @@ export function ResultsPage() {
             title="No evaluation results"
             description="Run evaluations to see results and analysis here."
             action={
-              <Button onClick={() => navigate("/tests/new")}>
+              <Button onClick={() => void navigate("/tests/new")}>
                 Create Test
               </Button>
             }
@@ -153,7 +153,7 @@ export function ResultsPage() {
             <div className="w-64">
               <SearchInput
                 value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => void handleSearchChange(e.target.value)}
                 placeholder="Search runs..."
               />
             </div>
@@ -205,7 +205,7 @@ export function ResultsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={page <= 1}
-                onClick={() => handlePageChange(page - 1)}
+                onClick={() => void handlePageChange(page - 1)}
               >
                 Previous
               </Button>
@@ -213,7 +213,7 @@ export function ResultsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={runs.length < limit}
-                onClick={() => handlePageChange(page + 1)}
+                onClick={() => void handlePageChange(page + 1)}
               >
                 Next
               </Button>

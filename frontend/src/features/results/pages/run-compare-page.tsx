@@ -59,7 +59,7 @@ export function RunComparePage() {
         description="Compare metric performance between two evaluation runs."
         breadcrumbs={[
           { label: "Results", href: "/results" },
-          { label: runA?.name ?? "Run A", href: `/runs/${runId}` },
+          { label: runA?.name ?? "Run A", href: `/runs/${String(runId)}` },
         ]}
       />
 
@@ -150,7 +150,7 @@ export function RunComparePage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="text-sm text-text-tertiary">
-                          {metricComp.relative_delta_percent !== null && metricComp.relative_delta_percent !== undefined
+                          {metricComp.relative_delta_percent != null
                             ? `${metricComp.relative_delta_percent > 0 ? "+" : ""}${metricComp.relative_delta_percent.toFixed(1)}%`
                             : "—"}
                         </span>
@@ -182,19 +182,19 @@ export function RunComparePage() {
               <div>
                 <div className="text-xs text-text-tertiary">Improved</div>
                 <div className="text-2xl font-semibold text-success">
-                  {(comparison.summary.total_improved as number) ?? 0}
+                  {comparison.summary.total_improved as number ?? 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Regressed</div>
                 <div className="text-2xl font-semibold text-error">
-                  {(comparison.summary.total_regressed as number) ?? 0}
+                  {comparison.summary.total_regressed as number ?? 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Unchanged</div>
                 <div className="text-2xl font-semibold text-text-primary">
-                  {(comparison.summary.total_unchanged as number) ?? 0}
+                  {comparison.summary.total_unchanged as number ?? 0}
                 </div>
               </div>
             </div>

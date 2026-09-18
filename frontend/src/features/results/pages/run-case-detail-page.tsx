@@ -50,11 +50,11 @@ export function RunCaseDetailPage() {
   return (
     <Page>
       <Page.Header
-        title={`Case: ${caseId}`}
+        title={`Case: ${String(caseId)}`}
         description={`${formatCaseStatus(caseExec.status)} · ${duration ? formatElapsedTime(duration) : "Duration unknown"}`}
         breadcrumbs={[
           { label: "Results", href: "/results" },
-          { label: "Run", href: `/runs/${runId}` },
+          { label: "Run", href: `/runs/${String(runId)}` },
         ]}
       />
 
@@ -112,7 +112,7 @@ export function RunCaseDetailPage() {
               <h3 className="mb-3 text-sm font-medium text-text-primary">Retrieved Evidence</h3>
               <div className="space-y-2">
                 {Array.isArray(observation.retrieval) ? (
-                  observation.retrieval.slice(0, 5).map((item: any, idx: number) => (
+                  observation.retrieval.slice(0, 5).map((item: unknown, idx: number) => (
                     <div key={idx} className="rounded border border-border bg-surface p-3">
                       <div className="text-xs text-text-tertiary">Document {idx + 1}</div>
                       <div className="text-sm text-text-secondary line-clamp-2">
@@ -128,11 +128,11 @@ export function RunCaseDetailPage() {
           )}
 
           {/* Citations */}
-          {observation && observation.citations && observation.citations.length > 0 && (
+          {observation && observation.citations.length > 0 && (
             <Surface className="p-4">
               <h3 className="mb-3 text-sm font-medium text-text-primary">Citations</h3>
               <div className="space-y-2">
-                {observation.citations.map((citation: any, idx: number) => (
+                {observation.citations.map((citation: unknown, idx: number) => (
                   <div key={idx} className="text-sm text-text-secondary">
                     <span className="font-medium">[{idx + 1}]</span> {JSON.stringify(citation)}
                   </div>
