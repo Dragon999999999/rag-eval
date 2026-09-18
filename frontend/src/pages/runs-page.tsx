@@ -2,6 +2,7 @@ import { useParams } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ClipboardList } from "lucide-react";
+import { RunComparePage } from "@/features/results";
 
 /**
  * Run detail page - show evaluation run status and results.
@@ -58,3 +59,5 @@ export function RunCaseDetailPage() {
     </Page>
   );
 }
+
+export { RunComparePage };

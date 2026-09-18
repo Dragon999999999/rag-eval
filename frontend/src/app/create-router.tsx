@@ -10,6 +10,7 @@ import { DatasetCreatePage } from "@/features/datasets/pages/dataset-create-page
 import { TestsPage, TestDetailPage, TestCreatePage, TestEditPage } from "@/pages/tests-page";
 import { ResultsPage } from "@/pages/results-page";
 import { RunDetailPage, RunCaseDetailPage } from "@/pages/runs-page";
+import { RunComparePage } from "@/pages/runs-page";
 import { SettingsPage } from "@/pages/settings-page";
 import { NotFoundPage, ErrorBoundaryPage } from "@/pages/error-page";
 
@@ -52,6 +53,10 @@ const routes: RouteObject[] = [
       {
         path: "runs/:runId/cases/:caseId",
         element: <RunCaseDetailPage />,
+      },
+      {
+        path: "runs/:runId/compare/:otherRunId",
+        element: <RunComparePage />,
       },
 
       // Settings
