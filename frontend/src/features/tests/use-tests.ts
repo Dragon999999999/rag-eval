@@ -62,9 +62,9 @@ export function useCreateTest() {
     mutationFn: (data: TestDefinitionCreate) => TestService.createTest(data),
     onSuccess: (newTest) => {
       // Invalidate lists to trigger refetch
-      queryClient.invalidateQueries({ queryKey: testKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: testKeys.lists() });
       // Prefetch the detail
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: testKeys.detail(newTest.test_definition_id),
         queryFn: () => TestService.getTest(newTest.test_definition_id),
       });
@@ -84,7 +84,7 @@ export function useUpdateTest(testId: string) {
       // Update the detail cache
       queryClient.setQueryData(testKeys.detail(testId), updatedTest);
       // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: testKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: testKeys.lists() });
     },
   });
 }
@@ -99,9 +99,9 @@ export function useDeleteTest() {
     mutationFn: (testId: string) => TestService.deleteTest(testId),
     onSuccess: (_, deletedId) => {
       // Remove from cache
-      queryClient.removeQueries({ queryKey: testKeys.detail(deletedId) });
+      void queryClient.removeQueries({ queryKey: testKeys.detail(deletedId) });
       // Invalidate lists
-      queryClient.invalidateQueries({ queryKey: testKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: testKeys.lists() });
     },
   });
 }
@@ -135,7 +135,7 @@ export function useRunTest() {
     onSuccess: (_, variables) => {
       // Invalidate runs list for the test
       if (variables.test_definition_id) {
-        queryClient.invalidateQueries({
+        void queryClient.invalidateQueries({
           queryKey: testKeys.runs(variables.test_definition_id),
         });
       }
