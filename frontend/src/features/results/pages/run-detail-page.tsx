@@ -313,7 +313,7 @@ export function RunDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/runs/${runId}/cases/${caseExec.case_id}`}>View</Link>
+                            <Link to={`/runs/${String(runId)}/cases/${String(caseExec.case_id)}`}>View</Link>
                           </Button>
                         </TableCell>
                       </TableRow>

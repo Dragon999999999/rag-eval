@@ -182,19 +182,19 @@ export function RunComparePage() {
               <div>
                 <div className="text-xs text-text-tertiary">Improved</div>
                 <div className="text-2xl font-semibold text-success">
-                  {Number(comparison.summary.total_improved) ?? 0}
+                  {Number(comparison.summary.total_improved) || 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Regressed</div>
                 <div className="text-2xl font-semibold text-error">
-                  {Number(comparison.summary.total_regressed) ?? 0}
+                  {Number(comparison.summary.total_regressed) || 0}
                 </div>
               </div>
               <div>
                 <div className="text-xs text-text-tertiary">Unchanged</div>
                 <div className="text-2xl font-semibold text-text-primary">
-                  {Number(comparison.summary.total_unchanged) ?? 0}
+                  {Number(comparison.summary.total_unchanged) || 0}
                 </div>
               </div>
             </div>

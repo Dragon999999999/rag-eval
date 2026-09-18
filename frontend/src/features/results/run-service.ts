@@ -34,8 +34,8 @@ function toAttemptSummary(detail: AttemptDetail): AttemptSummary {
     request_id: detail.request_id,
     started_at: detail.started_at,
     finished_at: detail.finished_at,
-    retryable: (detail.metadata?.retryable as boolean) ?? null,
-    error_summary: (detail.metadata?.error as string) ?? null,
+    retryable: detail.metadata?.retryable as boolean ?? null,
+    error_summary: detail.metadata?.error as string ?? null,
   };
 }
 
