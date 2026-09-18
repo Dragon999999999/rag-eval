@@ -4,7 +4,6 @@
 import { useParams, Link } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Surface } from "@/components/layout/surface";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -18,8 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useRun, useRunComparison } from "../use-runs";
-import { formatRunStatus, getRunStatusVariant, formatMetricValue, formatMetricDelta, getDeltaVariant } from "../run-formatters";
-import type { ComparisonResult } from "../run-types";
+import { getRunStatusVariant, formatMetricValue, formatMetricDelta, getDeltaVariant } from "../run-formatters";
 
 export function RunComparePage() {
   const { runId, otherRunId } = useParams<{ runId: string; otherRunId: string }>();
@@ -86,8 +84,8 @@ export function RunComparePage() {
               <h3 className="mb-2 text-sm font-medium text-text-primary">Run A</h3>
               <div className="space-y-2">
                 <div className="font-medium text-text-primary">{runA?.name}</div>
-                <StatusBadge variant={getRunStatusVariant(runA?.status || "unknown")}>
-                  {formatRunStatus(runA?.status || "unknown")}
+                <StatusBadge status={getRunStatusVariant(runA?.status || "unknown")}>
+                  {runA?.status}
                 </StatusBadge>
                 <div className="text-xs text-text-tertiary">{runA?.created_at}</div>
               </div>
@@ -97,8 +95,8 @@ export function RunComparePage() {
               <h3 className="mb-2 text-sm font-medium text-text-primary">Run B</h3>
               <div className="space-y-2">
                 <div className="font-medium text-text-primary">{runB?.name}</div>
-                <StatusBadge variant={getRunStatusVariant(runB?.status || "unknown")}>
-                  {formatRunStatus(runB?.status || "unknown")}
+                <StatusBadge status={getRunStatusVariant(runB?.status || "unknown")}>
+                  {runB?.status}
                 </StatusBadge>
                 <div className="text-xs text-text-tertiary">{runB?.created_at}</div>
               </div>
@@ -121,7 +119,7 @@ export function RunComparePage() {
               </TableHeader>
               <TableBody>
                 {comparison.metric_comparisons.map((metricComp, idx) => {
-                  const variant = getDeltaVariant(metricComp.absolute_delta, metricComp.direction);
+                  const variant = getDeltaVariant(metricComp.absolute_delta);
                   return (
                     <TableRow key={idx}>
                       <TableCell>
@@ -159,12 +157,12 @@ export function RunComparePage() {
                       </TableCell>
                       <TableCell>
                         <StatusBadge
-                          variant={
+                          status={
                             metricComp.status === "improved"
                               ? "success"
                               : metricComp.status === "regressed"
                                 ? "error"
-                                : "default"
+                                : "neutral"
                           }
                         >
                           {metricComp.status}

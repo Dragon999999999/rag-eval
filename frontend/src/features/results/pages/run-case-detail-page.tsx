@@ -1,26 +1,23 @@
 /**
  * Case detail page - shows individual case execution details.
  */
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Surface } from "@/components/layout/surface";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import type { AttemptSummary } from "../run-types";
 import { useRunCase, useCaseAttempts, useObservation, useCaseMetrics } from "../use-runs";
 import { formatCaseStatus, formatAnswerability, getAnswerabilityVariant, formatElapsedTime, formatMetricValue } from "../run-formatters";
-import type { AttemptSummary } from "../run-types";
 
 export function RunCaseDetailPage() {
   const { runId, caseId } = useParams<{ runId: string; caseId: string }>();
 
   const { data: caseExec, isLoading: caseLoading, error: caseError } = useRunCase(runId || "", caseId || "");
-  const { data: attempts, isLoading: attemptsLoading } = useCaseAttempts(runId || "", caseId || "");
-  const { data: observation, isLoading: observationLoading } = useObservation(runId || "", caseId || "");
-  const { data: metrics, isLoading: metricsLoading } = useCaseMetrics(runId || "", caseId || "");
+  const { data: attempts } = useCaseAttempts(runId || "", caseId || "");
+  const { data: observation } = useObservation(runId || "", caseId || "");
+  const { data: metrics } = useCaseMetrics(runId || "", caseId || "");
 
   if (caseLoading) {
     return (
@@ -73,14 +70,14 @@ export function RunCaseDetailPage() {
 
               <div className="flex gap-2">
                 {caseExec.answerability && (
-                  <StatusBadge variant={getAnswerabilityVariant(caseExec.answerability)}>
+                  <StatusBadge status={getAnswerabilityVariant(caseExec.answerability)}>
                     {formatAnswerability(caseExec.answerability)}
                   </StatusBadge>
                 )}
                 {caseExec.tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="text-xs">
+                  <span key={tag} className="rounded border border-border bg-surface px-1.5 py-0.5 text-xs text-text-tertiary">
                     {tag}
-                  </Badge>
+                  </span>
                 ))}
               </div>
             </div>
@@ -172,7 +169,7 @@ export function RunCaseDetailPage() {
                 {attempts.map((attempt: AttemptSummary) => (
                   <div key={attempt.attempt_id} className="flex items-center justify-between rounded border border-border p-3">
                     <div className="flex items-center gap-3">
-                      <StatusBadge variant={attempt.status === "completed" ? "success" : "error"}>
+                      <StatusBadge status={attempt.status === "completed" ? "success" : attempt.status === "failed" ? "error" : "neutral"}>
                         {attempt.status}
                       </StatusBadge>
                       <span className="text-sm text-text-secondary">Attempt #{attempt.attempt_number}</span>

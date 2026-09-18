@@ -256,8 +256,8 @@ function RunRow({ run }: RunRowProps) {
         <div className="text-sm text-text-secondary">Dataset</div>
       </TableCell>
       <TableCell>
-        <StatusBadge variant={getRunStatusVariant(run.status)} showDot>
-          {formatRunStatus(run.status)}
+        <StatusBadge status={getRunStatusVariant(run.status)} showDot>
+          {run.status}
         </StatusBadge>
       </TableCell>
       <TableCell>

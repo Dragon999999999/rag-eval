@@ -12,7 +12,6 @@ import type {
   CaseExecutionDetail,
   AttemptSummary,
   AttemptDetail,
-  TargetObservationSummary,
   TargetObservationDetail,
   MetricResultSummary,
   MetricResultDetail,
@@ -25,6 +24,54 @@ import type {
 } from "./run-types";
 
 const MOCK_DELAY_MS = 400;
+
+/** Transform AttemptDetail to AttemptSummary */
+function toAttemptSummary(detail: AttemptDetail): AttemptSummary {
+  return {
+    attempt_id: detail.attempt_id,
+    attempt_number: detail.attempt_number,
+    status: detail.status,
+    request_id: detail.request_id,
+    started_at: detail.started_at,
+    finished_at: detail.finished_at,
+    retryable: detail.metadata?.retryable as boolean | null ?? null,
+    error_summary: detail.metadata?.error as string | null ?? null,
+  };
+}
+
+/** Transform MetricResultDetail to MetricResultSummary */
+function toMetricResultSummary(detail: MetricResultDetail): MetricResultSummary {
+  return {
+    metric_id: detail.metric_id,
+    metric_version: detail.metric_version,
+    status: detail.status,
+    has_value: detail.value !== null && detail.value !== undefined,
+    value_summary: detail.value !== null && detail.value !== undefined ? String(detail.value) : null,
+  };
+}
+
+/** Transform AggregateResultDetail to AggregateResultSummary */
+function toAggregateResultSummary(detail: AggregateResultDetail): AggregateResultSummary {
+  return {
+    metric_id: detail.metric_id,
+    metric_version: detail.metric_version,
+    aggregation: detail.aggregation,
+    status: detail.status,
+    value_summary: detail.value !== null && detail.value !== undefined ? String(detail.value) : null,
+  };
+}
+
+/** Transform CaseExecutionDetail to CaseExecutionSummary */
+function toCaseExecutionSummary(detail: CaseExecutionDetail): CaseExecutionSummary {
+  return {
+    case_execution_id: detail.case_execution_id,
+    case_id: detail.case_id,
+    status: detail.status,
+    started_at: detail.started_at,
+    finished_at: detail.finished_at,
+    attempt_count: null, // Would be computed from attempts in real implementation
+  };
+}
 
 /** In-memory mock run store */
 const mockRuns = new Map<string, RunDetail>();
@@ -307,7 +354,7 @@ export const RunService = {
     const offset = filters?.offset ?? 0;
     const paginated = cases.slice(offset, offset + limit);
 
-    return { cases: paginated, total };
+    return { cases: paginated.map(toCaseExecutionSummary), total };
   },
 
   /** Get detailed case execution information */
@@ -346,11 +393,11 @@ export const RunService = {
       .filter((a) => a.case_execution_id === caseExec.case_execution_id)
       .sort((a, b) => a.attempt_number - b.attempt_number);
 
-    return attempts;
+    return attempts.map(toAttemptSummary);
   },
 
   /** Get detailed attempt information */
-  async getAttempt(runId: string, caseId: string, attemptId: string): Promise<AttemptDetail> {
+  async getAttempt(_runId: string, _caseId: string, attemptId: string): Promise<AttemptDetail> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -366,7 +413,7 @@ export const RunService = {
   },
 
   /** Get target observation for a case/attempt */
-  async getObservation(runId: string, caseId: string, attemptId?: string): Promise<TargetObservationDetail | null> {
+  async getObservation(runId: string, caseId: string, _attemptId?: string): Promise<TargetObservationDetail | null> {
     initializeMockData();
     await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 
@@ -401,7 +448,7 @@ export const RunService = {
     const metrics = Array.from(mockMetricResults.values())
       .filter((m) => m.case_execution_id === caseExec.case_execution_id);
 
-    return metrics;
+    return metrics.map(toMetricResultSummary);
   },
 
   /** Get aggregate metrics for a run */
@@ -412,7 +459,7 @@ export const RunService = {
     const aggregates = Array.from(mockAggregateResults.values())
       .filter((a) => a.run_id === runId);
 
-    return aggregates;
+    return aggregates.map(toAggregateResultSummary);
   },
 
   /** Get run report */

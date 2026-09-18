@@ -11,7 +11,6 @@ import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -26,10 +25,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, MoreVertical, Pause, Download, GitCompare, Trash2 } from "lucide-react";
-import { useRun, useRunProgress, useRunAggregates, useRunCases, useCancelRun, useRunReport } from "../use-runs";
-import { formatRunStatus, getRunStatusVariant, formatProgress, formatElapsedTime, formatRelativeTime, formatMetricValue } from "../run-formatters";
+import { MoreVertical, Pause, Download, GitCompare, Trash2 } from "lucide-react";
 import type { AggregateResultSummary, CaseExecutionSummary } from "../run-types";
+import { useRun, useRunProgress, useRunAggregates, useRunCases, useCancelRun } from "../use-runs";
+import { getRunStatusVariant, formatRunStatus, formatElapsedTime, formatRelativeTime, formatMetricValue } from "../run-formatters";
 
 export function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -40,10 +39,9 @@ export function RunDetailPage() {
   const { data: progress, isLoading: progressLoading } = useRunProgress(runId || "", {
     refetchInterval: run?.status === "running" ? 3000 : false,
   });
-  const { data: aggregates, isLoading: aggregatesLoading } = useRunAggregates(runId || "");
-  const { data: casesData, isLoading: casesLoading } = useRunCases(runId || "", { limit: 10 });
+  const { data: aggregates } = useRunAggregates(runId || "");
+  const { data: casesData } = useRunCases(runId || "", { limit: 10 });
   const cancelRun = useCancelRun();
-  const report = useRunReport(runId || "");
 
   const handleCancel = async () => {
     if (!runId || !confirm("Cancel evaluation? This will stop all running cases.")) return;
@@ -134,8 +132,8 @@ export function RunDetailPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <StatusBadge variant={getRunStatusVariant(run.status)} showDot>
-                      {formatRunStatus(run.status)}
+                    <StatusBadge status={getRunStatusVariant(run.status)} showDot>
+                      {run.status}
                     </StatusBadge>
                     <span className="text-sm text-text-tertiary">
                       {formatElapsedTime(progress.elapsed_seconds)} elapsed
@@ -298,7 +296,7 @@ export function RunDetailPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <StatusBadge variant={getRunStatusVariant(caseExec.status as any)}>
+                          <StatusBadge status={caseExec.status === "completed" ? "success" : caseExec.status === "failed" ? "error" : "neutral"}>
                             {caseExec.status}
                           </StatusBadge>
                         </TableCell>

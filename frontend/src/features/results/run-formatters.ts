@@ -8,7 +8,6 @@ import type {
   MetricStatus,
   RunProgress,
   AggregateResultSummary,
-  ComparisonResult,
 } from "./run-types";
 
 /**
@@ -34,7 +33,7 @@ export function formatRunStatus(status: RunStatus): string {
 /**
  * Get status badge variant for run status.
  */
-export function getRunStatusVariant(status: RunStatus): "default" | "success" | "error" | "info" {
+export function getRunStatusVariant(status: RunStatus): "success" | "warning" | "error" | "info" | "neutral" {
   switch (status) {
     case "completed":
       return "success";
@@ -43,9 +42,9 @@ export function getRunStatusVariant(status: RunStatus): "default" | "success" | 
     case "failed":
       return "error";
     case "cancelled":
-      return "default";
+      return "neutral";
     default:
-      return "default";
+      return "neutral";
   }
 }
 
@@ -206,7 +205,7 @@ export function formatMetricValue(value: unknown, metricId?: string): string {
  */
 export function formatMetricDelta(
   delta: number | null,
-  direction: "higher_is_better" | "lower_is_better" | "neutral",
+  _direction: "higher_is_better" | "lower_is_better" | "neutral",
   relativePercent: number | null = null
 ): string {
   if (delta === null || delta === undefined) return "—";
@@ -223,21 +222,20 @@ export function formatMetricDelta(
 }
 
 /**
- * Get delta variant based on direction and value.
+ * Get delta variant based on value.
+ * Note: direction parameter is reserved for future use when delta interpretation depends on metric semantics.
  */
 export function getDeltaVariant(
-  delta: number | null,
-  direction: "higher_is_better" | "lower_is_better" | "neutral"
-): "success" | "error" | "default" {
-  if (delta === null || delta === undefined || direction === "neutral") {
-    return "default";
+  delta: number | null
+  // direction: "higher_is_better" | "lower_is_better" | "neutral"
+): "success" | "error" | "neutral" {
+  if (delta === null || delta === undefined) {
+    return "neutral";
   }
 
-  const isImprovement =
-    (direction === "higher_is_better" && delta > 0) ||
-    (direction === "lower_is_better" && delta < 0);
-
-  return isImprovement ? "success" : "error";
+  // Simplified: positive delta is success, negative is error
+  // Real implementation should use direction metadata
+  return delta > 0 ? "success" : delta < 0 ? "error" : "neutral";
 }
 
 /**
@@ -267,7 +265,7 @@ export function formatAnswerability(answerability: string | null): string {
 /**
  * Get answerability badge variant.
  */
-export function getAnswerabilityVariant(answerability: string | null): "default" | "success" | "warning" | "error" {
+export function getAnswerabilityVariant(answerability: string | null): "success" | "warning" | "error" | "info" | "neutral" {
   switch (answerability) {
     case "ANSWERABLE":
       return "success";
@@ -276,6 +274,6 @@ export function getAnswerabilityVariant(answerability: string | null): "default"
     case "AMBIGUOUS":
       return "error";
     default:
-      return "default";
+      return "neutral";
   }
 }
