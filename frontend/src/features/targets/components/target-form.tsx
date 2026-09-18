@@ -20,21 +20,24 @@ import { isValidPythonTarget, isValidUrl } from "../target-formatters";
  */
 const targetFormSchema = z
   .object({
-    name: z.string().min(1, "Name is required").max(255, "Name must be less than 255 characters"),
+    name: z
+      .string()
+      .min(1, "Name is required")
+      .max(255, "Name must be less than 255 characters"),
     version: z.string().optional(),
     implementation: z.string().optional(),
     adapter: z.enum(["http", "python"]),
-    
+
     // HTTP adapter fields
     base_url: z.string().optional(),
     auth_type: z.enum(["none", "bearer", "api-key"]).default("none"),
     bearer_token: z.string().optional(),
     api_key: z.string().optional(),
     api_key_header: z.string().default("X-API-Key"),
-    
+
     // Python adapter fields
     python_target: z.string().optional(),
-    
+
     // Common fields
     corpus_mode: z.enum(["DOCUMENTS", "CHUNKS", "EXTERNAL"]),
     parameters: z.record(z.unknown()).optional(),
@@ -165,7 +168,7 @@ export function TargetForm({
   const form = useTargetForm({ target, onSubmit, onCancel, isSubmitting, error });
   const { register, handleSubmit, formState, watch, setValue } = form;
   const { errors } = formState;
-  
+
   const adapter = watch("adapter");
   const authType = watch("auth_type");
 
@@ -174,7 +177,12 @@ export function TargetForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleSave)} className="space-y-6">
+    <form
+      onSubmit={(e) => {
+        void handleSubmit(handleSave)(e);
+      }}
+      className="space-y-6"
+    >
       {/* Server error */}
       {error && (
         <Alert variant="error">
@@ -185,7 +193,7 @@ export function TargetForm({
       {/* General section */}
       <section className="space-y-4">
         <h3 className="text-base font-medium text-text-primary">General</h3>
-        
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="name">Name *</Label>
@@ -225,19 +233,23 @@ export function TargetForm({
       {/* Adapter selection */}
       <section className="space-y-4">
         <h3 className="text-base font-medium text-text-primary">Adapter Type</h3>
-        
+
         <div className="grid gap-4 sm:grid-cols-2">
           <AdapterOption
             name="HTTP Target Protocol"
             description="Remote HTTP endpoint implementing Target Protocol v1"
             selected={adapter === "http"}
-            onSelect={() => setValue("adapter", "http")}
+            onSelect={() => {
+              setValue("adapter", "http");
+            }}
           />
           <AdapterOption
             name="Python Adapter"
             description="In-process Python target implementation"
             selected={adapter === "python"}
-            onSelect={() => setValue("adapter", "python")}
+            onSelect={() => {
+              setValue("adapter", "python");
+            }}
           />
         </div>
       </section>
@@ -245,8 +257,10 @@ export function TargetForm({
       {/* HTTP adapter configuration */}
       {adapter === "http" && (
         <section className="space-y-4">
-          <h3 className="text-base font-medium text-text-primary">HTTP Configuration</h3>
-          
+          <h3 className="text-base font-medium text-text-primary">
+            HTTP Configuration
+          </h3>
+
           <div className="space-y-2">
             <Label htmlFor="base_url">Base URL *</Label>
             <Input
@@ -263,13 +277,15 @@ export function TargetForm({
           {/* Authentication */}
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-text-secondary">Authentication</h4>
-            
+
             <div className="space-y-2">
               <Label>Auth Type</Label>
               <div className="flex gap-4">
                 <button
                   type="button"
-                  onClick={() => setValue("auth_type", "none")}
+                  onClick={() => {
+                    setValue("auth_type", "none");
+                  }}
                   className={`rounded-md border px-3 py-2 text-sm ${
                     authType === "none"
                       ? "border-primary bg-primary/10 text-primary"
@@ -280,7 +296,9 @@ export function TargetForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setValue("auth_type", "bearer")}
+                  onClick={() => {
+                    setValue("auth_type", "bearer");
+                  }}
                   className={`rounded-md border px-3 py-2 text-sm ${
                     authType === "bearer"
                       ? "border-primary bg-primary/10 text-primary"
@@ -291,7 +309,9 @@ export function TargetForm({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setValue("auth_type", "api-key")}
+                  onClick={() => {
+                    setValue("auth_type", "api-key");
+                  }}
                   className={`rounded-md border px-3 py-2 text-sm ${
                     authType === "api-key"
                       ? "border-primary bg-primary/10 text-primary"
@@ -357,8 +377,10 @@ export function TargetForm({
       {/* Python adapter configuration */}
       {adapter === "python" && (
         <section className="space-y-4">
-          <h3 className="text-base font-medium text-text-primary">Python Configuration</h3>
-          
+          <h3 className="text-base font-medium text-text-primary">
+            Python Configuration
+          </h3>
+
           <div className="space-y-2">
             <Label htmlFor="python_target">Python Import Target *</Label>
             <Input
@@ -376,14 +398,18 @@ export function TargetForm({
 
       {/* Corpus mode */}
       <section className="space-y-4">
-        <h3 className="text-base font-medium text-text-primary">Corpus Configuration</h3>
-        
+        <h3 className="text-base font-medium text-text-primary">
+          Corpus Configuration
+        </h3>
+
         <div className="space-y-2">
           <Label>Corpus Mode</Label>
           <div className="flex gap-4">
             <button
               type="button"
-              onClick={() => setValue("corpus_mode", "DOCUMENTS")}
+              onClick={() => {
+                setValue("corpus_mode", "DOCUMENTS");
+              }}
               className={`rounded-md border px-3 py-2 text-sm ${
                 watch("corpus_mode") === "DOCUMENTS"
                   ? "border-primary bg-primary/10 text-primary"
@@ -394,7 +420,9 @@ export function TargetForm({
             </button>
             <button
               type="button"
-              onClick={() => setValue("corpus_mode", "CHUNKS")}
+              onClick={() => {
+                setValue("corpus_mode", "CHUNKS");
+              }}
               className={`rounded-md border px-3 py-2 text-sm ${
                 watch("corpus_mode") === "CHUNKS"
                   ? "border-primary bg-primary/10 text-primary"
@@ -405,7 +433,9 @@ export function TargetForm({
             </button>
             <button
               type="button"
-              onClick={() => setValue("corpus_mode", "EXTERNAL")}
+              onClick={() => {
+                setValue("corpus_mode", "EXTERNAL");
+              }}
               className={`rounded-md border px-3 py-2 text-sm ${
                 watch("corpus_mode") === "EXTERNAL"
                   ? "border-primary bg-primary/10 text-primary"
@@ -416,15 +446,14 @@ export function TargetForm({
             </button>
           </div>
           <p className="text-xs text-text-tertiary">
-            DOCUMENTS: Target accepts document uploads.
-            CHUNKS: Target accepts pre-chunked data.
-            EXTERNAL: Target uses external/corpus-less mode.
+            DOCUMENTS: Target accepts document uploads. CHUNKS: Target accepts
+            pre-chunked data. EXTERNAL: Target uses external/corpus-less mode.
           </p>
         </div>
       </section>
 
       {/* Form actions */}
-      <div className="flex items-center gap-4 border-t border-border pt-6">
+      <div className="border-border flex items-center gap-4 border-t pt-6">
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Saving..." : target ? "Save Changes" : "Create Target"}
         </Button>
@@ -446,7 +475,12 @@ interface AdapterOptionProps {
   onSelect: () => void;
 }
 
-function AdapterOption({ name, description, selected, onSelect }: Omit<AdapterOptionProps, 'id'>) {
+function AdapterOption({
+  name,
+  description,
+  selected,
+  onSelect,
+}: Omit<AdapterOptionProps, "id">) {
   return (
     <button
       type="button"

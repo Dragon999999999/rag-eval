@@ -33,7 +33,9 @@ export function formatRunStatus(status: RunStatus): string {
 /**
  * Get status badge variant for run status.
  */
-export function getRunStatusVariant(status: RunStatus): "success" | "warning" | "error" | "info" | "neutral" {
+export function getRunStatusVariant(
+  status: RunStatus
+): "success" | "warning" | "error" | "info" | "neutral" {
   switch (status) {
     case "completed":
       return "success";
@@ -113,28 +115,28 @@ export function formatMetricStatus(status: MetricStatus): string {
  */
 export function formatProgress(progress: RunProgress | null | undefined): string {
   if (!progress) return "No data";
-  return `${progress.complete_cases}/${progress.total_cases} (${String(progress.progress_percent.toFixed(0))}%)`;
+  return `${String(progress.complete_cases)}/${String(progress.total_cases)} (${progress.progress_percent.toFixed(0)}%)`;
 }
 
 /**
  * Format elapsed time in human-readable format.
  */
 export function formatElapsedTime(seconds: number | null): string {
-  if (seconds === null || seconds === undefined) return "—";
+  if (seconds == null) return "—";
 
   if (seconds < 60) {
-    return `${String(Math.round(seconds).toFixed(0))}s`;
+    return `${String(Math.round(seconds))}s`;
   }
 
   if (seconds < 3600) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.round(seconds % 60);
-    return `${String(mins.toFixed(0))}m ${String(secs.toFixed(0))}s`;
+    return `${String(mins)}m ${String(secs)}s`;
   }
 
   const hours = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
-  return `${String(hours.toFixed(0))}h ${String(mins.toFixed(0))}m`;
+  return `${String(hours)}h ${String(mins)}m`;
 }
 
 /**
@@ -151,9 +153,9 @@ export function formatRelativeTime(dateString: string | null): string {
   const diffDays = Math.floor(diffMs / 86400000);
 
   if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${String(diffMins.toFixed(0))}m ago`;
-  if (diffHours < 24) return `${String(diffHours.toFixed(0))}h ago`;
-  if (diffDays < 7) return `${String(diffDays.toFixed(0))}d ago`;
+  if (diffMins < 60) return `${diffMins.toFixed(0)}m ago`;
+  if (diffHours < 24) return `${diffHours.toFixed(0)}h ago`;
+  if (diffDays < 7) return `${diffDays.toFixed(0)}d ago`;
 
   return date.toLocaleDateString();
 }
@@ -166,13 +168,17 @@ export function formatMetricValue(value: unknown, metricId?: string): string {
 
   if (typeof value === "number") {
     // Percentages
-    if (metricId?.includes("recall") || metricId?.includes("precision") || metricId?.includes("rate")) {
+    if (
+      metricId?.includes("recall") ||
+      metricId?.includes("precision") ||
+      metricId?.includes("rate")
+    ) {
       return `${(value * 100).toFixed(1)}%`;
     }
 
     // Latency
     if (metricId?.includes("latency")) {
-      return `${String(Math.round(value).toFixed(0))}ms`;
+      return `${Math.round(value).toFixed(0)}ms`;
     }
 
     // Tokens
@@ -197,6 +203,11 @@ export function formatMetricValue(value: unknown, metricId?: string): string {
     return value ? "Yes" : "No";
   }
 
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-base-to-string
   return String(value);
 }
 
@@ -208,10 +219,11 @@ export function formatMetricDelta(
   _direction: "higher_is_better" | "lower_is_better" | "neutral",
   relativePercent: number | null = null
 ): string {
-  if (delta === null || delta === undefined) return "—";
+  if (delta == null) return "—";
 
   const sign = delta > 0 ? "+" : "";
-  const deltaStr = typeof delta === "number" ? `${sign}${delta.toFixed(3)}` : String(delta);
+  const deltaStr =
+    typeof delta === "number" ? `${sign}${delta.toFixed(3)}` : String(delta);
 
   if (relativePercent != null) {
     const relSign = relativePercent > 0 ? "+" : "";
@@ -265,7 +277,9 @@ export function formatAnswerability(answerability: string | null): string {
 /**
  * Get answerability badge variant.
  */
-export function getAnswerabilityVariant(answerability: string | null): "success" | "warning" | "error" | "info" | "neutral" {
+export function getAnswerabilityVariant(
+  answerability: string | null
+): "success" | "warning" | "error" | "info" | "neutral" {
   switch (answerability) {
     case "ANSWERABLE":
       return "success";

@@ -18,10 +18,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FlaskConical } from "lucide-react";
 import { useRunList } from "../use-runs";
-import { getRunStatusVariant, formatElapsedTime, formatRelativeTime } from "../run-formatters";
+import {
+  getRunStatusVariant,
+  formatElapsedTime,
+  formatRelativeTime,
+} from "../run-formatters";
 import type { RunSummary } from "../run-types";
 
 export function ResultsPage() {
@@ -106,7 +116,12 @@ export function ResultsPage() {
           <Alert variant="error">
             <AlertDescription>
               An error occurred while fetching results.
-              <Button variant="secondary" size="sm" onClick={() => void refetch()} className="ml-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void refetch()}
+                className="ml-4"
+              >
                 Retry
               </Button>
             </AlertDescription>
@@ -129,7 +144,11 @@ export function ResultsPage() {
             title="No evaluation results"
             description="Run evaluations to see results and analysis here."
             action={
-              <Button onClick={() => navigate("/tests/new")}>
+              <Button
+                onClick={() => {
+                  navigate("/tests/new");
+                }}
+              >
                 Create Test
               </Button>
             }
@@ -153,7 +172,9 @@ export function ResultsPage() {
             <div className="w-64">
               <SearchInput
                 value={search}
-                onChange={(e) => handleSearchChange(e.target.value)}
+                onChange={(e) => {
+                  handleSearchChange(e.target.value);
+                }}
                 placeholder="Search runs..."
               />
             </div>
@@ -198,14 +219,17 @@ export function ResultsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-text-tertiary">
-              Showing {offset + 1}-{Math.min(offset + limit, runs.length)} of {runs.length} runs
+              Showing {offset + 1}-{Math.min(offset + limit, runs.length)} of{" "}
+              {runs.length} runs
             </div>
             <div className="flex gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 disabled={page <= 1}
-                onClick={async () => { await handlePageChange(page - 1); }}
+                onClick={() => {
+                  handlePageChange(page - 1);
+                }}
               >
                 Previous
               </Button>
@@ -213,7 +237,9 @@ export function ResultsPage() {
                 variant="secondary"
                 size="sm"
                 disabled={runs.length < limit}
-                onClick={async () => { await handlePageChange(page + 1); }}
+                onClick={() => {
+                  handlePageChange(page + 1);
+                }}
               >
                 Next
               </Button>
@@ -235,12 +261,16 @@ function RunRow({ run }: RunRowProps) {
   const duration = run.finished_at ? (finished - started) / 1000 : null;
 
   // Get a representative metric value
-  const keyResult = run.status === "completed" && run.progress_percent !== undefined
-    ? `${run.progress_percent.toFixed(0)}% complete`
-    : "—";
+  const keyResult =
+    run.status === "completed" && run.progress_percent !== undefined
+      ? `${run.progress_percent.toFixed(0)}% complete`
+      : "—";
 
   return (
-    <TableRow className="cursor-pointer transition-colors hover:bg-surface-hover" onClick={() => {}}>
+    <TableRow
+      className="cursor-pointer transition-colors hover:bg-surface-hover"
+      onClick={() => {}}
+    >
       <TableCell>
         <div>
           <div className="font-medium text-text-primary">{run.name}</div>
@@ -267,7 +297,9 @@ function RunRow({ run }: RunRowProps) {
         <div className="text-sm text-text-tertiary">{formatElapsedTime(duration)}</div>
       </TableCell>
       <TableCell>
-        <div className="text-sm text-text-tertiary">{formatRelativeTime(run.started_at)}</div>
+        <div className="text-sm text-text-tertiary">
+          {formatRelativeTime(run.started_at)}
+        </div>
       </TableCell>
       <TableCell className="text-right">
         <Button variant="ghost" size="sm">

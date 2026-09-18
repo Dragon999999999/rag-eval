@@ -29,8 +29,10 @@ export const datasetQueryKeys = {
   detail: (datasetId: string) => [...datasetQueryKeys.details(), datasetId] as const,
   cases: (datasetId: string) =>
     [...datasetQueryKeys.detail(datasetId), "cases"] as const,
-  caseList: (datasetId: string, filters?: { limit?: number; offset?: number; search?: string; tag?: string }) =>
-    [...datasetQueryKeys.cases(datasetId), "list", filters] as const,
+  caseList: (
+    datasetId: string,
+    filters?: { limit?: number; offset?: number; search?: string; tag?: string }
+  ) => [...datasetQueryKeys.cases(datasetId), "list", filters] as const,
   case: (datasetId: string, caseId: string) =>
     [...datasetQueryKeys.cases(datasetId), "case", caseId] as const,
   validation: (datasetId: string) =>
@@ -38,7 +40,9 @@ export const datasetQueryKeys = {
 };
 
 /** Hook to list datasets */
-export function useDatasetList(options?: Omit<UseQueryOptions<DatasetInfo[], Error>, "queryKey" | "queryFn">) {
+export function useDatasetList(
+  options?: Omit<UseQueryOptions<DatasetInfo[]>, "queryKey" | "queryFn">
+) {
   return useQuery({
     queryKey: datasetQueryKeys.list(),
     queryFn: () => DatasetService.listDatasets(),
@@ -47,7 +51,10 @@ export function useDatasetList(options?: Omit<UseQueryOptions<DatasetInfo[], Err
 }
 
 /** Hook to get a single dataset */
-export function useDataset(datasetId: string, options?: Omit<UseQueryOptions<DatasetInfo, Error>, "queryKey" | "queryFn">) {
+export function useDataset(
+  datasetId: string,
+  options?: Omit<UseQueryOptions<DatasetInfo>, "queryKey" | "queryFn">
+) {
   return useQuery({
     queryKey: datasetQueryKeys.detail(datasetId),
     queryFn: () => DatasetService.getDataset(datasetId),
@@ -57,13 +64,16 @@ export function useDataset(datasetId: string, options?: Omit<UseQueryOptions<Dat
 }
 
 /** Hook to create a dataset */
-export function useCreateDataset(options?: { onSuccess?: (data: DatasetInfo) => void; onError?: (error: Error) => void }) {
+export function useCreateDataset(options?: {
+  onSuccess?: (data: DatasetInfo) => void;
+  onError?: (error: Error) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: DatasetCreate) => DatasetService.createDataset(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -73,15 +83,20 @@ export function useCreateDataset(options?: { onSuccess?: (data: DatasetInfo) => 
 /** Hook to update a dataset */
 export function useUpdateDataset(
   datasetId: string,
-  options?: { onSuccess?: (data: DatasetInfo) => void; onError?: (error: Error) => void }
+  options?: {
+    onSuccess?: (data: DatasetInfo) => void;
+    onError?: (error: Error) => void;
+  }
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: DatasetUpdate) => DatasetService.updateDataset(datasetId, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: datasetQueryKeys.detail(datasetId),
+      });
+      void queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -89,7 +104,10 @@ export function useUpdateDataset(
 }
 
 /** Hook to delete a dataset */
-export function useDeleteDataset(options?: { onSuccess?: () => void; onError?: (error: Error) => void }) {
+export function useDeleteDataset(options?: {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+}) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -98,7 +116,9 @@ export function useDeleteDataset(options?: { onSuccess?: () => void; onError?: (
       return datasetId;
     },
     onSuccess: (datasetId) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.removeQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
       options?.onSuccess?.();
     },
@@ -110,7 +130,7 @@ export function useDeleteDataset(options?: { onSuccess?: () => void; onError?: (
 export function useCaseList(
   datasetId: string,
   params?: { limit?: number; offset?: number; search?: string; tag?: string },
-  options?: Omit<UseQueryOptions<PaginatedCases, Error>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<PaginatedCases>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: datasetQueryKeys.caseList(datasetId, params),
@@ -124,7 +144,7 @@ export function useCaseList(
 export function useCase(
   datasetId: string,
   caseId: string,
-  options?: Omit<UseQueryOptions<BenchmarkCase, Error>, "queryKey" | "queryFn">
+  options?: Omit<UseQueryOptions<BenchmarkCase>, "queryKey" | "queryFn">
 ) {
   return useQuery({
     queryKey: datasetQueryKeys.case(datasetId, caseId),
@@ -137,15 +157,22 @@ export function useCase(
 /** Hook to create a case */
 export function useCreateCase(
   datasetId: string,
-  options?: { onSuccess?: (data: BenchmarkCase) => void; onError?: (error: Error) => void }
+  options?: {
+    onSuccess?: (data: BenchmarkCase) => void;
+    onError?: (error: Error) => void;
+  }
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (data: CaseCreate) => DatasetService.createCase(datasetId, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.cases(datasetId) });
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
+      void queryClient.invalidateQueries({
+        queryKey: datasetQueryKeys.cases(datasetId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: datasetQueryKeys.detail(datasetId),
+      });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -156,15 +183,23 @@ export function useCreateCase(
 export function useUpdateCase(
   datasetId: string,
   caseId: string,
-  options?: { onSuccess?: (data: BenchmarkCase) => void; onError?: (error: Error) => void }
+  options?: {
+    onSuccess?: (data: BenchmarkCase) => void;
+    onError?: (error: Error) => void;
+  }
 ) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CaseUpdate) => DatasetService.updateCase(datasetId, caseId, data),
+    mutationFn: (data: CaseUpdate) =>
+      DatasetService.updateCase(datasetId, caseId, data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.case(datasetId, caseId) });
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.cases(datasetId) });
+      void queryClient.invalidateQueries({
+        queryKey: datasetQueryKeys.case(datasetId, caseId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: datasetQueryKeys.cases(datasetId),
+      });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
@@ -185,8 +220,11 @@ export function useDeleteCase(
       return caseId;
     },
     onSuccess: () => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.removeQueries({ queryKey: datasetQueryKeys.case(datasetId, caseId) });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: datasetQueryKeys.cases(datasetId) });
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       queryClient.invalidateQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
       options?.onSuccess?.();
     },
@@ -195,7 +233,9 @@ export function useDeleteCase(
 }
 
 /** Hook to validate a dataset */
-export function useValidateDataset(options?: { onSuccess?: (data: DatasetValidationResult) => void }) {
+export function useValidateDataset(options?: {
+  onSuccess?: (data: DatasetValidationResult) => void;
+}) {
   return useMutation({
     mutationFn: async (datasetId: string) => {
       return await DatasetService.validateDataset(datasetId);
@@ -209,7 +249,13 @@ export function useValidateDataset(options?: { onSuccess?: (data: DatasetValidat
 /** Hook to export a dataset */
 export function useExportDataset() {
   return useMutation({
-    mutationFn: async ({ datasetId, format }: { datasetId: string; format: "json" | "jsonl" | "yaml" }) => {
+    mutationFn: async ({
+      datasetId,
+      format,
+    }: {
+      datasetId: string;
+      format: "json" | "jsonl" | "yaml";
+    }) => {
       return await DatasetService.exportDataset(datasetId, format);
     },
   });

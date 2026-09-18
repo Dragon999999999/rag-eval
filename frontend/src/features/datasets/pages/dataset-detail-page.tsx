@@ -19,7 +19,12 @@ import {
 import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { useDataset, useCaseList, useDeleteDataset, useValidateDataset } from "../use-datasets";
+import {
+  useDataset,
+  useCaseList,
+  useDeleteDataset,
+  useValidateDataset,
+} from "../use-datasets";
 import type { Answerability } from "../dataset-types";
 import {
   formatCaseCount,
@@ -30,13 +35,23 @@ import {
 } from "../dataset-formatters";
 import { toast } from "@/lib/toast";
 import { Database, Trash2 } from "lucide-react";
-import { Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogPortal,
+  DialogOverlay,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export function DatasetDetailPage() {
   const { datasetId } = useParams<{ datasetId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  
+
   const search = searchParams.get("search") ?? "";
   const page = parseInt(searchParams.get("page") ?? "1", 10) || 1;
   const limit = 20;
@@ -47,10 +62,7 @@ export function DatasetDetailPage() {
     error: datasetError,
   } = useDataset(datasetId ?? "");
 
-  const {
-    data: caseData,
-    isLoading: isLoadingCases,
-  } = useCaseList(datasetId ?? "", {
+  const { data: caseData, isLoading: isLoadingCases } = useCaseList(datasetId ?? "", {
     limit,
     offset: (page - 1) * limit,
     search: search || undefined,
@@ -68,7 +80,9 @@ export function DatasetDetailPage() {
 
   const validateDataset = useValidateDataset({
     onSuccess: (result) => {
-      toast.success(`Validation complete: ${result.valid_cases}/${result.total_cases} cases valid`);
+      toast.success(
+        `Validation complete: ${String(result.valid_cases)}/${String(result.total_cases)} cases valid`
+      );
     },
   });
 
@@ -129,18 +143,24 @@ export function DatasetDetailPage() {
     );
   }
 
+  const handleValidate = () => {
+    if (datasetId) {
+      validateDataset.mutate(datasetId);
+    }
+  };
+
   return (
     <Page>
       <Page.Header
         title={dataset.name}
-        description={`${formatCaseCount(dataset.case_count ?? 0)} · Version ${String(dataset.version)}`}
+        description={`${formatCaseCount(dataset.case_count ?? 0)} · Version ${dataset.version}`}
         breadcrumbs={[{ label: "Datasets", href: "/datasets" }]}
         actions={
           <div className="flex items-center gap-2">
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => { if (datasetId) void validateDataset.mutate(datasetId); }}
+              onClick={handleValidate}
               disabled={validateDataset.isPending}
             >
               {validateDataset.isPending ? "Validating..." : "Validate"}
@@ -170,7 +190,12 @@ export function DatasetDetailPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
-                    <Button variant="secondary" onClick={() => setShowDeleteDialog(false)}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setShowDeleteDialog(false);
+                      }}
+                    >
                       Cancel
                     </Button>
                     <Button
@@ -192,7 +217,9 @@ export function DatasetDetailPage() {
         <div className="space-y-6">
           {/* Metadata summary */}
           <Surface className="p-6">
-            <h3 className="text-base font-medium text-text-primary">Dataset Information</h3>
+            <h3 className="text-base font-medium text-text-primary">
+              Dataset Information
+            </h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <InfoRow label="Name" value={dataset.name} />
               <InfoRow label="Version" value={dataset.version} />
@@ -219,11 +246,15 @@ export function DatasetDetailPage() {
           {/* Cases table */}
           <Surface>
             <div className="flex items-center justify-between p-4">
-              <h3 className="text-base font-medium text-text-primary">Benchmark Cases</h3>
+              <h3 className="text-base font-medium text-text-primary">
+                Benchmark Cases
+              </h3>
               <div className="w-64">
                 <SearchInput
                   value={search}
-                  onChange={(e) => handleSearch(e.target.value)}
+                  onChange={(e) => {
+                    handleSearch(e.target.value);
+                  }}
                   placeholder="Search cases..."
                 />
               </div>
@@ -249,7 +280,7 @@ export function DatasetDetailPage() {
                     {caseData.cases.map((caseSummary) => (
                       <CaseRow
                         key={caseSummary.case_id}
-                        datasetId={datasetId!}
+                        datasetId={datasetId}
                         caseSummary={caseSummary}
                       />
                     ))}
@@ -257,10 +288,11 @@ export function DatasetDetailPage() {
                 </Table>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between border-t border-border p-4">
+                <div className="border-border flex items-center justify-between border-t p-4">
                   <p className="text-sm text-text-tertiary">
-                    Showing {String(caseData.offset + 1)}–{String(Math.min(caseData.offset + caseData.limit, caseData.total))} of{" "}
-                    {String(caseData.total)}
+                    Showing {String(caseData.offset + 1)}–
+                    {String(Math.min(caseData.offset + caseData.limit, caseData.total))}{" "}
+                    of {String(caseData.total)}
                   </p>
                   <div className="flex items-center gap-2">
                     <Button
@@ -302,7 +334,9 @@ export function DatasetDetailPage() {
                   action={
                     !search && (
                       <Button asChild>
-                        <Link to={`/datasets/${String(datasetId)}/cases/new`}>Add Case</Link>
+                        <Link to={`/datasets/${String(datasetId)}/cases/new`}>
+                          Add Case
+                        </Link>
                       </Button>
                     )
                   }
@@ -331,8 +365,13 @@ function InfoRow({ label, value }: InfoRowProps) {
 }
 
 interface CaseRowProps {
-  datasetId: string;
-  caseSummary: { case_id: string; query: string; answerability: Answerability | null | undefined; tags: string[] };
+  datasetId: string | undefined;
+  caseSummary: {
+    case_id: string;
+    query: string;
+    answerability: Answerability | null | undefined;
+    tags: string[];
+  };
 }
 
 function CaseRow({ datasetId, caseSummary }: CaseRowProps) {
@@ -342,12 +381,18 @@ function CaseRow({ datasetId, caseSummary }: CaseRowProps) {
         <code className="text-xs text-text-secondary">{caseSummary.case_id}</code>
       </TableCell>
       <TableCell>
-        <div className="max-w-xl truncate text-sm text-text-primary" title={caseSummary.query}>
+        <div
+          className="max-w-xl truncate text-sm text-text-primary"
+          title={caseSummary.query}
+        >
           {truncateQuery(caseSummary.query, 80)}
         </div>
       </TableCell>
       <TableCell>
-        <StatusBadge status={getAnswerabilityVariant(caseSummary.answerability)} showDot>
+        <StatusBadge
+          status={getAnswerabilityVariant(caseSummary.answerability)}
+          showDot
+        >
           {formatAnswerability(caseSummary.answerability)}
         </StatusBadge>
       </TableCell>
@@ -367,7 +412,9 @@ function CaseRow({ datasetId, caseSummary }: CaseRowProps) {
       </TableCell>
       <TableCell className="text-right">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={`/datasets/${datasetId}/cases/${caseSummary.case_id}`}>View</Link>
+          <Link to={`/datasets/${String(datasetId)}/cases/${caseSummary.case_id}`}>
+            View
+          </Link>
         </Button>
       </TableCell>
     </TableRow>
