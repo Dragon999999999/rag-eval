@@ -1,7 +1,7 @@
 """Add Stage 15 domain resources: benchmarks, metric_configs, test_definitions.
 
 Revision ID: stage15_domain_resources
-Revises: 
+Revises: 20260914_0001
 Create Date: 2024-01-01
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'stage15_domain_resources'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = '20260914_0001'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
