@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
 
     # API configuration
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"
     api_key: str | None = None
     api_key_required: bool = False
 

@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting rag-eval API")
     settings = get_settings()
-    logger.info("Database URL: %s", settings.database_url.replace("://", "://***@"))
+    logger.info("Database URL: %s", settings.async_database_url.replace("://", "://***@"))
 
     yield
 
