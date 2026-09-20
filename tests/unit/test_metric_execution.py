@@ -1,14 +1,13 @@
 """Tests for Stage 11 metric framework - Part 2: Test functions."""
 
-import pytest
 from datetime import UTC, datetime
-from uuid import uuid4
+
+import pytest
 
 from rag_eval.metrics import (
-    MetricRegistry,
     MetricContext,
     MetricExecutionEngine,
-    ScoringConfig,
+    MetricRegistry,
     compute_aggregations,
 )
 from rag_eval.metrics.base import (
@@ -17,7 +16,7 @@ from rag_eval.metrics.base import (
     MetricScope,
     MetricStatus,
 )
-from rag_eval.models import BenchmarkCase, TargetObservation, Answer
+from rag_eval.models import Answer, BenchmarkCase, TargetObservation
 
 
 # Continue test metrics from test_metric_framework.py
@@ -243,17 +242,8 @@ class TestMetricExecution:
     @pytest.mark.asyncio
     async def test_execute_single_metric(self) -> None:
         """Execute a single metric successfully."""
-        from rag_eval.metrics.engine import MetricExecutionEngine, ScoringConfig
-
         registry = MetricRegistry()
         registry.register(AlwaysOneMetric())
-
-        # Mock repository
-        class MockRepo:
-            async def persist_metric(self, metric):
-                pass
-
-        engine = MetricExecutionEngine(registry, MockRepo())  # type: ignore[arg-type]
 
         case = BenchmarkCase(case_id="test", query="Q")
         context = MetricContext(case=case, run_id="run-1")
@@ -281,7 +271,6 @@ class TestMetricExecution:
         engine = MetricExecutionEngine(registry, MockRepo())  # type: ignore[arg-type]
 
         case = BenchmarkCase(case_id="test", query="Q")
-        context = MetricContext(case=case, run_id="run-1")
 
         # Score case - should get results from both metrics
         results = await engine.score_case(case, None, "run-1")
@@ -362,16 +351,8 @@ class TestNoTargetDependency:
     @pytest.mark.asyncio
     async def test_scoring_without_target_adapter(self) -> None:
         """Scoring should succeed without any TargetAdapter."""
-        from rag_eval.metrics.engine import MetricExecutionEngine
-
         registry = MetricRegistry()
         registry.register(AlwaysOneMetric())
-
-        class MockRepo:
-            async def persist_metric(self, metric):
-                pass
-
-        engine = MetricExecutionEngine(registry, MockRepo())  # type: ignore[arg-type]
 
         case = BenchmarkCase(case_id="test", query="Q")
         context = MetricContext(case=case, run_id="run-1")

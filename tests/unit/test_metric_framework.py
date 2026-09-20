@@ -11,17 +11,17 @@ Tests verify:
 - No TargetAdapter dependency
 """
 
-import pytest
-from uuid import uuid4
 
 from rag_eval.metrics import (
-    MetricRegistry,
     MetricContext,
-    MetricExecutionEngine,
-    ScoringConfig,
-    compute_aggregations,
 )
-from rag_eval.metrics.base import MetricRequirement, MetricScope, MetricStatus
+from rag_eval.metrics.base import (
+    MetricDefinition,
+    MetricRequirement,
+    MetricResult,
+    MetricScope,
+    MetricStatus,
+)
 
 
 # Test metrics - minimal deterministic metrics for framework testing
@@ -29,8 +29,6 @@ class AlwaysOneMetric:
     """Test metric that always returns 1.0."""
 
     def __init__(self) -> None:
-        from rag_eval.metrics.base import MetricDefinition, MetricResult
-
         self._definition = MetricDefinition(
             metric_id="test.always_one",
             version="1",
@@ -59,8 +57,6 @@ class RequiresAnswerMetric:
     """Test metric requiring target answer."""
 
     def __init__(self) -> None:
-        from rag_eval.metrics.base import MetricDefinition, MetricResult
-
         self._definition = MetricDefinition(
             metric_id="test.requires_answer",
             version="1",
@@ -98,8 +94,6 @@ class BrokenMetric:
     """Test metric that always fails."""
 
     def __init__(self) -> None:
-        from rag_eval.metrics.base import MetricDefinition, MetricResult
-
         self._definition = MetricDefinition(
             metric_id="test.broken",
             version="1",

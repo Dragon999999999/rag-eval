@@ -3,19 +3,27 @@
 import hashlib
 from collections.abc import AsyncIterator
 from pathlib import Path
+from typing import cast
 
 import pytest
 
+from rag_eval.adapters import DocumentUpload, TargetAdapter
 from rag_eval.adapters.errors import TargetAdapterError
 from rag_eval.config.models import CorpusConfig
 from rag_eval.datasets import DatasetValidationError, NativeBenchmarkDataset
+from rag_eval.db.models import CorpusRecord
+from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.models import (
+    BenchmarkCase,
     Chunk,
     CorpusMode,
+    CreateCorpusRequest,
     CreateCorpusResponse,
+    Document,
     Operation,
     OperationStatus,
     TargetCapabilities,
+    TargetInfo,
 )
 from rag_eval.services import BenchmarkRegistrationService, CorpusPreparationService
 
@@ -31,23 +39,27 @@ class RecordingRepository:
         self.documents: list[str] = []
         self.cases: list[str] = []
 
-    async def persist_target(self, target_id: str, target: object) -> None:
+    async def persist_target(self, target_id: str, target: TargetInfo) -> None:
         """Record target persistence."""
         self.targets.append(target_id)
 
-    async def persist_capabilities(self, target_id: str, capabilities: object) -> None:
+    async def persist_capabilities(
+        self, target_id: str, capabilities: TargetCapabilities
+    ) -> None:
         """Record capability persistence."""
         self.capabilities.append(target_id)
 
-    async def persist_corpus(self, record: object) -> None:
+    async def persist_corpus(self, record: CorpusRecord) -> None:
         """Record corpus lifecycle state."""
         self.corpora.append(record)
 
-    async def persist_document(self, corpus_id: str, document: object) -> None:
+    async def persist_document(self, corpus_id: str, document: Document) -> None:
         """Record document identity persistence."""
         self.documents.append(document.document_id)
 
-    async def persist_benchmark_case(self, dataset_id: str, case: object) -> None:
+    async def persist_benchmark_case(
+        self, dataset_id: str, case: BenchmarkCase
+    ) -> None:
         """Record benchmark truth persistence."""
         self.cases.append(case.case_id)
 
@@ -71,11 +83,15 @@ class IngestionTarget:
         """Return configured target capabilities."""
         return self._capabilities
 
-    async def create_corpus(self, request: object) -> CreateCorpusResponse:
+    async def create_corpus(
+        self, request: CreateCorpusRequest
+    ) -> CreateCorpusResponse:
         """Return a new corpus identity."""
         return CreateCorpusResponse(corpus_id="target-corpus", status="EMPTY")
 
-    async def upload_document(self, corpus_id: str, document: object) -> Operation:
+    async def upload_document(
+        self, corpus_id: str, document: DocumentUpload
+    ) -> Operation:
         """Record an uploaded document and return an asynchronous operation."""
         self.uploaded_documents.append(document.document.document_id)
         return Operation(
@@ -140,6 +156,16 @@ def _write_dataset(
     return NativeBenchmarkDataset(manifest)
 
 
+def _corpus_service(
+    target: IngestionTarget, repository: RecordingRepository
+) -> CorpusPreparationService:
+    """Adapt the focused fakes to the production service boundary."""
+    return CorpusPreparationService(
+        cast(TargetAdapter, target),
+        cast(PersistenceRepository, repository),
+    )
+
+
 def test_native_dataset_streams_jsonl_and_validates_manifest(tmp_path: Path) -> None:
     """Native records become canonical models while JSONL cases remain iterable."""
     dataset = _write_dataset(tmp_path)
@@ -194,9 +220,11 @@ async def test_documents_chunks_external_and_case_registration(tmp_path: Path) -
     """All corpus modes persist canonical state without running target queries."""
     dataset = _write_dataset(tmp_path)
     repository = RecordingRepository()
-    registered = await BenchmarkRegistrationService(repository).register(dataset)
+    registered = await BenchmarkRegistrationService(
+        cast(PersistenceRepository, repository)
+    ).register(dataset)
     target = IngestionTarget()
-    documents = await CorpusPreparationService(target, repository).prepare(
+    documents = await _corpus_service(target, repository).prepare(
         dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS)
     )
 
@@ -206,10 +234,10 @@ async def test_documents_chunks_external_and_case_registration(tmp_path: Path) -
     assert target.uploaded_documents == ["document-1"]
 
     chunk_target = IngestionTarget()
-    chunks = await CorpusPreparationService(chunk_target, repository).prepare(
+    chunks = await _corpus_service(chunk_target, repository).prepare(
         dataset, CorpusConfig(mode=CorpusMode.CHUNKS)
     )
-    external = await CorpusPreparationService(chunk_target, repository).prepare(
+    external = await _corpus_service(chunk_target, repository).prepare(
         dataset, CorpusConfig(mode=CorpusMode.EXTERNAL, corpus_id="external-1")
     )
     assert chunks.status == "READY"
@@ -225,16 +253,18 @@ async def test_unsupported_and_asynchronous_ingestion_failures_are_normalized(
     dataset = _write_dataset(tmp_path)
     repository = RecordingRepository()
     with pytest.raises(TargetAdapterError) as unsupported:
-        await CorpusPreparationService(
-            IngestionTarget(documents=False), repository
-        ).prepare(dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS))
+        await _corpus_service(IngestionTarget(documents=False), repository).prepare(
+            dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+        )
     assert unsupported.value.to_error_record().category == "UNSUPPORTED_CAPABILITY"
 
     failed = IngestionTarget()
     failed.operation_states = [OperationStatus.PENDING, OperationStatus.FAILED]
     with pytest.raises(TargetAdapterError, match="ended as"):
         await CorpusPreparationService(
-            failed, repository, poll_interval_seconds=0
+            cast(TargetAdapter, failed),
+            cast(PersistenceRepository, repository),
+            poll_interval_seconds=0,
         ).prepare(dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS))
 
 
@@ -249,8 +279,8 @@ async def test_operation_poll_timeout_does_not_mark_ingestion_ready(
     pending.operation_states = [OperationStatus.PENDING]
     with pytest.raises(TimeoutError, match="timed out"):
         await CorpusPreparationService(
-            pending,
-            repository,
+            cast(TargetAdapter, pending),
+            cast(PersistenceRepository, repository),
             poll_interval_seconds=0,
             poll_timeout_seconds=0,
         ).prepare(dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS))

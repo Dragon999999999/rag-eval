@@ -1,19 +1,22 @@
 """Tests for the Stage 9 benchmark execution engine."""
 
 import asyncio
-from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 
 from rag_eval.artifacts import ArtifactService, create_artifact_store
-from rag_eval.config import ExperimentConfig, get_settings, load_experiment_config
-from rag_eval.db import PersistenceRepository, create_async_engine, create_session_factory
-from rag_eval.db.models import AttemptRecord, CaseExecutionRecord, RunRecord
+from rag_eval.config import get_settings, load_experiment_config
+from rag_eval.db import (
+    PersistenceRepository,
+    create_async_engine,
+    create_session_factory,
+)
+from rag_eval.db.models import RunRecord
 from rag_eval.execution import BenchmarkExecutor
-from rag_eval.models import BenchmarkManifest, TargetInfo
-from rag_eval.models.enums import AttemptStatus, CaseExecutionStatus, RunStatus
+from rag_eval.models import BenchmarkManifest
+from rag_eval.models.enums import RunStatus
 
 
 @pytest.mark.integration

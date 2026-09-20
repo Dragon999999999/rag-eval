@@ -59,6 +59,7 @@ async def test_retrieve_preserves_multiple_stages_and_optional_fields() -> None:
         RetrieveRequest(request_id="retrieve-1", query="Q")
     )
 
+    assert response.retrieval is not None
     assert [stage.stage_id for stage in response.retrieval.stages] == [
         "candidates",
         "final",

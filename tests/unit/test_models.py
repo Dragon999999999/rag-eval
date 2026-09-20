@@ -181,10 +181,9 @@ def test_query_response_round_trip_preserves_empty_and_absent_retrieval() -> Non
 
     assert QueryResponse.model_validate_json(response.model_dump_json()) == response
     assert response.retrieval is not None and len(response.retrieval.stages) == 2
-    assert (
-        QueryResponse(request_id="empty", retrieval=RetrievalResult()).retrieval.stages
-        == []
-    )
+    empty_response = QueryResponse(request_id="empty", retrieval=RetrievalResult())
+    assert empty_response.retrieval is not None
+    assert empty_response.retrieval.stages == []
     assert QueryResponse(request_id="missing").retrieval is None
 
 
