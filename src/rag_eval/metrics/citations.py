@@ -100,17 +100,15 @@ class CitationResolution:
                 details={"answer_length": len(answer_text)},
             )
 
-        # Get citations
-        observation = context.observation
-        if observation is None or observation.answer is None:
+        # Get normalized citations from metric context
+        citations = context.get_citations()
+        if citations is None:
             return CitationResolutionResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
                 reason="Cannot access answer citations",
                 case_id=context.case.case_id,
                 run_id=context.run_id,
             )
-
-        citations = observation.answer.citations
 
         # Handle empty answer
         if len(answer_text) == 0:
@@ -218,17 +216,8 @@ class BrokenCitations:
                 run_id=context.run_id,
             )
 
-        # Get citations
-        observation = context.observation
-        if observation is None or observation.answer is None:
-            return BrokenCitationsResult(
-                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
-                reason="Cannot access answer citations",
-                case_id=context.case.case_id,
-                run_id=context.run_id,
-            )
-
-        citations = observation.answer.citations
+        # Get normalized citations
+        citations = context.get_citations()
 
         if not citations:
             return BrokenCitationsResult(
@@ -275,35 +264,38 @@ class BrokenCitations:
             cited_end = citation.get("end_char")
 
             is_broken = False
-            break_reason = None
+            break_reason: str | None = None
 
-            # Check document exists
-            if cited_doc_id not in doc_ids:
+            if not isinstance(cited_doc_id, str):
+                is_broken = True
+                break_reason = "Citation has no valid document_id"
+
+            elif cited_doc_id not in doc_ids:
                 is_broken = True
                 break_reason = f"Document {cited_doc_id} not in retrieval"
+
             else:
-                # Check page if specified
-                if cited_page is not None:
+                if isinstance(cited_page, int):
                     doc_page_set = doc_pages.get(cited_doc_id, set())
+
                     if cited_page not in doc_page_set:
                         is_broken = True
                         break_reason = (
                             f"Page {cited_page} not in document {cited_doc_id}"
                         )
 
-                # Check span if specified
-                if cited_start is not None and cited_end is not None:
+                if isinstance(cited_start, int) and isinstance(cited_end, int):
                     doc_span_list = doc_spans.get(cited_doc_id, [])
-                    # Check if citation span overlaps with any retrieved span
-                    span_valid = False
-                    for start, end in doc_span_list:
-                        if spans_overlap(cited_start, cited_end, start, end):
-                            span_valid = True
-                            break
 
-                    if not span_valid:
+                    if not any(
+                        spans_overlap(cited_start, cited_end, start, end)
+                        for start, end in doc_span_list
+                    ):
                         is_broken = True
-                        break_reason = f"Span [{cited_start}, {cited_end}) not in document {cited_doc_id}"
+                        break_reason = (
+                            f"Span [{cited_start}, {cited_end}) "
+                            f"not in document {cited_doc_id}"
+                        )
 
             if is_broken:
                 broken_count += 1
@@ -388,17 +380,15 @@ class AttributionRate:
                 details={"answer_tokens": len(answer_text.split())},
             )
 
-        # Get citations
-        observation = context.observation
-        if observation is None or observation.answer is None:
+        # Get normalized citations from metric context
+        citations = context.get_citations()
+        if citations is None:
             return AttributionRateResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
                 reason="Cannot access answer citations",
                 case_id=context.case.case_id,
                 run_id=context.run_id,
             )
-
-        citations = observation.answer.citations
 
         # Tokenize answer
         answer_tokens = answer_text.split()

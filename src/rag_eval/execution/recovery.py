@@ -236,6 +236,13 @@ class CaseRecoveryService:
                 ArtifactRef(artifact_id=artifact_id, uri="")
             )
 
+            if not isinstance(raw_data, dict):
+                logger.warning(
+                    "Raw response artifact %s is not a JSON object",
+                    artifact_id,
+                )
+                return None
+
             # Validate as QueryResponse or RetrieveResponse
             if "answer" in raw_data:
                 response = QueryResponse.model_validate(raw_data)

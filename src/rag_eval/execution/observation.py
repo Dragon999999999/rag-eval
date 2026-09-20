@@ -23,6 +23,7 @@ from rag_eval.models import (
     Usage,
 )
 from rag_eval.models.common import ArtifactRef
+from rag_eval.models.retrieval import RetrievalResult
 from rag_eval.models.target import Configuration
 
 from .timing import ClientTiming
@@ -109,13 +110,9 @@ class ObservationNormalizer:
 
     def _extract_retrieval(
         self, response: QueryResponse | RetrieveResponse
-    ) -> object | None:
+    ) -> RetrievalResult | None:
         """Extract retrieval stages from response."""
-        if isinstance(response, RetrieveResponse):
-            return response.retrieval
-        if isinstance(response, QueryResponse):
-            return response.retrieval
-        return None
+        return response.retrieval
 
     def _extract_confidence(self, response: QueryResponse | RetrieveResponse) -> list:
         """Extract confidence signals from response."""

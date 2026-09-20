@@ -10,9 +10,23 @@ from rag_eval.db import create_async_engine, create_session_factory
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.metrics import get_stage12_catalog
 from rag_eval.metrics.service import ScoringService
-from rag_eval.reporting import ReportGenerator, RunComparator, ExportService
+from rag_eval.reporting import ExportService, ReportGenerator, RunComparator
 
 app = typer.Typer(help="Score runs and generate reports.")
+
+target_app = typer.Typer(help="Manage evaluation targets.")
+benchmark_app = typer.Typer(help="Manage evaluation benchmarks.")
+metrics_app = typer.Typer(help="Manage metrics and metric configurations.")
+test_app = typer.Typer(help="Manage test definitions.")
+run_app = typer.Typer(help="Manage evaluation runs.")
+report_app = typer.Typer(help="Generate reports and exports.")
+
+app.add_typer(target_app, name="target")
+app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(metrics_app, name="metrics")
+app.add_typer(test_app, name="test")
+app.add_typer(run_app, name="run")
+app.add_typer(report_app, name="report")
 
 
 @app.command()
@@ -110,7 +124,7 @@ def export(
 
 async def _score_run(run_id: str):
     """Score a run."""
-    from rag_eval import get_settings
+    from rag_eval.config import get_settings
 
     engine = create_async_engine(get_settings())
     try:
@@ -132,7 +146,7 @@ async def _score_run(run_id: str):
 
 async def _generate_report(run_id: str) -> str:
     """Generate report text."""
-    from rag_eval import get_settings
+    from rag_eval.config import get_settings
 
     engine = create_async_engine(get_settings())
     try:
@@ -150,7 +164,7 @@ async def _generate_report(run_id: str) -> str:
 
 async def _compare_runs(run_a: str, run_b: str) -> str:
     """Compare two runs."""
-    from rag_eval import get_settings
+    from rag_eval.config import get_settings
 
     engine = create_async_engine(get_settings())
     try:
@@ -168,7 +182,7 @@ async def _compare_runs(run_a: str, run_b: str) -> str:
 
 async def _export_run(run_id: str, output_dir: Path):
     """Export run to Parquet."""
-    from rag_eval import get_settings
+    from rag_eval.config import get_settings
 
     engine = create_async_engine(get_settings())
     try:

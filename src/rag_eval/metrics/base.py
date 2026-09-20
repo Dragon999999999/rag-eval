@@ -9,6 +9,7 @@ from enum import Enum, auto
 from typing import Protocol, runtime_checkable
 
 from rag_eval.models.enums import MetricStatus
+from rag_eval.metrics.context import MetricContext
 
 
 class MetricScope(Enum):
@@ -88,7 +89,7 @@ class Metric(Protocol):
         """Return static metric definition including identity and requirements."""
         ...
 
-    async def compute(self, context: "MetricContext") -> "MetricResult":
+    async def compute(self, context: MetricContext) -> "MetricResult":
         """Compute metric value from persisted data.
 
         Args:

@@ -17,8 +17,8 @@ All exports are from persisted data only.
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -26,13 +26,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
 
-from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.models import (
+    AggregateMetricResultRecord,
     BenchmarkCaseRecord,
     CaseExecutionRecord,
-    MetricResultRecord,
     ErrorRecordDB,
 )
+from rag_eval.db.repositories import PersistenceRepository
 
 
 @dataclass
@@ -203,7 +203,10 @@ class ExportService:
                         self._redact_dict(item)
 
     def _create_summary(
-        self, run: Any, case_executions: list[Any], aggregates: list[Any]
+        self,
+        run: Any,
+        case_executions: Sequence[CaseExecutionRecord],
+        aggregates: Sequence[AggregateMetricResultRecord],
     ) -> dict[str, Any]:
         """Create machine-readable summary."""
         total = len(case_executions)
@@ -217,8 +220,10 @@ class ExportService:
             key = f"{agg.metric_id}.{agg.aggregation}"
             metrics_summary[key] = {
                 "value": agg.value,
-                "available_count": agg.available_count,
-                "sample_count": agg.sample_count,
+                "available_count": agg.details.get(
+                    "available_count", agg.details.get("computed_count")
+                ),
+                "sample_count": agg.details.get("sample_count"),
             }
 
         return {
@@ -236,11 +241,10 @@ class ExportService:
         }
 
     async def _export_cases(
-        self, run_id: str, case_executions: list[Any], path: Path
+        self, run_id: str, case_executions: Sequence[CaseExecutionRecord], path: Path
     ) -> None:
         """Export cases to Parquet."""
         # Load case details
-        case_ids = [c.case_id for c in case_executions]
         cases = []
 
         for case_exec in case_executions:
@@ -256,7 +260,11 @@ class ExportService:
                         "status": case_exec.status,
                         "query": case_record.query,
                         "reference_answer": case_record.reference_answer,
-                        "attempt_count": case_exec.attempt_count,
+                        "attempt_count": len(
+                            await self._repository.list_attempts(
+                                case_exec.case_execution_id
+                            )
+                        ),
                     }
                 )
 
@@ -320,12 +328,18 @@ class ExportService:
         if not error_records:
             return False
 
+        case_executions = await self._repository.list_case_executions(run_id)
+        case_ids = {case.case_execution_id: case.case_id for case in case_executions}
         rows = []
         for err in error_records:
             rows.append(
                 {
                     "run_id": run_id,
-                    "case_id": err.case_id,
+                    "case_id": (
+                        case_ids.get(err.case_execution_id)
+                        if err.case_execution_id is not None
+                        else None
+                    ),
                     "attempt_id": err.attempt_id,
                     "error_id": err.error_id,
                     "category": err.category,
@@ -334,8 +348,8 @@ class ExportService:
                     "stage": err.stage,
                     "retryable": err.retryable,
                     "http_status": err.http_status,
-                    "provider_code": err.provider_code,
-                    "timestamp": err.timestamp.isoformat() if err.timestamp else None,
+                    "provider_code": err.provider.get("code"),
+                    "timestamp": err.created_at.isoformat(),
                 }
             )
 

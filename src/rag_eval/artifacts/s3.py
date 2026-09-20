@@ -35,36 +35,62 @@ class S3ArtifactStore(ArtifactStore):
         )
 
     async def put(
-        self, content: ArtifactInput, artifact_type: ArtifactType, **kwargs: object
+        self,
+        content: ArtifactInput,
+        artifact_type: ArtifactType,
+        *,
+        content_type: str | None = None,
+        metadata: dict[str, object] | None = None,
+        expected_sha256: str | None = None,
     ) -> ArtifactRef:
-        """Upload bytes after calculating and checking their content hash."""
-        return await asyncio.to_thread(self._put_sync, content, artifact_type, **kwargs)
+        return await asyncio.to_thread(
+            self._put_sync,
+            content,
+            artifact_type,
+            content_type=content_type,
+            metadata=metadata,
+            expected_sha256=expected_sha256,
+        )
 
     def _put_sync(
-        self, content: ArtifactInput, artifact_type: ArtifactType, **kwargs: object
+        self,
+        content: ArtifactInput,
+        artifact_type: ArtifactType,
+        *,
+        content_type: str | None = None,
+        metadata: dict[str, object] | None = None,
+        expected_sha256: str | None = None,
     ) -> ArtifactRef:
         """Materialize one upload stream while preserving its exact checksum."""
+
         data = b"".join(_chunks(content))
         sha256 = hashlib.sha256(data).hexdigest()
-        expected = kwargs.get("expected_sha256")
-        if expected is not None and sha256 != expected:
-            raise ValueError("artifact SHA-256 does not match expected_sha256")
+
+        if expected_sha256 is not None and sha256 != expected_sha256:
+            raise ValueError(
+                "artifact SHA-256 does not match expected_sha256"
+            )
+
         key = f"artifacts/{sha256[:2]}/{sha256}"
-        extra: dict[str, object] = {}
-        if isinstance(kwargs.get("content_type"), str):
-            extra["ContentType"] = kwargs["content_type"]
+
+        extra: dict[str, str] = {}
+        if content_type is not None:
+            extra["ContentType"] = content_type
+
         self._client.upload_fileobj(
-            io.BytesIO(data), self._bucket, key, ExtraArgs=extra
+            io.BytesIO(data),
+            self._bucket,
+            key,
+            ExtraArgs=extra,
         )
+
         return ArtifactRef(
             artifact_id=f"{artifact_type.value.lower()}-{sha256}",
             uri=f"s3://{self._bucket}/{key}",
             sha256=sha256,
             size_bytes=len(data),
-            content_type=kwargs.get("content_type")
-            if isinstance(kwargs.get("content_type"), str)
-            else None,
-            metadata=dict(kwargs.get("metadata") or {}),
+            content_type=content_type,
+            metadata=dict(metadata or {}),
         )
 
     async def get(self, artifact: ArtifactRef) -> bytes:

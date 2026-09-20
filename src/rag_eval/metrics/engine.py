@@ -12,7 +12,7 @@ Critical invariant: Never calls TargetAdapter.
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from rag_eval.db.repositories import PersistenceRepository
@@ -40,10 +40,10 @@ class ScoringConfig:
     mode: str = "all_available"  # "all_available" or "explicit"
 
     # Explicitly selected metric IDs (used when mode="explicit")
-    selected_metrics: list[str] = ()
+    selected_metrics: list[str] = field(default_factory=list)
 
     # Metric version overrides: {metric_id: version}
-    metric_versions: dict[str, str] = ()
+    metric_versions: dict[str, str] = field(default_factory=dict)
 
     # Whether to persist UNAVAILABLE results or skip them
     persist_unavailable: bool = True

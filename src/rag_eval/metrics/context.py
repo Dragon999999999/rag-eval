@@ -118,11 +118,12 @@ class MetricContext:
         Returns:
             Read-only view of stage if available, None otherwise.
         """
-        if not self.has_retrieval():
+        observation = self.observation
+        if observation is None or observation.retrieval is None:
             return None
 
-        retrieval = self.observation.retrieval
-        if not retrieval or not retrieval.stages:
+        retrieval = observation.retrieval
+        if not retrieval.stages:
             return None
 
         for stage in retrieval.stages:
@@ -153,15 +154,33 @@ class MetricContext:
         """Get the RERANK stage if available."""
         return self.get_retrieval_stage(RetrievalStageType.RERANK)
 
+    def get_citations(self) -> list[dict[str, Any]] | None:
+        """Get target citations as normalized metric-friendly dictionaries.
+
+        Returns:
+            None if no answer exists.
+            An empty list if an answer exists but contains no citations.
+            Otherwise, normalized citation dictionaries.
+        """
+        if self.observation is None or self.observation.answer is None:
+            return None
+
+        return [
+            citation.model_dump(mode="json")
+            for citation in self.observation.answer.citations
+        ]
+
     def get_answer_text(self) -> str | None:
         """Get target answer text if available.
 
         Returns None if no answer exists.
         May return empty string if answer exists but is empty.
         """
-        if not self.has_answer():
+        observation = self.observation
+        if observation is None or observation.answer is None:
             return None
-        return self.observation.answer.text if self.observation.answer else None
+
+        return observation.answer.text
 
     def get_reference_answer(self) -> str | None:
         """Get benchmark reference answer if available.

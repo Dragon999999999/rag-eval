@@ -7,12 +7,12 @@ It deliberately performs no retry, polling, persistence, or metric work.
 
 import json
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import IO, Any, TypeAlias, TypeVar
 from urllib.parse import quote
 
 import httpx
@@ -57,6 +57,17 @@ _STATUS_CATEGORIES = {
     503: ErrorCategory.CONNECTION,
     504: ErrorCategory.TIMEOUT,
 }
+
+FileContent: TypeAlias = IO[bytes] | bytes | str
+
+MultipartFile: TypeAlias = (
+    FileContent
+    | tuple[str | None, FileContent]
+    | tuple[str | None, FileContent, str | None]
+    | tuple[str | None, FileContent, str | None, Mapping[str, str]]
+)
+
+RequestFiles: TypeAlias = Mapping[str, MultipartFile]
 
 
 @dataclass(frozen=True, slots=True)
@@ -374,20 +385,21 @@ class HttpTargetAdapter:
         self,
         path: str,
         filename: str,
-        content: object,
+        content: FileContent,
         mime_type: str,
         metadata: dict[str, Any],
         request_id: str,
     ) -> Operation:
         """Send one protocol multipart document upload and normalize its operation."""
+        files: RequestFiles = {
+            "file": (filename, content, mime_type),
+            "metadata": (None, json.dumps(metadata), "application/json"),
+        }
         payload = await self._json_request(
             "upload_document",
             "POST",
             path,
-            files={
-                "file": (filename, content, mime_type),
-                "metadata": (None, json.dumps(metadata), "application/json"),
-            },
+            files=files,
             request_id=request_id,
         )
         return self._normalize(payload, Operation, "upload_document")
@@ -428,7 +440,7 @@ class HttpTargetAdapter:
         path: str,
         *,
         json_body: dict[str, Any] | None = None,
-        files: dict[str, object] | None = None,
+        files: RequestFiles | None = None,
         request_id: str | None = None,
     ) -> dict[str, Any]:
         """Perform one HTTP operation and retain raw response transport metadata."""

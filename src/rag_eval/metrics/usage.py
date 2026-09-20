@@ -12,7 +12,7 @@ Metrics:
 """
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TypedDict
 
 from rag_eval.metrics.base import (
     MetricDefinition,
@@ -25,32 +25,31 @@ from rag_eval.metrics.context import MetricContext
 from rag_eval.metrics.helpers import format_currency, safe_divide
 
 
-def _extract_usage_values(usage: dict[str, Any]) -> dict[str, int | float]:
-    """Extract numeric values from usage data.
+class UsageValues(TypedDict):
+    input_tokens: int | float
+    output_tokens: int | float
+    total_tokens: int | float
+    cost: int | float
+    currency: str
 
-    Handles common naming conventions:
-    - tokens.input / tokens.output / tokens.total
-    - prompt_tokens / completion_tokens
-    - input_tokens / output_tokens
-    - total_tokens
-    - cost.total
 
-    Args:
-        usage: Usage dictionary.
+def _extract_usage_values(usage: dict[str, Any]) -> UsageValues:
+    """Extract numeric values from usage data."""
 
-    Returns:
-        Dictionary with normalized usage values.
-    """
-    values = {}
+    values: UsageValues = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cost": 0.0,
+        "currency": "USD",
+    }
 
-    # Handle nested tokens structure (tokens.input, tokens.output, etc.)
     tokens = usage.get("tokens", {})
     if isinstance(tokens, dict):
         values["input_tokens"] = tokens.get("input", 0)
         values["output_tokens"] = tokens.get("output", 0)
         values["total_tokens"] = tokens.get("total", 0)
     else:
-        # Fallback to flat structure
         values["input_tokens"] = (
             usage.get("input_tokens")
             or usage.get("prompt_tokens")
@@ -63,24 +62,28 @@ def _extract_usage_values(usage: dict[str, Any]) -> dict[str, int | float]:
             or usage.get("response_tokens")
             or 0
         )
+
         explicit_total = usage.get("total_tokens")
         if explicit_total is not None:
             values["total_tokens"] = explicit_total
         else:
-            values["total_tokens"] = values["input_tokens"] + values["output_tokens"]
+            values["total_tokens"] = (
+                values["input_tokens"] + values["output_tokens"]
+            )
 
-    # Handle nested cost structure (cost.total, cost.currency)
     cost_data = usage.get("cost", {})
     if isinstance(cost_data, dict):
         values["cost"] = cost_data.get("total", 0.0)
-        values["currency"] = cost_data.get("currency", "USD")
+
+        currency = cost_data.get("currency", "USD")
+        values["currency"] = currency if isinstance(currency, str) else "USD"
     else:
-        # Fallback to flat cost
         values["cost"] = usage.get("cost") or usage.get("total_cost") or 0.0
-        values["currency"] = usage.get("currency", "USD")
+
+        currency = usage.get("currency", "USD")
+        values["currency"] = currency if isinstance(currency, str) else "USD"
 
     return values
-
 
 @dataclass
 class TotalTokensResult(MetricResult):

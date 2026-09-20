@@ -16,28 +16,73 @@ class ArtifactService:
         self._repository = repository
 
     async def put(
-        self, content: ArtifactInput, artifact_type: ArtifactType, **kwargs: object
+        self,
+        content: ArtifactInput,
+        artifact_type: ArtifactType,
+        *,
+        content_type: str | None = None,
+        metadata: dict[str, object] | None = None,
+        expected_sha256: str | None = None,
     ) -> ArtifactRef:
         """Store bytes first, then persist metadata and return a canonical reference."""
-        artifact = await self._store.put(content, artifact_type, **kwargs)
-        await self._repository.persist_artifact(artifact, artifact_type.value)
+
+        artifact = await self._store.put(
+            content,
+            artifact_type,
+            content_type=content_type,
+            metadata=metadata,
+            expected_sha256=expected_sha256,
+        )
+
+        await self._repository.persist_artifact(
+            artifact,
+            artifact_type.value,
+        )
+
         return artifact
 
     async def put_text(
-        self, text: str, artifact_type: ArtifactType, **kwargs: object
+        self,
+        text: str,
+        artifact_type: ArtifactType,
+        *,
+        content_type: str | None = None,
+        metadata: dict[str, object] | None = None,
+        expected_sha256: str | None = None,
     ) -> ArtifactRef:
         """Encode UTF-8 text through the shared byte-storage primitive."""
-        return await self.put(text.encode("utf-8"), artifact_type, **kwargs)
+
+        return await self.put(
+            text.encode("utf-8"),
+            artifact_type,
+            content_type=content_type,
+            metadata=metadata,
+            expected_sha256=expected_sha256,
+        )
 
     async def put_json(
-        self, value: object, artifact_type: ArtifactType, **kwargs: object
+        self,
+        value: object,
+        artifact_type: ArtifactType,
+        *,
+        content_type: str = "application/json",
+        metadata: dict[str, object] | None = None,
+        expected_sha256: str | None = None,
     ) -> ArtifactRef:
         """Serialize deterministic JSON through the shared byte-storage primitive."""
-        kwargs.setdefault("content_type", "application/json")
+
+        data = json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
         return await self.put(
-            json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8"),
+            data,
             artifact_type,
-            **kwargs,
+            content_type=content_type,
+            metadata=metadata,
+            expected_sha256=expected_sha256,
         )
 
     async def get_json(self, artifact: ArtifactRef) -> object:

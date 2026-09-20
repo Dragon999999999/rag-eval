@@ -4,7 +4,7 @@ import hashlib
 import json
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import ValidationError
 
@@ -13,6 +13,7 @@ from rag_eval.datasets.manifest import load_manifest_file
 from rag_eval.datasets.validation import DatasetValidationError
 from rag_eval.models import BenchmarkCase, BenchmarkManifest, Chunk, Document
 
+RecordT = TypeVar("RecordT", BenchmarkCase, Document, Chunk)
 
 class NativeBenchmarkDataset(BenchmarkDataset):
     """Load the small native benchmark format while streaming JSONL records.
@@ -94,14 +95,15 @@ class NativeBenchmarkDataset(BenchmarkDataset):
     def _iter_records(
         self,
         name: str,
-        model_type: type[BenchmarkCase] | type[Document] | type[Chunk],
+        model_type: type[RecordT],
         *,
         excluded: set[str] | None = None,
-    ) -> Iterator[BenchmarkCase | Document | Chunk]:
+    ) -> Iterator[RecordT]:
         """Yield one record source as validated canonical models."""
         source = self._payload.get(name)
         if source is None:
             return
+
         records: Iterator[dict[str, Any]]
         if isinstance(source, list):
             records = iter(source)
@@ -109,12 +111,15 @@ class NativeBenchmarkDataset(BenchmarkDataset):
             records = self._records_from_path(self._resolve(source))
         else:
             raise DatasetValidationError(f"manifest {name} must be a list or file path")
+
         for index, record in enumerate(records, start=1):
             if not isinstance(record, dict):
                 raise DatasetValidationError(f"{name} record {index} must be a mapping")
+
             canonical_record = dict(record)
             for field in excluded or set():
                 canonical_record.pop(field, None)
+
             try:
                 yield model_type.model_validate(canonical_record)
             except ValidationError as exc:

@@ -22,13 +22,13 @@ class MetricComparison:
 
     # Run A values
     value_a: Any
-    available_a: int
-    total_a: int
+    available_a: int | None
+    total_a: int | None
 
     # Run B values
     value_b: Any
-    available_b: int
-    total_b: int
+    available_b: int | None
+    total_b: int | None
 
     # Delta
     absolute_delta: float | None = None
@@ -152,13 +152,15 @@ class RunComparator:
 
             if benchmark_a.get("name") != benchmark_b.get("name"):
                 warnings.append(
-                    f"Different benchmarks: {benchmark_a.get('name')} vs {benchmark_b.get('name')}"
+                    f"Different benchmarks: {benchmark_a.get('name')} "
+                    f"vs {benchmark_b.get('name')}"
                 )
                 compatible = False
 
             if benchmark_a.get("version") != benchmark_b.get("version"):
                 warnings.append(
-                    f"Different benchmark versions: {benchmark_a.get('version')} vs {benchmark_b.get('version')}"
+                    f"Different benchmark versions: {benchmark_a.get('version')} "
+                    f"vs {benchmark_b.get('version')}"
                 )
                 # Don't mark incompatible - version differences may be intentional
 
@@ -168,7 +170,8 @@ class RunComparator:
 
             if corpus_a.get("mode") != corpus_b.get("mode"):
                 warnings.append(
-                    f"Different corpus modes: {corpus_a.get('mode')} vs {corpus_b.get('mode')}"
+                    f"Different corpus modes: {corpus_a.get('mode')} "
+                    f"vs {corpus_b.get('mode')}"
                 )
 
         # Load aggregates for both runs
@@ -201,11 +204,15 @@ class RunComparator:
                 version=version,
                 aggregation=aggregation,
                 value_a=agg_a.value,
-                available_a=agg_a.available_count,
-                total_a=agg_a.sample_count,
+                available_a=agg_a.details.get(
+                    "available_count", agg_a.details.get("computed_count")
+                ),
+                total_a=agg_a.details.get("sample_count"),
                 value_b=agg_b.value,
-                available_b=agg_b.available_count,
-                total_b=agg_b.sample_count,
+                available_b=agg_b.details.get(
+                    "available_count", agg_b.details.get("computed_count")
+                ),
+                total_b=agg_b.details.get("sample_count"),
             )
 
             comparisons.append(comparison)
@@ -237,11 +244,11 @@ class RunComparator:
         version: str,
         aggregation: str,
         value_a: Any,
-        available_a: int,
-        total_a: int,
+        available_a: int | None,
+        total_a: int | None,
         value_b: Any,
-        available_b: int,
-        total_b: int,
+        available_b: int | None,
+        total_b: int | None,
     ) -> MetricComparison:
         """Compare one metric between runs."""
         direction = _METRIC_DIRECTIONS.get(metric_id, "unknown")
@@ -256,7 +263,9 @@ class RunComparator:
 
                 # Relative delta (avoid divide by zero)
                 if value_a != 0:
-                    relative_delta = (float(value_b) - float(value_a)) / abs(float(value_a)) * 100
+                    relative_delta = (
+                        (float(value_b) - float(value_a)) / abs(float(value_a)) * 100
+                    )
             except (TypeError, ValueError):
                 pass
 
@@ -280,7 +289,7 @@ class RunComparator:
             else:
                 # Unknown direction - just report delta
                 if absolute_delta != 0:
-                    assessment = "unchanged"  # Can't say improved/regressed without direction
+                    assessment = "unchanged"  # Direction is unknown.
                 else:
                     assessment = "unchanged"
 

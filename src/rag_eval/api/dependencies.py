@@ -15,7 +15,7 @@ from fastapi import Depends, HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rag_eval.db.session import create_async_session_factory
+from rag_eval.db.session import create_async_engine, create_session_factory
 from rag_eval.metrics.registry import MetricRegistry
 from rag_eval.services.metric_configs import MetricConfigService
 from rag_eval.services.test_definitions import TestDefinitionService
@@ -109,7 +109,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     from rag_eval.config import get_settings
 
     settings = get_settings()
-    session_factory = create_async_session_factory(settings)
+    engine = create_async_engine(settings)
+    session_factory = create_session_factory(engine)
 
     async with session_factory() as session:
         try:
@@ -118,9 +119,6 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
-        finally:
-            await session.close()
-
 
 # Type alias for dependency-injected session
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]

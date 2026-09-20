@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from rag_eval.adapters import TargetAdapter
 from rag_eval.artifacts import ArtifactService
 from rag_eval.config import ExperimentConfig, TargetConfig
+from rag_eval.datasets.base import BenchmarkDataset
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.session import AsyncSession
 from rag_eval.models import (
@@ -135,7 +136,7 @@ class BenchmarkExecutor:
         return QueryExecutionMode.QUERY
 
     async def execute(
-        self, run_id: str, manifest: BenchmarkManifest
+        self, run_id: str, dataset: BenchmarkDataset
     ) -> ExecutionResult:
         """Execute all benchmark cases with bounded concurrency.
 
@@ -161,7 +162,7 @@ class BenchmarkExecutor:
         tasks: list[asyncio.Task[None]] = []
 
         try:
-            async for case in self._load_cases(manifest):
+            async for case in self._load_cases(dataset):
                 task = asyncio.create_task(self._execute_case(run_id, case, semaphore))
                 tasks.append(task)
 
@@ -171,11 +172,8 @@ class BenchmarkExecutor:
 
         return await self._summarize_execution(run_id)
 
-    async def _load_cases(self, manifest: BenchmarkManifest):
-        """Load benchmark cases from the dataset."""
-        from rag_eval.datasets import NativeBenchmarkDataset
-
-        dataset = NativeBenchmarkDataset(manifest.model_dump(mode="json"))
+    async def _load_cases(self, dataset: BenchmarkDataset):
+        """Load validated benchmark cases from the dataset."""
         dataset.validate()
 
         for case in dataset.iter_cases():

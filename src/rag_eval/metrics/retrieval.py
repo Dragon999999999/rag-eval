@@ -44,29 +44,18 @@ def _is_item_relevant(
     Returns:
         True if item's document_id matches any gold document_id.
     """
-    # Handle both dict and SourceLocation
-    if hasattr(item, "source"):
-        source = item.source
-        if source is None:
-            return False
-        item_doc_id = (
-            source.document_id
-            if hasattr(source, "document_id")
-            else source.get("document_id")
-        )  # type: ignore[union-attr]
-    else:
-        source = item.get("source", {})
-        item_doc_id = source.get("document_id") if isinstance(source, dict) else None
+    source = item.get("source")
 
-    if not item_doc_id:
+    if not isinstance(source, dict):
+        return False
+
+    item_doc_id = source.get("document_id")
+    if not isinstance(item_doc_id, str) or not item_doc_id:
         return False
 
     for gold in gold_evidence:
-        gold_doc_id = (
-            gold.document_id
-            if hasattr(gold, "document_id")
-            else gold.get("document_id")
-        )  # type: ignore[union-attr]
+        gold_doc_id = gold.get("document_id")
+
         if gold_doc_id == item_doc_id:
             return True
 

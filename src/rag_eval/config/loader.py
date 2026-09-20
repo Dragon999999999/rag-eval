@@ -31,8 +31,9 @@ def load_experiment_config(path: Path) -> ExperimentConfig:
     try:
         payload = yaml.safe_load(content)
     except yaml.YAMLError as exc:
+        problem = getattr(exc, "problem", None)
         raise ConfigurationError(
-            f"invalid YAML: {exc.problem or 'unable to parse'}"
+            f"invalid YAML: {problem or 'unable to parse'}"
         ) from exc
 
     if not isinstance(payload, dict):

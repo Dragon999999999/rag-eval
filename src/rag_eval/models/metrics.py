@@ -46,13 +46,20 @@ class MetricResult(CanonicalModel):
 class AggregateMetricResult(CanonicalModel):
     """Run-level aggregation kept distinct from individual metric results."""
 
+    run_id: str
+
     metric_id: str
     metric_version: str
     aggregation: str
+
     value: float | int | bool | str | None
+    status: MetricStatus
+    reason: str | None = None
+
     sample_count: int = Field(ge=0)
     available_count: int = Field(ge=0)
     failed_count: int = Field(ge=0)
+
     distribution: JsonDict = Field(default_factory=dict)
     metadata: JsonDict = Field(default_factory=dict)
 

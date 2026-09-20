@@ -251,16 +251,26 @@ def convert_to_canonical(
     Returns:
         Canonical aggregate metric result model.
     """
+    status = (
+        MetricStatus.COMPUTED
+        if agg.computed_count > 0
+        else MetricStatus.UNAVAILABLE_MISSING_INPUT
+    )
+
     return AggregateMetricResultModel(
+        run_id=run_id,
         metric_id=agg.metric_id,
         metric_version=agg.metric_version,
         aggregation=agg.aggregation_name,
+        status=status,
         value=agg.value,
         sample_count=agg.total_count,
         available_count=agg.computed_count,
         failed_count=agg.failed_count,
         distribution={
+            "computed_count": agg.computed_count,
             "unavailable_count": agg.unavailable_count,
+            "failed_count": agg.failed_count,
         },
         metadata=agg.metadata,
     )

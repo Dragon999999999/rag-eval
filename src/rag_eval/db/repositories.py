@@ -2,7 +2,7 @@
 
 import hashlib
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from sqlalchemy import select
@@ -34,9 +34,10 @@ from rag_eval.models import (
     TargetInfo,
     TargetObservation,
 )
+from rag_eval.models.metrics import AggregateMetricResult
 
 
-def _payload_hash(payload: dict[object, object]) -> str:
+def _payload_hash(payload: Mapping[str, Any]) -> str:
     """Hash canonical JSON payload content for durable integrity checks."""
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
@@ -50,7 +51,7 @@ class PersistenceRepository:
         self._session = session
 
     async def create_run(
-        self, run: RunRecord, canonical_config: dict[object, object]
+        self, run: RunRecord, canonical_config: Mapping[str, Any]
     ) -> RunRecord:
         """Persist a run and immutable canonical configuration identity."""
         config = RunConfigRecord(
@@ -341,45 +342,47 @@ class PersistenceRepository:
         return record
 
     async def persist_aggregate(
-        self, aggregate: Any
+        self,
+        aggregate: AggregateMetricResult,
     ) -> AggregateMetricResultRecord:
-        """Persist a precomputed aggregate without running aggregation logic.
-
-        Args:
-            aggregate: AggregateMetricResultModel canonical model.
-
-        Returns:
-            Persisted database record.
-        """
-        from rag_eval.models import AggregateMetricResult as AggregateMetricResultModel
-
-        if isinstance(aggregate, AggregateMetricResultModel):
-            # Convert canonical model to database record
-            record = AggregateMetricResultRecord(
-                aggregate_metric_result_id=f"agr-{aggregate.metric_id}-{aggregate.aggregation}-{aggregate.metric_version}",
-                run_id=aggregate.run_id,
-                metric_id=aggregate.metric_id,
-                metric_version=aggregate.metric_version,
-                aggregation=aggregate.aggregation,
-                value=aggregate.value,
-                status=aggregate.status.value if hasattr(aggregate.status, "value") else str(aggregate.status),
-                reason=None,
-                details=aggregate.distribution,
-            )
-        else:
-            # Already a database record
-            record = aggregate
+        """Persist a canonical run-level aggregate metric result."""
+        record = AggregateMetricResultRecord(
+            aggregate_metric_result_id=(
+                f"agr-{aggregate.run_id}-"
+                f"{aggregate.metric_id}-"
+                f"{aggregate.aggregation}-"
+                f"{aggregate.metric_version}"
+            ),
+            run_id=aggregate.run_id,
+            metric_id=aggregate.metric_id,
+            metric_version=aggregate.metric_version,
+            aggregation=aggregate.aggregation,
+            value=aggregate.value,
+            status=aggregate.status.value,
+            reason=aggregate.reason,
+            details={
+                **aggregate.distribution,
+                "sample_count": aggregate.sample_count,
+                "available_count": aggregate.available_count,
+                "failed_count": aggregate.failed_count,
+            },
+        )
 
         self._session.add(record)
         await self._session.flush()
         return record
 
-    async def list_aggregates(self, run_id: str) -> Sequence[AggregateMetricResultRecord]:
+    async def list_aggregates(
+        self, run_id: str
+    ) -> Sequence[AggregateMetricResultRecord]:
         """List all aggregates for a run."""
         result = await self._session.scalars(
             select(AggregateMetricResultRecord)
             .where(AggregateMetricResultRecord.run_id == run_id)
-            .order_by(AggregateMetricResultRecord.metric_id, AggregateMetricResultRecord.aggregation)
+            .order_by(
+                AggregateMetricResultRecord.metric_id,
+                AggregateMetricResultRecord.aggregation,
+            )
         )
         return result.all()
 

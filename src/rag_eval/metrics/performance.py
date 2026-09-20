@@ -432,7 +432,11 @@ class TokensPerSecond:
             )
 
         observation = context.observation
-        if observation is None or observation.usage is None:
+        if (
+            observation is None
+            or observation.usage is None
+            or observation.trace is None
+        ):
             return TokensPerSecondResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
                 reason="Cannot access usage or trace",

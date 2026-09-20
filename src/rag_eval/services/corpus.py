@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from time import monotonic
 from uuid import uuid4
 
-from rag_eval.adapters import DocumentUpload, TargetAdapter
+from rag_eval.adapters import DocumentUpload, DocumentContent, TargetAdapter
 from rag_eval.adapters.errors import TargetAdapterError
 from rag_eval.artifacts import ArtifactService
 from rag_eval.config.models import CorpusConfig
@@ -188,7 +188,7 @@ class CorpusPreparationService:
 
     async def _document_content(
         self, dataset: BenchmarkDataset, document: Document
-    ) -> object:
+    ) -> DocumentContent:
         """Resolve supported local or durable-artifact document bytes for upload."""
         path = dataset.source_path(document)
         if path is not None:

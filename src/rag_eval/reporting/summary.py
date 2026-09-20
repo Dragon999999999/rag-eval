@@ -176,7 +176,7 @@ class ReportGenerator:
             return str(value)
 
 
-def _format_timestamp(dt: Any) -> str:
+def _format_timestamp(dt: Any) -> str | None:
     """Format datetime for display."""
     if dt is None:
         return None

@@ -351,15 +351,20 @@ class ResilientCaseWorker:
             idempotency_key = previous_attempt.idempotency_key
             canonical_hash = previous_attempt.canonical_request_hash
         else:
-            identity = self._identity_generator.generate(request, case_execution_id)
+            identity = self._identity_generator.generate(
+                request,
+                case_execution_id,
+            )
             request_id = identity.request_id
             idempotency_key = identity.idempotency_key
             canonical_hash = identity.canonical_request_hash
 
+        attempt_id = f"attempt-{case_execution_id}-{attempt_number}"
+
         # Persist attempt BEFORE target call
         async with self._session.begin():
             attempt = AttemptRecord(
-                attempt_id=f"attempt-{case_execution_id}-{attempt_number}",
+                attempt_id=attempt_id,
                 case_execution_id=case_execution_id,
                 attempt_number=attempt_number,
                 request_id=request_id,
@@ -369,15 +374,15 @@ class ResilientCaseWorker:
             )
             await self._repository.create_attempt(attempt)
 
-            # Update case execution
             case_execution = await self._session.get(
-                CaseExecutionRecord, case_execution_id
+                CaseExecutionRecord,
+                case_execution_id,
             )
-            if case_execution:
+            if case_execution is not None:
                 case_execution.status = CaseExecutionStatus.RUNNING.value
                 await self._session.flush()
 
-        # Execute target call (NO DB transaction)
+        # Execute target call outside a DB transaction
         timing = ClientTiming()
         timing.start()
 
@@ -389,17 +394,26 @@ class ResilientCaseWorker:
 
             timing.end()
 
-            # Persist raw response
-            raw_artifact = await self._persist_raw_response(response, request_id)
+            # Persist raw response before normalization
+            raw_artifact = await self._persist_raw_response(
+                response,
+                request_id,
+            )
 
-            # Update attempt with artifact reference
+            # Attach raw response artifact to the persisted attempt
             async with self._session.begin():
-                attempt = await self._session.get(AttemptRecord, attempt.attempt_id)
-                if attempt:
-                    attempt.raw_response_artifact_id = raw_artifact.artifact_id
+                persisted_attempt = await self._session.get(
+                    AttemptRecord,
+                    attempt_id,
+                )
+
+                if persisted_attempt is not None:
+                    persisted_attempt.raw_response_artifact_id = (
+                        raw_artifact.artifact_id
+                    )
                     await self._session.flush()
 
-            # Normalize
+            # Normalize raw target response
             observation = self._normalizer.normalize(
                 response,
                 self._case.case_id,
@@ -408,27 +422,34 @@ class ResilientCaseWorker:
                 raw_artifact,
             )
 
-            # Persist observation and mark complete
+            # Persist observation and mark execution complete
             async with self._session.begin():
                 await self._repository.persist_observation(
-                    observation, case_execution_id, attempt.attempt_id
+                    observation,
+                    case_execution_id,
+                    attempt_id,
                 )
 
                 await self._repository.update_attempt_status(
-                    attempt.attempt_id, AttemptStatus.RESPONSE_RECEIVED.value
+                    attempt_id,
+                    AttemptStatus.RESPONSE_RECEIVED.value,
                 )
 
                 case_execution = await self._session.get(
-                    CaseExecutionRecord, case_execution_id
+                    CaseExecutionRecord,
+                    case_execution_id,
                 )
-                if case_execution:
-                    case_execution.status = CaseExecutionStatus.TARGET_COMPLETE.value
+                if case_execution is not None:
+                    case_execution.status = (
+                        CaseExecutionStatus.TARGET_COMPLETE.value
+                    )
                     await self._session.flush()
 
             return observation
 
         except Exception as exc:
             timing.end()
+
             raise TargetAdapterError(
                 str(exc),
                 category=ErrorCategory.INTERNAL,

@@ -53,15 +53,19 @@ class TargetAdapter(Protocol):
 
     async def capabilities(self) -> TargetCapabilities:
         """Return the target's advertised protocol capabilities."""
+        ...
 
     async def health(self) -> HealthStatus:
         """Return operational health, separate from evaluation evidence."""
+        ...
 
     async def create_corpus(self, request: CreateCorpusRequest) -> CreateCorpusResponse:
         """Create a target-owned evaluation corpus."""
+        ...
 
     async def get_corpus(self, corpus_id: str) -> CreateCorpusResponse:
         """Return the current state of a target-owned corpus."""
+        ...
 
     async def delete_corpus(self, corpus_id: str) -> None:
         """Delete an isolated target-owned evaluation corpus."""
@@ -70,23 +74,30 @@ class TargetAdapter(Protocol):
         self, corpus_id: str, document: DocumentUpload
     ) -> Operation:
         """Upload one document and return its target-side ingestion operation."""
+        ...
 
     async def upload_chunks(
         self, corpus_id: str, chunks: AsyncIterator[Chunk]
     ) -> Operation:
         """Upload chunks without requiring all corpus chunks in memory."""
+        ...
 
     async def get_operation(self, operation_id: str) -> Operation:
         """Return the current state of a target-side asynchronous operation."""
+        ...
 
     async def retrieve(self, request: RetrieveRequest) -> RetrieveResponse:
         """Perform independent retrieval and preserve all supplied stages."""
+        ...
 
     async def query(self, request: QueryRequest) -> QueryResponse:
         """Perform a non-streaming canonical target query."""
+        ...
 
     def stream_query(self, request: QueryRequest) -> AsyncIterator[QueryEvent]:
         """Yield target-produced streaming events in their original order."""
+        ...
 
     async def recover_request(self, request_id: str) -> RequestRecoveryResult:
         """Look up a prior logical request when recovery is advertised."""
+        ...
