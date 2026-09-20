@@ -16,9 +16,9 @@ import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import BackgroundTasks, Body, FastAPI, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -266,6 +266,9 @@ def get_or_create_request(
 def create_deterministic_trace(request_id: str) -> Trace:
     """Create deterministic trace spans."""
     now = datetime.now(UTC)
+    retrieval_started = now
+    rerank_started = now + timedelta(seconds=1)
+    generation_started = now + timedelta(seconds=2)
 
     return Trace(
         trace_id=f"trace-{request_id}",
@@ -274,17 +277,8 @@ def create_deterministic_trace(request_id: str) -> Trace:
                 span_id=f"span-retrieve-{request_id}",
                 parent_span_id=None,
                 name="retrieval",
-                started_at=now,
-                ended_at=datetime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    now.hour,
-                    now.minute,
-                    now.second + 1,
-                    now.microsecond,
-                    tzinfo=UTC,
-                ),
+                started_at=retrieval_started,
+                ended_at=rerank_started,
                 duration_ms=50.0,
                 attributes={"stage": "candidate_retrieval"},
             ),
@@ -292,26 +286,8 @@ def create_deterministic_trace(request_id: str) -> Trace:
                 span_id=f"span-rerank-{request_id}",
                 parent_span_id=f"span-retrieve-{request_id}",
                 name="reranking",
-                started_at=datetime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    now.hour,
-                    now.minute,
-                    now.second + 1,
-                    now.microsecond,
-                    tzinfo=UTC,
-                ),
-                ended_at=datetime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    now.hour,
-                    now.minute,
-                    now.second + 2,
-                    now.microsecond,
-                    tzinfo=UTC,
-                ),
+                started_at=rerank_started,
+                ended_at=generation_started,
                 duration_ms=30.0,
                 attributes={"stage": "rerank"},
             ),
@@ -319,26 +295,8 @@ def create_deterministic_trace(request_id: str) -> Trace:
                 span_id=f"span-generate-{request_id}",
                 parent_span_id=f"span-retrieve-{request_id}",
                 name="generation",
-                started_at=datetime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    now.hour,
-                    now.minute,
-                    now.second + 2,
-                    now.microsecond,
-                    tzinfo=UTC,
-                ),
-                ended_at=datetime(
-                    now.year,
-                    now.month,
-                    now.day,
-                    now.hour,
-                    now.minute,
-                    now.second + 3,
-                    now.microsecond,
-                    tzinfo=UTC,
-                ),
+                started_at=generation_started,
+                ended_at=generation_started + timedelta(seconds=1),
                 duration_ms=100.0,
                 attributes={"stage": "generation"},
             ),
@@ -664,7 +622,7 @@ async def query(
     state.query_count += 1
 
     # Handle idempotency
-    # Exclude request_id from hash - idempotency is about the query content, not the request identifier
+    # Idempotency is based on query content, not the request identifier.
     request_data = request.model_dump(mode="json")
     request_data.pop("request_id", None)
     request_hash = compute_request_hash(request_data)
@@ -799,7 +757,9 @@ async def stream_query(request: QueryRequest) -> StreamingResponse:
 
 
 @app.post("/test/configure-failure")
-async def configure_failure(scenario: FailureScenario = Body(...)) -> dict[str, str]:
+async def configure_failure(
+    scenario: Annotated[FailureScenario, Body(...)],
+) -> dict[str, str]:
     """Configure failure injection scenario."""
     state.failure_scenario = scenario
     state.failure_counts.clear()

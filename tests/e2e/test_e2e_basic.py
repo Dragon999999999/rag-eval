@@ -12,7 +12,8 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
+
+from tests.e2e.client import SyncASGIClient
 
 # ============================================================================
 # Fixtures
@@ -45,7 +46,7 @@ def benchmark_cases_path() -> Path:
 class TestMockTargetProtocol:
     """Test mock target implements Target Protocol v1 correctly."""
 
-    def test_health_endpoint(self, mock_target_client: TestClient) -> None:
+    def test_health_endpoint(self, mock_target_client: SyncASGIClient) -> None:
         """Health check should return READY status."""
         response = mock_target_client.get("/eval/v1/health")
         assert response.status_code == 200
@@ -53,7 +54,7 @@ class TestMockTargetProtocol:
         assert data["status"] == "READY"
         assert "target" in data
 
-    def test_capabilities_endpoint(self, mock_target_client: TestClient) -> None:
+    def test_capabilities_endpoint(self, mock_target_client: SyncASGIClient) -> None:
         """Capabilities should advertise all required features."""
         response = mock_target_client.get("/eval/v1/capabilities")
         assert response.status_code == 200
@@ -67,7 +68,7 @@ class TestMockTargetProtocol:
         assert data["idempotency"] is True
         assert data["request_recovery"] is True
 
-    def test_create_corpus(self, mock_target_client: TestClient) -> None:
+    def test_create_corpus(self, mock_target_client: SyncASGIClient) -> None:
         """Corpus creation should return valid response."""
         response = mock_target_client.post(
             "/eval/v1/corpora",
@@ -82,7 +83,7 @@ class TestMockTargetProtocol:
         assert "corpus_id" in data
         assert data["status"] == "EMPTY"
 
-    def test_upload_document(self, mock_target_client: TestClient) -> None:
+    def test_upload_document(self, mock_target_client: SyncASGIClient) -> None:
         """Document upload should create operation."""
         # Create corpus first
         corpus_response = mock_target_client.post(
@@ -104,7 +105,7 @@ class TestMockTargetProtocol:
         assert data["kind"] == "DOCUMENT_INGESTION"
         assert "operation_id" in data
 
-    def test_retrieve_endpoint(self, mock_target_client: TestClient) -> None:
+    def test_retrieve_endpoint(self, mock_target_client: SyncASGIClient) -> None:
         """Retrieve should return multiple stages."""
         response = mock_target_client.post(
             "/eval/v1/retrieve",
@@ -121,7 +122,7 @@ class TestMockTargetProtocol:
         assert "stages" in data["retrieval"]
         assert len(data["retrieval"]["stages"]) >= 1
 
-    def test_query_endpoint(self, mock_target_client: TestClient) -> None:
+    def test_query_endpoint(self, mock_target_client: SyncASGIClient) -> None:
         """Query should return complete response with all fields."""
         response = mock_target_client.post(
             "/eval/v1/query",
@@ -142,7 +143,7 @@ class TestMockTargetProtocol:
         assert "usage" in data
         assert "trace" in data
 
-    def test_idempotent_query(self, mock_target_client: TestClient) -> None:
+    def test_idempotent_query(self, mock_target_client: SyncASGIClient) -> None:
         """Same idempotency key should return cached result."""
         idempotency_key = f"idem-{uuid4()}"
         request_id = f"req-{uuid4()}"
@@ -179,7 +180,7 @@ class TestMockTargetProtocol:
         state_data = state_response.json()
         assert state_data["expensive_executions"] == 1
 
-    def test_idempotency_conflict(self, mock_target_client: TestClient) -> None:
+    def test_idempotency_conflict(self, mock_target_client: SyncASGIClient) -> None:
         """Different request with same idempotency key should fail."""
         idempotency_key = f"idem-conflict-{uuid4()}"
 
@@ -205,7 +206,7 @@ class TestMockTargetProtocol:
         assert response.status_code == 409
         assert "Idempotency conflict" in response.json()["detail"]
 
-    def test_request_recovery(self, mock_target_client: TestClient) -> None:
+    def test_request_recovery(self, mock_target_client: SyncASGIClient) -> None:
         """Completed requests should be recoverable."""
         request_id = f"req-{uuid4()}"
 
@@ -226,7 +227,7 @@ class TestMockTargetProtocol:
         assert "response" in data
         assert data["response"]["answer"]["text"] is not None
 
-    def test_failure_injection_429(self, mock_target_client: TestClient) -> None:
+    def test_failure_injection_429(self, mock_target_client: SyncASGIClient) -> None:
         """429 failure injection should work."""
         # Configure failure
         mock_target_client.post(
@@ -261,7 +262,7 @@ class TestHttpAdapterIntegration:
     @pytest.mark.integration
     async def test_adapter_capabilities(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Adapter should discover capabilities correctly."""
         # Start mock server
@@ -312,7 +313,7 @@ class TestEndToEndWorkflow:
 
     def test_basic_run_workflow(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
         example_config_path: Path,
     ) -> None:
         """Test complete run → score → report → export workflow."""
@@ -332,7 +333,7 @@ class TestEndToEndWorkflow:
 class TestDeterministicBehavior:
     """Test mock target returns deterministic results."""
 
-    def test_same_query_same_result(self, mock_target_client: TestClient) -> None:
+    def test_same_query_same_result(self, mock_target_client: SyncASGIClient) -> None:
         """Same query should return same result."""
         query = "What is the capital of France?"
 
@@ -352,7 +353,10 @@ class TestDeterministicBehavior:
         assert data1["answer"]["text"] == data2["answer"]["text"]
         assert data1["usage"] == data2["usage"]
 
-    def test_retrieval_stages_preserved(self, mock_target_client: TestClient) -> None:
+    def test_retrieval_stages_preserved(
+        self,
+        mock_target_client: SyncASGIClient,
+    ) -> None:
         """Retrieval should preserve multiple stages."""
         response = mock_target_client.post(
             "/eval/v1/retrieve",

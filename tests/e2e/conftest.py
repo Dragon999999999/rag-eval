@@ -1,14 +1,14 @@
 """Fixtures for Stage 14 E2E tests."""
 
 import pytest
-from fastapi.testclient import TestClient
 
+from tests.e2e.client import SyncASGIClient
 from tests.mock_target import FailureScenario, state
 from tests.mock_target.server import app
 
 
 @pytest.fixture
-def mock_target_client() -> TestClient:
+def mock_target_client() -> SyncASGIClient:
     """Create test client for mock target."""
     # Reset state before each test
     state.corpora.clear()
@@ -20,4 +20,4 @@ def mock_target_client() -> TestClient:
     state.retrieve_count = 0
     state.failure_scenario = FailureScenario.NONE
 
-    return TestClient(app)
+    return SyncASGIClient(app)

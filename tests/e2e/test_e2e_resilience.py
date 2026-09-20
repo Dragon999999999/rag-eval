@@ -10,7 +10,7 @@ Proves:
 
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
+from tests.e2e.client import SyncASGIClient
 
 # ============================================================================
 # Retry Behavior Tests
@@ -22,7 +22,7 @@ class TestRetryBehavior:
 
     def test_429_retry_once_then_success(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """429 on first attempt, success on retry."""
         # Configure 429 once
@@ -55,7 +55,7 @@ class TestRetryBehavior:
 
     def test_503_retry_twice_then_success(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """503 on first two attempts, success on third."""
         # Configure 503 twice
@@ -87,7 +87,7 @@ class TestRetryBehavior:
 
     def test_retry_exhaustion(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Repeated failures should eventually exhaust retries."""
         # Configure always fail
@@ -116,7 +116,7 @@ class TestIdempotentReplay:
 
     def test_lost_response_recovery(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Lost response should be recovered without re-execution.
 
@@ -176,7 +176,7 @@ class TestIdempotentReplay:
 
     def test_request_recovery_endpoint(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Request recovery endpoint should return stored result."""
         request_id = f"req-{uuid4()}"
@@ -211,7 +211,7 @@ class TestStreamInterruption:
 
     def test_stream_interrupt_recovery(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Stream interruption should be recoverable."""
         # Configure stream interrupt
@@ -231,7 +231,7 @@ class TestStreamInterruption:
 
         # Verify state - expensive execution should have happened
         state_response = mock_target_client.get("/test/state")
-        state_data = state_response.json()
+        assert state_response.status_code == 200
 
         # Even though stream was interrupted, execution happened
         # This tests that partial results are tracked
@@ -247,7 +247,7 @@ class TestStatePersistence:
 
     def test_attempt_history_append_only(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
         """Attempt history should be append-only, never rewritten."""
         # This test would verify DB-level attempt records
@@ -286,9 +286,9 @@ class TestConcurrentRequests:
 
     def test_concurrent_idempotent_requests(
         self,
-        mock_target_client: TestClient,
+        mock_target_client: SyncASGIClient,
     ) -> None:
-        """Concurrent requests with same idempotency key should not duplicate execution."""
+        """Concurrent requests should not duplicate idempotent execution."""
         idempotency_key = f"idem-concurrent-{uuid4()}"
 
         # Make 5 concurrent requests with same idempotency key

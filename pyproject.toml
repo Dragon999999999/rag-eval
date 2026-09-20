@@ -44,6 +44,7 @@ addopts = "-m 'not integration'"
 asyncio_mode = "auto"
 markers = [
     "integration: requires external infrastructure and is not run by default.",
+    "e2e: end-to-end tests that exercise complete application workflows.",
 ]
 
 [tool.ruff]
