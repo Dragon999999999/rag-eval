@@ -43,7 +43,8 @@ from rag_eval.models import (
     Usage,
 )
 from rag_eval.models.enums import RetrievalStageType
-from rag_eval.models.retrieval import SourceLocation
+from rag_eval.models.retrieval import RetrievalScore, SourceLocation
+from rag_eval.models.target import AnswerSpan
 
 
 # ============================================================================
@@ -99,11 +100,17 @@ def observation_with_answer():
 def observation_with_answer_and_citations():
     """Create an observation with answer and citations."""
     citation = Citation(
-        document_id="doc1",
-        page=1,
-        start_char=0,
-        end_char=50,
-        answer_span={"start_char": 0, "end_char": 5},
+        citation_id="citation-1",
+        answer_span=AnswerSpan(
+            start_char=0,
+            end_char=5,
+        ),
+        source=SourceLocation(
+            document_id="doc1",
+            page=1,
+            start_char=0,
+            end_char=50,
+        ),
     )
     
     return TargetObservation(
@@ -129,7 +136,10 @@ def observation_with_retrieval():
             start_char=0,
             end_char=100,
         ),
-        score={"value": 0.9, "type": "similarity"},
+        score=RetrievalScore(
+            value=0.9,
+            type="similarity",
+        ),
     )
     
     stage = RetrievalStage(
@@ -477,7 +487,10 @@ class TestHitAtK:
             retrieval_id="retrieval-1",
             rank=1,
             source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
-            score={"value": 0.9, "type": "similarity"},
+            score=RetrievalScore(
+            value=0.9,
+            type="similarity",
+        ),
         )
         stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item])
         retrieval = RetrievalResult(stages=[stage])
@@ -525,13 +538,19 @@ class TestMRR:
             retrieval_id="retrieval-1",
             rank=1,
             source=SourceLocation(document_id="doc1", page=1, start_char=0, end_char=100),
-            score={"value": 0.9, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.9,
+                type="similarity",
+            ),
         )
         item2 = RetrievedItem(
             retrieval_id="retrieval-2",
             rank=2,
             source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
-            score={"value": 0.8, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.8,
+                type="similarity",
+            ),
         )
         stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item1, item2])
         retrieval = RetrievalResult(stages=[stage])
@@ -563,13 +582,19 @@ class TestMRR:
             retrieval_id="retrieval-1",
             rank=1,
             source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
-            score={"value": 0.9, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.8,
+                type="similarity",
+            ),
         )
         item2 = RetrievedItem(
             retrieval_id="retrieval-2",
             rank=2,
             source=SourceLocation(document_id="doc1", page=1, start_char=0, end_char=100),
-            score={"value": 0.8, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.8,
+                type="similarity",
+            ),
         )
         stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item1, item2])
         retrieval = RetrievalResult(stages=[stage])

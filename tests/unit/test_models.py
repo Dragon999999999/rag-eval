@@ -37,6 +37,7 @@ from rag_eval.models import (
     TraceSpan,
     Usage,
 )
+from rag_eval.models.common import MessageRole
 
 NOW = datetime(2026, 9, 14, 15, 0, tzinfo=UTC)
 
@@ -79,7 +80,7 @@ def test_benchmark_case_serializes_and_preserves_gold_evidence() -> None:
     case = BenchmarkCase(
         case_id="case-1",
         query="What limitation was identified?",
-        history=[Message(role="user", content="Read the paper.")],
+        history=[Message(role=MessageRole.USER, content="Read the paper.")],
         gold_evidence=[
             EvidenceSpan(
                 evidence_id="evidence-1",

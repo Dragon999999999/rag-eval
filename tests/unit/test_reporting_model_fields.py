@@ -1,13 +1,20 @@
 """Reporting reads fields actually persisted by the SQLAlchemy models."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pyarrow.parquet as pq
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from rag_eval.db.models import AggregateMetricResultRecord, ErrorRecordDB
+from rag_eval.db.models import (
+    AggregateMetricResultRecord,
+    CaseExecutionRecord,
+    ErrorRecordDB,
+)
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.models import AggregateMetricResult, MetricStatus
 from rag_eval.reporting.compare import RunComparator
@@ -56,7 +63,9 @@ async def test_aggregate_persistence_retains_coverage_counts() -> None:
         available_count=4,
         failed_count=1,
     )
-    record = await PersistenceRepository(session).persist_aggregate(aggregate)
+    record = await PersistenceRepository(
+        cast(AsyncSession, session)
+    ).persist_aggregate(aggregate)
     assert record.details["sample_count"] == 5
     assert record.details["available_count"] == 4
     assert record.details["failed_count"] == 1
@@ -85,7 +94,9 @@ async def test_comparison_reads_coverage_from_persisted_details() -> None:
             )
             return [_aggregate(run_id, details)]
 
-    comparison = await RunComparator(Repository()).compare_runs("a", "b")
+    comparison = await RunComparator(
+        cast(PersistenceRepository, Repository())
+    ).compare_runs("a", "b")
     metric = comparison.comparisons[0]
     assert (metric.available_a, metric.total_a) == (4, 5)
     assert (metric.available_b, metric.total_b) == (3, None)
@@ -93,10 +104,18 @@ async def test_comparison_reads_coverage_from_persisted_details() -> None:
 
 def test_export_summary_accepts_repository_sequences(tmp_path: Path) -> None:
     """Summary consumes a sequence and exports persisted aggregate coverage."""
-    service = ExportService(SimpleNamespace(), tmp_path)
+    service = ExportService(
+        cast(PersistenceRepository, SimpleNamespace()),
+        tmp_path
+    )
+    case_executions = cast(
+        Sequence[CaseExecutionRecord],
+        (SimpleNamespace(status="COMPLETE"),),
+    )
+
     summary = service._create_summary(
         SimpleNamespace(run_id="run", name="run", status="COMPLETE", target_id=None),
-        (SimpleNamespace(status="COMPLETE"),),
+        case_executions,
         (_aggregate("run", {"available_count": 2, "sample_count": 3}),),
     )
     assert summary["case_counts"]["complete"] == 1
@@ -136,7 +155,10 @@ async def test_error_export_uses_created_at_and_provider_payload(
             return [SimpleNamespace(case_execution_id="execution-1", case_id="case-1")]
 
     path = tmp_path / "errors.parquet"
-    assert await ExportService(Repository(), tmp_path)._export_errors("run", path)
+    assert await ExportService(
+        cast(PersistenceRepository, Repository()),
+        tmp_path,
+    )._export_errors("run", path)
     row = pq.read_table(path).to_pylist()[0]
     assert row["case_id"] == "case-1"
     assert row["provider_code"] == "provider-rate-limit"

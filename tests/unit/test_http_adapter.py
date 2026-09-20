@@ -4,6 +4,7 @@ import json
 from collections.abc import AsyncIterator
 
 import httpx
+from pydantic import HttpUrl
 import pytest
 
 from rag_eval.adapters import (
@@ -23,6 +24,7 @@ from rag_eval.models import (
     RetrieveRequest,
     SuppliedContext,
 )
+from rag_eval.models.enums import ContextPolicy
 
 
 def _capabilities() -> dict[str, object]:
@@ -205,7 +207,7 @@ async def test_retrieve_query_context_and_recovery_preserve_canonical_models() -
         QueryRequest(
             request_id="query-1",
             query="Q",
-            context_policy="SUPPLIED_CONTEXT",
+            context_policy=ContextPolicy.SUPPLIED_CONTEXT,
             supplied_contexts=[
                 SuppliedContext(context_id="context-1", text="Evidence")
             ],
@@ -339,7 +341,7 @@ def test_http_factory_uses_bearer_token_from_config_environment(
     monkeypatch.setenv("TARGET_TOKEN", "token-value")
     config = TargetConfig(
         adapter="http",
-        base_url="https://target.test",
+        base_url=HttpUrl("https://target.test"),
         authentication_env="TARGET_TOKEN",
         corpus=CorpusConfig(mode=CorpusMode.EXTERNAL),
     )

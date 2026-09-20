@@ -121,7 +121,7 @@ async def test_full_capability_target_supports_corpus_and_streamed_ingestion() -
     """Corpus operations pass canonical identities and chunk iterators through."""
     adapter = _adapter("FullCapabilityTarget")
     corpus = await adapter.create_corpus(
-        CreateCorpusRequest(request_id="corpus-request", name="corpus", mode="CHUNKS")
+        CreateCorpusRequest(request_id="corpus-request", name="corpus", mode=CorpusMode.CHUNKS)
     )
     assert corpus.corpus_id == "corpus-1"
     assert (await adapter.get_corpus("corpus-1")).status == "READY"

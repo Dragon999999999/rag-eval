@@ -70,7 +70,10 @@ class IngestionTarget:
     def __init__(self, *, documents: bool = True, chunks: bool = True) -> None:
         """Configure supported ingestion capabilities."""
         self._capabilities = TargetCapabilities(
-            target={"name": "ingestion-target", "target_id": "target-1"},
+            target=TargetInfo(
+                target_id="target-1",
+                name="ingestion-target",
+            ),
             query=True,
             document_ingestion=documents,
             chunk_ingestion=chunks,

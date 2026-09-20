@@ -233,6 +233,7 @@ class TestAggregation:
         assert p50.value == 3.0
 
         p90 = next(a for a in aggs if a.aggregation_name == "p90")
+        assert p90.value is not None
         assert p90.value > 4.0
 
 

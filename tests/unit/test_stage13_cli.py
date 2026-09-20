@@ -1,6 +1,5 @@
 """Tests for Stage 13 CLI commands."""
 
-import pytest
 from typer.testing import CliRunner
 
 from rag_eval.cli import app
