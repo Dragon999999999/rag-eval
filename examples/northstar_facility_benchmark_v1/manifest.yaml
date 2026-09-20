@@ -1,0 +1,15 @@
+benchmark_id: northstar-facility-v1
+name: Northstar Facility Operations Benchmark
+version: "1"
+
+case_count: 0
+
+documents:
+  - document_id: northstar-operations-manual
+    filename: northstar_facility_operations_manual.txt
+    path: documents/northstar_facility_operations_manual.txt
+    sha256: REPLACE_WITH_SHA256
+
+chunks: []
+
+cases: cases.jsonl

@@ -69,14 +69,13 @@ class SuppliedContext(CanonicalModel):
 
 
 class BenchmarkManifest(CanonicalModel):
-    """Versioned metadata needed to identify and reproduce a benchmark."""
+    """Versioned metadata identifying a benchmark."""
 
     benchmark_id: str
     name: str
     version: str
     schema_version: str = "1.0"
     content_hash: str | None = None
-    case_count: int | None = Field(default=None, ge=0)
     corpus_id: str | None = None
     created_at: datetime | None = None
     source: str | None = None
@@ -101,7 +100,50 @@ class BenchmarkCase(CanonicalModel):
     metadata: JsonDict = Field(default_factory=dict)
 
 
+class Benchmark(CanonicalModel):
+    """Complete evaluator-owned benchmark."""
+
+    manifest: BenchmarkManifest
+    cases: list[BenchmarkCase] = Field(default_factory=list)
+    documents: list[Document] = Field(default_factory=list)
+    chunks: list[Chunk] = Field(default_factory=list)
+
+    @property
+    def case_count(self) -> int:
+        return len(self.cases)
+
+    @property
+    def document_count(self) -> int:
+        return len(self.documents)
+
+    @property
+    def chunk_count(self) -> int:
+        return len(self.chunks)
+
+    @property
+    def is_complete(self) -> bool:
+        """A benchmark is usable once it contains at least one case."""
+        return bool(self.cases)
+
+    @property
+    def available_corpus_modes(self) -> set[CorpusMode]:
+        """Return corpus modes supported by the benchmark's contents."""
+        if not self.cases:
+            return set()
+
+        modes = {CorpusMode.EXTERNAL}
+
+        if self.documents:
+            modes.add(CorpusMode.DOCUMENTS)
+
+        if self.chunks:
+            modes.add(CorpusMode.CHUNKS)
+
+        return modes
+
+
 __all__ = [
+    "Benchmark",
     "BenchmarkCase",
     "BenchmarkManifest",
     "Chunk",

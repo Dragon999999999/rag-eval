@@ -1,0 +1,702 @@
+NORTHSTAR FACILITY OPERATIONS MANUAL
+
+Document ID: NS-OPS-2026-01
+Revision: 1.4
+Facility: Northstar Controlled Agriculture Research Facility
+Location: Bellweather Research Campus
+Effective Date: 12 March 2026
+
+1. INTRODUCTION
+
+The Northstar Controlled Agriculture Research Facility is an experimental indoor hydroponics facility designed to study automated crop production under tightly controlled environmental conditions. The facility contains four primary cultivation zones, a nutrient preparation room, a water-treatment section, an environmental control system, and a centralized monitoring platform known as ORBIT.
+
+Northstar is used primarily for research on lettuce, basil, dwarf tomatoes, and experimental leafy crops. It is not a commercial food-production facility. Crop yield is important, but experimental repeatability, environmental stability, and complete data collection have higher priority than maximum production.
+
+This manual describes normal facility operation, environmental limits, nutrient preparation, alarm handling, equipment responsibilities, maintenance intervals, and emergency procedures.
+
+Unless a procedure explicitly states otherwise, operators must record manual interventions in ORBIT.
+
+2. FACILITY LAYOUT
+
+Northstar contains four cultivation zones:
+
+Zone A: Leafy Greens
+Zone B: Herbs
+Zone C: Fruiting Crops
+Zone D: Experimental Crops
+
+Each cultivation zone has an independent nutrient loop and independent lighting controls. Zones A and B share one air-handling unit, designated AHU-1. Zones C and D share AHU-2.
+
+The nutrient loops are designated NL-A, NL-B, NL-C, and NL-D.
+
+All four loops receive purified water from the central reverse-osmosis system. However, nutrients are mixed independently for each zone. Water from one cultivation zone must never be intentionally transferred to another zone.
+
+The nutrient preparation room contains two mixing tanks:
+
+Mixing Tank M1 has a nominal capacity of 1,000 liters.
+Mixing Tank M2 has a nominal capacity of 600 liters.
+
+M1 is normally used for Zones A, B, and C. M2 is normally reserved for Zone D and for small experimental batches.
+
+Neither mixing tank directly supplies plants. Nutrient solution is prepared in a mixing tank, verified by an operator, and then transferred into the appropriate zone reservoir.
+
+The facility's primary purified-water storage tank is designated PW-1 and has a usable capacity of 4,500 liters.
+
+3. ORBIT MONITORING SYSTEM
+
+ORBIT is the central monitoring, logging, and alarm system used throughout Northstar.
+
+ORBIT records:
+
+air temperature;
+relative humidity;
+carbon dioxide concentration;
+nutrient solution temperature;
+nutrient solution pH;
+electrical conductivity;
+reservoir level;
+pump state;
+lighting state;
+water-treatment status;
+door status for controlled rooms;
+and selected energy-consumption measurements.
+
+Most sensors report to ORBIT once every 30 seconds.
+
+Nutrient pH and electrical conductivity sensors are sampled every 10 seconds because rapid changes in these values can indicate dosing or mixing problems.
+
+ORBIT retains high-resolution sensor records for 90 days. After 90 days, the data is compressed into five-minute averages. These five-minute averages are retained for five years.
+
+Operators should not assume that absence of an alarm means that every system is functioning correctly. Certain failures, such as a partially obstructed irrigation emitter, may affect only a small number of plants and may not produce a facility-level alarm.
+
+4. OPERATOR ROLES
+
+Northstar recognizes three operational roles.
+
+Level 1 Operators may perform routine inspections, acknowledge informational alarms, measure reservoirs manually, and carry out approved cleaning tasks.
+
+Level 2 Operators may perform all Level 1 tasks and may also prepare nutrient solutions, restart irrigation pumps, calibrate approved sensors, and respond to standard environmental alarms.
+
+Level 3 Operators may modify control parameters, authorize operation outside normal experimental limits, perform emergency isolation procedures, and approve equipment return to service following major faults.
+
+A Level 1 Operator may not independently change nutrient dosing parameters.
+
+A Level 2 Operator may change nutrient dosing parameters only within the range defined in an approved experiment protocol.
+
+Changes outside an approved experiment protocol require Level 3 authorization.
+
+5. ENVIRONMENTAL CONDITIONS
+
+5.1 Zone A: Leafy Greens
+
+Zone A normally contains lettuce and similar leafy crops.
+
+Daytime air temperature target: 21.0 degrees Celsius.
+Nighttime air temperature target: 18.0 degrees Celsius.
+
+The normal acceptable daytime range is 20.0 to 22.0 degrees Celsius.
+The normal acceptable nighttime range is 17.0 to 19.0 degrees Celsius.
+
+Relative humidity target: 62 percent.
+
+Relative humidity between 55 and 70 percent is considered normal.
+
+Zone A lighting operates for 16 hours per day under the standard production program.
+
+The standard light period begins at 05:00 and ends at 21:00.
+
+5.2 Zone B: Herbs
+
+Zone B normally contains basil, mint, and other herbs.
+
+Daytime temperature target: 23.0 degrees Celsius.
+Nighttime temperature target: 19.0 degrees Celsius.
+
+Relative humidity target: 60 percent.
+
+The standard lighting period is 18 hours. Lights switch on at 04:00 and switch off at 22:00.
+
+Basil trials may use modified lighting schedules if specified in the experiment protocol.
+
+5.3 Zone C: Fruiting Crops
+
+Zone C is used primarily for dwarf tomato and pepper experiments.
+
+Daytime temperature target: 24.0 degrees Celsius.
+Nighttime temperature target: 19.0 degrees Celsius.
+
+Relative humidity target: 58 percent.
+
+Standard lighting duration is 16 hours, from 06:00 until 22:00.
+
+Zone C is the only normal cultivation zone in which supplemental carbon dioxide enrichment is used.
+
+During the light period, Zone C has a carbon dioxide target of 850 parts per million.
+
+Carbon dioxide injection must stop if the measured concentration exceeds 1,100 parts per million.
+
+If Zone C exceeds 1,300 parts per million, ORBIT generates a high-priority alarm and commands the carbon dioxide supply valve closed.
+
+5.4 Zone D: Experimental Crops
+
+Zone D does not have a permanent environmental setpoint.
+
+Its temperature, humidity, lighting, and nutrient targets are defined by the currently active experiment protocol.
+
+If no experiment is active, Zone D should be maintained in standby conditions:
+
+air temperature: 20 degrees Celsius;
+relative humidity: 55 percent;
+lights off;
+irrigation disabled except for maintenance testing.
+
+6. NUTRIENT SOLUTION PARAMETERS
+
+Electrical conductivity, abbreviated EC, is used as an operational indicator of total dissolved ionic nutrients.
+
+The standard EC targets are:
+
+Zone A: 1.7 mS/cm
+Zone B: 1.9 mS/cm
+Zone C: 2.4 mS/cm
+
+Zone D has no universal EC target. Its target is defined by experiment.
+
+The standard pH target for Zones A, B, and C is 5.8.
+
+A pH between 5.6 and 6.1 is considered the normal operating range for those three zones.
+
+A pH below 5.3 or above 6.4 requires operator intervention.
+
+The nutrient system uses phosphoric-acid solution to reduce pH and diluted potassium-hydroxide solution to increase pH.
+
+Operators must never add concentrated pH-adjustment chemicals directly to a cultivation reservoir.
+
+All manual pH corrections must be diluted according to the chemical handling procedure and added through the designated dosing port while the circulation pump is operating.
+
+7. NUTRIENT PREPARATION
+
+Before preparing nutrient solution, an operator must verify:
+
+the intended cultivation zone;
+the required final volume;
+the current experiment protocol;
+the nutrient formulation identifier;
+and the cleanliness status of the selected mixing tank.
+
+Standard nutrient preparation follows this sequence:
+
+First, fill the mixing tank with purified water to approximately 80 percent of the required final volume.
+
+Second, start the mixing agitator.
+
+Third, add Nutrient Concentrate A.
+
+Fourth, allow at least two minutes of mixing.
+
+Fifth, add Nutrient Concentrate B.
+
+Sixth, allow at least five minutes of mixing.
+
+Seventh, add purified water until the required final volume is reached.
+
+Eighth, measure EC.
+
+Ninth, measure pH.
+
+Tenth, adjust pH if necessary.
+
+Eleventh, allow the solution to mix for at least three additional minutes.
+
+Twelfth, perform a final EC and pH measurement.
+
+Nutrient Concentrate A and Nutrient Concentrate B must never be combined in concentrated form.
+
+Combining the concentrates before sufficient dilution can cause precipitation and may permanently alter nutrient availability.
+
+If precipitation is visibly observed in a mixing tank, the batch must not be transferred to a cultivation reservoir. The batch must be marked as rejected and handled according to the nutrient-disposal procedure.
+
+8. RESERVOIRS AND IRRIGATION
+
+Each cultivation zone has one primary nutrient reservoir.
+
+Zone A reservoir capacity: 1,200 liters.
+Zone B reservoir capacity: 900 liters.
+Zone C reservoir capacity: 1,500 liters.
+Zone D reservoir capacity: 700 liters.
+
+Normal operation keeps each reservoir between 35 percent and 85 percent of usable capacity.
+
+A low-level warning is generated at 30 percent.
+
+A critical low-level alarm is generated at 20 percent.
+
+At 15 percent, the corresponding primary irrigation pump is automatically stopped to reduce the risk of dry running.
+
+The irrigation pumps are designated P-A1, P-B1, P-C1, and P-D1.
+
+Each zone also has a standby pump, designated with the number 2. For example, P-A2 is the standby irrigation pump for Zone A.
+
+Standby pumps do not start automatically during ordinary operation.
+
+Automatic standby-pump start is permitted only when the primary pump reports a motor fault and reservoir level is above 25 percent.
+
+If the primary pump stops because of low reservoir level, the standby pump must not start.
+
+9. WATER TREATMENT
+
+Incoming municipal water passes through three main treatment stages before entering PW-1.
+
+Stage 1 is sediment filtration.
+
+Stage 2 is activated-carbon filtration.
+
+Stage 3 is reverse osmosis.
+
+The reverse-osmosis unit is designated RO-1.
+
+Under normal conditions, RO-1 produces between 380 and 430 liters of purified water per hour.
+
+A permeate production rate below 320 liters per hour for more than 20 continuous minutes generates a maintenance warning.
+
+A production rate below 250 liters per hour generates a high-priority fault.
+
+The conductivity of purified water leaving RO-1 should normally remain below 40 microsiemens per centimeter.
+
+If purified-water conductivity exceeds 70 microsiemens per centimeter for more than five minutes, water is automatically diverted away from PW-1.
+
+The diverted water is sent to the non-process drain and must not be used for nutrient preparation.
+
+10. LIGHTING SYSTEM
+
+All cultivation lighting uses dimmable LED fixtures.
+
+Lighting intensity is specified using photosynthetic photon flux density, or PPFD.
+
+Typical standard PPFD targets are:
+
+Zone A: 220 micromoles per square meter per second.
+Zone B: 280 micromoles per square meter per second.
+Zone C: 360 micromoles per square meter per second.
+
+Zone D follows the active experiment protocol.
+
+Lighting power can be adjusted between 10 percent and 100 percent.
+
+Values below 10 percent are not permitted during normal cultivation because fixture output becomes insufficiently uniform.
+
+Following a power outage longer than five minutes, cultivation lights do not immediately return to full intensity.
+
+Instead, ORBIT applies a ten-minute ramp from 20 percent output to the scheduled output level.
+
+This ramp reduces electrical inrush and limits sudden light exposure to the plants.
+
+11. AIR HANDLING
+
+AHU-1 serves Zones A and B.
+
+AHU-2 serves Zones C and D.
+
+The systems share air-handling equipment, but airflow to individual zones is independently controlled using motorized dampers.
+
+A failure of AHU-1 therefore potentially affects both Zone A and Zone B.
+
+A failure of AHU-2 potentially affects both Zone C and Zone D.
+
+If an air-handling unit completely stops, ORBIT commands the affected zones' supplemental lighting to 50 percent intensity after five minutes.
+
+If air handling remains unavailable for 20 minutes, lighting is reduced to 25 percent.
+
+If air handling remains unavailable for 45 minutes, the cultivation lights in the affected zones are switched off.
+
+This staged lighting reduction is intended to limit heat accumulation.
+
+Irrigation continues unless another condition requires it to stop.
+
+12. ALARM PRIORITIES
+
+ORBIT alarms are divided into four priority classes.
+
+Priority 0: Informational.
+
+These events require no immediate response. Examples include completion of an automated cleaning cycle or an operator login.
+
+Priority 1: Advisory.
+
+These conditions should be reviewed during the current operator shift but normally do not threaten crops or equipment immediately.
+
+Priority 2: High Priority.
+
+These alarms require prompt operator investigation.
+
+Priority 3: Critical.
+
+These alarms indicate conditions that could rapidly damage equipment, invalidate an experiment, or create a safety hazard.
+
+Priority 3 alarms generate an audible facility alarm and send notifications to the Level 3 on-call operator.
+
+An operator may acknowledge an alarm without resolving it. Acknowledgment only records that the alarm has been seen.
+
+The alarm remains active until the underlying condition returns to an acceptable state or an authorized operator manually clears it after inspection.
+
+13. SENSOR CALIBRATION
+
+pH sensors are calibrated every seven days.
+
+EC sensors are calibrated every 14 days.
+
+Carbon dioxide sensors are checked every 30 days and fully calibrated every 90 days.
+
+Air-temperature and relative-humidity sensors undergo verification every 60 days.
+
+Reservoir level sensors are function-tested every 30 days.
+
+The standard pH calibration uses pH 4.00 and pH 7.00 reference solutions.
+
+A pH sensor must be replaced if it fails calibration twice consecutively after cleaning.
+
+An EC sensor does not automatically require replacement after one failed calibration. It should first be cleaned, inspected for deposits, and recalibrated.
+
+14. CLEANING AND SANITATION
+
+Cultivation reservoirs are cleaned between crop cycles.
+
+Routine cleaning uses a facility-approved peroxide-based cleaning solution.
+
+After cleaning, reservoirs must be rinsed until the measured conductivity of the final rinse water is less than 20 microsiemens per centimeter above the conductivity of the incoming purified water.
+
+Mixing tanks M1 and M2 must be rinsed after every nutrient batch.
+
+A full sanitation cycle is required if:
+
+visible biological growth is found;
+a rejected batch contained precipitation;
+a reservoir has remained stagnant for more than 72 hours;
+or contamination is suspected.
+
+Tools used in Zone D may not be used in Zones A, B, or C without undergoing full sanitation.
+
+This requirement exists because Zone D frequently contains experimental organisms, unconventional nutrient formulations, or microbial treatments.
+
+15. POWER FAILURE BEHAVIOR
+
+Northstar has an automatic backup generator.
+
+Following loss of utility power, the generator normally begins supplying emergency circuits within 12 seconds.
+
+Not all facility equipment is connected to emergency power.
+
+Emergency-powered systems include:
+
+ORBIT servers;
+network equipment;
+essential sensors;
+primary circulation pumps;
+water-treatment controls;
+emergency lighting;
+and ventilation controls.
+
+Cultivation LED lighting is not normally powered by the emergency generator.
+
+If utility power returns within five minutes, lighting resumes according to the ten-minute ramp procedure.
+
+If the outage lasts more than five minutes, lighting schedules resume from the current clock time rather than attempting to compensate for all missed lighting hours.
+
+Operators must not extend the current light period automatically to replace lost light unless an experiment protocol specifically requires compensation.
+
+16. TEMPERATURE EXCURSIONS
+
+An environmental temperature excursion begins when zone temperature remains outside its normal operating range for more than ten consecutive minutes.
+
+A brief reading outside the range does not automatically count as an excursion.
+
+If temperature exceeds the normal range but remains less than 3 degrees Celsius beyond the applicable limit, a Priority 1 advisory is generated after ten minutes.
+
+If temperature reaches 3 degrees Celsius or more beyond the applicable normal limit, a Priority 2 alarm is generated.
+
+For Zone A during the daytime, for example, the normal upper limit is 22 degrees Celsius. A temperature of 24 degrees is above the normal range but remains less than 3 degrees above the upper limit. A temperature of 25 degrees reaches 3 degrees above the upper limit and therefore qualifies for the higher alarm condition if sustained according to the applicable alarm logic.
+
+A temperature above 30 degrees Celsius in any active cultivation zone generates an immediate Priority 3 alarm.
+
+17. NUTRIENT TEMPERATURE
+
+Nutrient solution temperature is controlled separately from air temperature.
+
+For Zones A, B, and C, the standard nutrient-solution target is 19 degrees Celsius.
+
+The normal range is 17 to 21 degrees Celsius.
+
+If nutrient temperature exceeds 23 degrees Celsius for more than 15 minutes, ORBIT generates a Priority 2 alarm.
+
+If nutrient temperature exceeds 26 degrees Celsius, a Priority 3 alarm is generated immediately.
+
+Zone D nutrient temperature is experiment-specific, but unless explicitly overridden, the same safety limits of 23 and 26 degrees Celsius apply.
+
+18. WATER LEAK DETECTION
+
+Leak sensors are installed under each reservoir, beneath both mixing tanks, and near RO-1.
+
+Detection of water by a single leak sensor generates a Priority 2 alarm.
+
+If water is simultaneously detected by two or more leak sensors in the same equipment area, ORBIT escalates the event to Priority 3.
+
+A leak alarm does not automatically shut down the entire facility.
+
+Instead, ORBIT attempts to isolate the associated equipment.
+
+For example, a leak beneath the Zone B reservoir causes the Zone B refill valve to close and prevents automatic transfer of additional nutrient solution into that reservoir.
+
+Irrigation does not automatically stop unless reservoir level becomes unsafe or an operator determines that continued circulation is increasing the leak.
+
+19. DAILY OPERATOR INSPECTION
+
+At the beginning of each staffed day shift, an operator performs a physical inspection.
+
+The inspection includes:
+
+checking all four cultivation zones for visible plant stress;
+checking floors for leaks;
+checking irrigation emitters for obvious blockages;
+confirming reservoir levels;
+checking mixing-tank cleanliness;
+reviewing unresolved ORBIT alarms;
+checking RO-1 operating status;
+and confirming that emergency exits are unobstructed.
+
+The physical inspection is required even when all ORBIT indicators show normal conditions.
+
+The inspection result is recorded as one daily facility inspection entry, with separate comments for any abnormalities.
+
+20. IRRIGATION EMITTER CHECKS
+
+Automated pressure measurements can identify major irrigation failures, but they cannot reliably detect every partially blocked emitter.
+
+For this reason, irrigation distribution is manually sampled once per week.
+
+For each active zone, an operator selects ten emitters distributed across the cultivation area.
+
+Each selected emitter is operated for exactly 60 seconds, and the discharged volume is measured.
+
+An emitter is considered within tolerance if its measured flow is within plus or minus 8 percent of the nominal emitter flow.
+
+If two or more of the ten sampled emitters are outside tolerance, an expanded inspection of at least 30 emitters must be performed.
+
+If more than 10 percent of the expanded sample is outside tolerance, the irrigation line must be cleaned before the next standard irrigation cycle.
+
+21. DATA QUALITY AND EXPERIMENT VALIDITY
+
+Northstar research places strong emphasis on traceability.
+
+A crop experiment is not automatically invalid merely because an alarm occurred.
+
+Instead, alarms and environmental excursions are included in the experiment record and reviewed by the responsible researcher.
+
+However, some events require automatic experiment-quality flags.
+
+An experiment receives a "Major Environmental Deviation" flag if:
+
+air temperature remains outside the normal experimental range for more than 120 cumulative minutes during any 24-hour period;
+relative humidity remains outside the allowed experimental range for more than 180 cumulative minutes during any 24-hour period;
+or carbon dioxide in a carbon-dioxide-controlled experiment remains outside the experimental range for more than 90 cumulative minutes during the light period.
+
+A flag indicates that the data requires review. It does not automatically mean that the experiment must be discarded.
+
+22. MAINTENANCE SCHEDULE
+
+The following intervals apply under normal operating conditions.
+
+pH sensor calibration: every 7 days.
+EC sensor calibration: every 14 days.
+Reservoir level-sensor test: every 30 days.
+Carbon dioxide sensor functional check: every 30 days.
+Carbon dioxide sensor full calibration: every 90 days.
+Temperature and humidity sensor verification: every 60 days.
+RO-1 prefilter inspection: every 30 days.
+RO-1 membrane performance test: every 180 days.
+Backup generator functional test: every 30 days.
+Emergency-stop functional test: every 90 days.
+Mixing-tank agitator inspection: every 60 days.
+Primary and standby irrigation-pump inspection: every 90 days.
+
+Maintenance intervals may be shortened if equipment performance deteriorates.
+
+They may not be extended beyond the listed intervals without Level 3 authorization and a documented engineering justification.
+
+23. EQUIPMENT IDENTIFICATION
+
+Northstar equipment identifiers follow a consistent naming scheme.
+
+P-A1 means the primary irrigation pump for Zone A.
+P-A2 means the standby irrigation pump for Zone A.
+
+The same pattern applies to Zones B, C, and D.
+
+NL-A means the nutrient loop for Zone A.
+
+AHU-1 serves Zones A and B.
+AHU-2 serves Zones C and D.
+
+M1 is the 1,000-liter primary mixing tank.
+M2 is the 600-liter secondary mixing tank.
+
+PW-1 is the 4,500-liter purified-water storage tank.
+
+RO-1 is the reverse-osmosis unit.
+
+CO2-C1 is the primary carbon dioxide control valve for Zone C.
+
+24. EMERGENCY STOP SYSTEM
+
+Emergency-stop buttons are located:
+
+outside the nutrient preparation room;
+at the main cultivation corridor entrance;
+and beside the electrical control room.
+
+Activating an emergency stop removes power from major process actuators, including nutrient-transfer pumps, irrigation pumps, chemical dosing pumps, and carbon dioxide injection.
+
+ORBIT servers and emergency monitoring remain powered.
+
+Emergency ventilation also remains available.
+
+Emergency-stop activation does not disconnect the entire building electrical supply.
+
+After an emergency stop has been activated, the system cannot be returned to normal operation merely by releasing the button.
+
+A Level 3 Operator must inspect the affected systems and authorize reset.
+
+25. CHEMICAL DOSING FAILURE
+
+Automated nutrient and pH dosing is controlled by ORBIT through dedicated dosing pumps.
+
+If a dosing pump is commanded on continuously for longer than 90 seconds, ORBIT stops that dosing pump and generates a Priority 2 alarm.
+
+This limit is intended to reduce the risk of uncontrolled chemical addition.
+
+A second dosing attempt is not automatically initiated.
+
+An operator must inspect the dosing line, pump, chemical level, and sensor reading before manually authorizing another dosing operation.
+
+If the event involves pH-adjustment chemical, a manual pH measurement using an independent handheld meter is required before dosing resumes.
+
+26. COMMUNICATION FAILURE
+
+Individual controllers continue basic local operation if communication with ORBIT is lost.
+
+For example, an irrigation controller may continue its previously loaded schedule even while the central server cannot communicate with it.
+
+A controller communication loss lasting more than 60 seconds creates a Priority 1 advisory.
+
+After five minutes, it becomes a Priority 2 alarm.
+
+If communication remains unavailable for 30 minutes, an operator must physically inspect the affected zone.
+
+Loss of ORBIT communication therefore does not necessarily mean irrigation or environmental control has stopped.
+
+27. MANUAL OVERRIDES
+
+Manual overrides should be used only when required for maintenance, emergency response, or an approved experiment.
+
+Every manual override must have:
+
+the operator identity;
+the time it was enabled;
+the affected device or parameter;
+the reason;
+and, when known, the intended end time.
+
+ORBIT generates a reminder if a manual override remains active for more than two hours.
+
+After six hours, an active override generates a Priority 2 alarm unless the experiment protocol explicitly permits a longer override.
+
+Overrides affecting safety interlocks require Level 3 authorization regardless of duration.
+
+28. SAMPLE INCIDENT
+
+At 14:12 on a hypothetical operating day, Zone B reservoir level decreases to 29 percent.
+
+ORBIT generates a low-level warning because the reservoir is below the 30 percent warning threshold.
+
+The irrigation pump continues operating.
+
+At 14:19, reservoir level falls to 19 percent.
+
+A critical low-level alarm is generated because the level is below 20 percent.
+
+The pump still remains capable of running because the automatic stop threshold is lower.
+
+At 14:23, the level reaches 15 percent.
+
+ORBIT stops P-B1.
+
+P-B2 does not automatically start because the primary pump was stopped due to low reservoir level rather than a motor fault.
+
+This distinction is intentional. Starting the standby pump would not correct the lack of nutrient solution and could cause the standby pump to run dry as well.
+
+29. SAMPLE AIR-HANDLING INCIDENT
+
+At 10:00, AHU-2 stops because of a motor-protection fault.
+
+Because AHU-2 serves both Zones C and D, both zones are affected.
+
+At 10:05, ORBIT reduces the supplemental cultivation lighting in Zones C and D to 50 percent.
+
+At 10:20, because AHU-2 is still unavailable, lighting is reduced to 25 percent.
+
+At 10:45, lighting is switched off.
+
+Irrigation continues because no irrigation-related fault exists.
+
+If AHU-2 returns to service at 10:50, lighting does not necessarily jump immediately to 100 percent. ORBIT returns lighting according to the applicable recovery controls and active experiment settings.
+
+30. SAMPLE WATER-QUALITY INCIDENT
+
+At 07:30, RO-1 permeate conductivity rises from 32 to 76 microsiemens per centimeter.
+
+No diversion occurs immediately because the high-conductivity condition has not persisted for five minutes.
+
+At 07:33, conductivity remains at 75 microsiemens per centimeter.
+
+Water still has not yet been automatically diverted because only three minutes have elapsed.
+
+At 07:35, the conductivity remains above 70 microsiemens per centimeter.
+
+The five-minute threshold has now been reached, and ORBIT diverts the produced water away from PW-1.
+
+The diverted water is discharged to the non-process drain.
+
+Previously stored water already present in PW-1 is not automatically discarded solely because new RO water failed the conductivity limit.
+
+31. PRIORITIES DURING MULTIPLE FAULTS
+
+When several problems occur simultaneously, personnel safety takes priority over crop protection.
+
+Equipment protection is second.
+
+Prevention of cross-contamination is third.
+
+Preservation of experimental conditions is fourth.
+
+Crop preservation is fifth.
+
+Data completeness is important but must never take priority over personnel safety or safe equipment operation.
+
+For example, an operator must not enter an area with a suspected electrical hazard merely to prevent loss of an experimental crop.
+
+32. FINAL OPERATING PRINCIPLES
+
+Northstar is designed around four operating principles.
+
+First, the evaluator of system state should rely on both automated monitoring and physical inspection.
+
+Second, experimental reproducibility requires that interventions and abnormal conditions be recorded.
+
+Third, automated protection systems should prevent a single fault from escalating when practical.
+
+Fourth, operators should not bypass safety or contamination controls merely to preserve crop yield.
+
+When this manual conflicts with a currently approved experiment protocol, the experiment protocol may override normal cultivation parameters such as temperature, humidity, lighting, irrigation timing, nutrient EC, or carbon dioxide targets.
+
+An experiment protocol may not override facility-wide safety limits unless the exception has been separately approved by a Level 3 Operator and documented as an engineering deviation.
+
+END OF DOCUMENT
