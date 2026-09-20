@@ -11,54 +11,39 @@ Tests cover:
 All tests use hand-verifiable expected values.
 """
 
-import pytest
 from datetime import UTC, datetime
-from uuid import uuid4
+
+import pytest
 
 from rag_eval.metrics import (
+    Availability,
     ExactMatch,
+    HitAtK,
+    MRR,
     NormalizedExactMatch,
+    SuccessRate,
+    TokenF1,
     TokenPrecision,
     TokenRecall,
-    TokenF1,
-    HitAtK,
-    PrecisionAtK,
-    RecallAtK,
-    MRR,
-    MAPAtK,
-    NDCGAtK,
-    RPrecision,
-    CitationResolution,
-    BrokenCitations,
-    AttributionRate,
     TotalLatency,
-    RetrievalLatency,
-    GenerationLatency,
-    TokensPerSecond,
-    TotalTokens,
-    InputTokens,
-    OutputTokens,
     TotalCost,
-    CostPerToken,
-    SuccessRate,
-    ErrorRate,
-    Availability,
+    TotalTokens,
 )
 from rag_eval.metrics.base import MetricStatus
 from rag_eval.metrics.context import MetricContext
 from rag_eval.models import (
-    BenchmarkCase,
-    TargetObservation,
     Answer,
-    RetrievalStage,
-    RetrievedItem,
+    BenchmarkCase,
     Citation,
-    Usage,
+    RetrievedItem,
+    RetrievalStage,
+    TargetObservation,
     Trace,
     TraceSpan,
+    Usage,
 )
-from rag_eval.models.retrieval import RetrievalResult, SourceLocation
 from rag_eval.models.enums import RetrievalStageType
+from rag_eval.models.retrieval import SourceLocation
 
 
 # ============================================================================

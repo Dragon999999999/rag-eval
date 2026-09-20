@@ -287,7 +287,7 @@ class TestHttpAdapterIntegration:
             # Create adapter
             adapter = HttpTargetAdapter(
                 base_url="http://127.0.0.1:8765",
-                timeout=30.0,
+                request_timeout=30.0,
             )
 
             # Get capabilities

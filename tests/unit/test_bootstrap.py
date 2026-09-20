@@ -31,7 +31,7 @@ def test_settings_build_async_postgres_url_from_environment(monkeypatch) -> None
     monkeypatch.setenv("RAG_EVAL_POSTGRES_USER", "service")
     monkeypatch.setenv("RAG_EVAL_POSTGRES_PASSWORD", "pass word")
 
-    settings = Settings(_env_file=None)
+    settings = Settings()
 
     assert settings.async_database_url == (
         "postgresql+asyncpg://service:pass+word@database.internal:5433/evaluation"
@@ -40,7 +40,7 @@ def test_settings_build_async_postgres_url_from_environment(monkeypatch) -> None
 
 def test_database_factories_are_importable_without_connecting() -> None:
     """Database wiring can be constructed without PostgreSQL being available."""
-    engine = create_async_engine(Settings(_env_file=None))
+    engine = create_async_engine(Settings())
     session_factory = create_session_factory(engine)
 
     assert engine.dialect.name == "postgresql"

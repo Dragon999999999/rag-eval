@@ -1,7 +1,14 @@
 """Deterministic Python targets imported by adapter unit tests."""
 
+from collections.abc import AsyncIterable
 from datetime import UTC, datetime
+from typing import Protocol
 
+
+class RequestWithId(Protocol):
+    """Structural type for requests carrying a canonical request ID."""
+
+    request_id: str
 
 class RetrievalTarget:
     """Target exposing query, retrieval, streaming, and recovery operations."""
@@ -20,7 +27,7 @@ class RetrievalTarget:
         """Return a ready health response."""
         return {"status": "READY", "target": {"name": "test-target"}}
 
-    async def retrieve(self, request: object) -> dict[str, object]:
+    async def retrieve(self, request: RequestWithId) -> dict[str, object]:
         """Return two distinct retrieval stages."""
         request_id = request.request_id
         item = {"retrieval_id": "item-1", "rank": 1, "text": "Evidence"}
@@ -42,14 +49,14 @@ class RetrievalTarget:
             },
         }
 
-    async def query(self, request: object) -> dict[str, object]:
+    async def query(self, request: RequestWithId) -> dict[str, object]:
         """Return a query response without unadvertised optional observations."""
         return {
             "request_id": request.request_id,
             "answer": {"text": "A canonical answer."},
         }
 
-    async def stream_query(self, request: object):
+    async def stream_query(self, request: RequestWithId):
         """Yield target-produced events in their original sequence."""
         request_id = request.request_id
         for sequence, event_type in enumerate(("delta", "completed")):
@@ -84,7 +91,7 @@ class QueryOnlyTarget:
         """Return a ready health response."""
         return {"status": "READY", "target": {"name": "query-only"}}
 
-    async def query(self, request: object) -> dict[str, object]:
+    async def query(self, request: RequestWithId) -> dict[str, object]:
         """Return the smallest valid query result."""
         return {
             "request_id": request.request_id,
@@ -123,7 +130,11 @@ class FullCapabilityTarget(RetrievalTarget):
             "status": "SUCCEEDED",
         }
 
-    async def upload_chunks(self, corpus_id: str, chunks: object) -> dict[str, object]:
+    async def upload_chunks(
+            self,
+            corpus_id: str,
+            chunks: AsyncIterable[object],
+    ) -> dict[str, object]:
         """Consume the provided async iterator only within the target boundary."""
         chunk_count = 0
         async for _ in chunks:
@@ -147,7 +158,7 @@ class FullCapabilityTarget(RetrievalTarget):
 class MalformedQueryTarget(QueryOnlyTarget):
     """Target whose query output does not satisfy the canonical model."""
 
-    async def query(self, request: object) -> dict[str, object]:
+    async def query(self, request: RequestWithId) -> dict[str, object]:
         """Return invalid data for normalization coverage."""
         return {"answer": {"text": "Missing request identity"}}
 
@@ -155,6 +166,6 @@ class MalformedQueryTarget(QueryOnlyTarget):
 class ExplodingQueryTarget(QueryOnlyTarget):
     """Target that raises an arbitrary implementation exception."""
 
-    async def query(self, request: object) -> dict[str, object]:
+    async def query(self, request: RequestWithId) -> dict[str, object]:
         """Raise a target implementation failure."""
         raise RuntimeError("target exploded")
