@@ -9,7 +9,10 @@ from rag_eval.models import (
     QueryRequest,
     QueryResponse,
     TargetCapabilities,
+    TargetInfo,
 )
+from rag_eval.models.enums import HealthState, OperationStatus
+from rag_eval.models.target import Answer
 
 
 class ExampleTarget:
@@ -22,11 +25,11 @@ class ExampleTarget:
     async def capabilities(self) -> TargetCapabilities:
         """Advertise the minimal operations exercised by corpus preparation."""
         return TargetCapabilities(
-            target={
-                "name": "rag-eval-example-target",
-                "version": "1",
-                "implementation": "in-memory-example",
-            },
+            target=TargetInfo(
+                name="rag-eval-example-target",
+                version="1",
+                implementation="in-memory-example",
+            ),
             query=True,
             document_ingestion=True,
             chunk_ingestion=True,
@@ -34,7 +37,12 @@ class ExampleTarget:
 
     async def health(self) -> HealthStatus:
         """Report that the local example target is operational."""
-        return HealthStatus(status="READY", target={"name": "rag-eval-example-target"})
+        return HealthStatus(
+            status=HealthState.READY,
+            target=TargetInfo(
+                name="rag-eval-example-target",
+            ),
+        )
 
     async def create_corpus(self, request: CreateCorpusRequest) -> CreateCorpusResponse:
         """Return a stable example corpus identity without external side effects."""
@@ -47,15 +55,20 @@ class ExampleTarget:
         return Operation(
             operation_id=f"document-{document.document.document_id}",
             kind="DOCUMENT_INGESTION",
-            status="SUCCEEDED",
+            status=OperationStatus.SUCCEEDED,
         )
 
     async def upload_chunks(self, corpus_id: str, chunks: object) -> Operation:
         """Accept chunks for the example without materializing target-side state."""
         return Operation(
-            operation_id="example-chunks", kind="CHUNK_INGESTION", status="SUCCEEDED"
+            operation_id="example-chunks", kind="CHUNK_INGESTION", status=OperationStatus.SUCCEEDED
         )
 
     async def query(self, request: QueryRequest) -> QueryResponse:
         """Return a minimal response so the target satisfies the loader contract."""
-        return QueryResponse(request_id=request.request_id, answer={"text": "example"})
+        return QueryResponse(
+            request_id=request.request_id,
+            answer=Answer(
+                text="example",
+            ),
+        )
