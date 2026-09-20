@@ -1,0 +1,135 @@
+# rag-eval experiment/test configuration
+#
+# YAML is the intended human-authored format for `rag-eval validate`,
+# `rag-eval plan`, `rag-eval corpus prepare`, and `rag-eval run`.
+#
+# This file keeps the active configuration deliberately conservative:
+# it uses fields evidenced by the current configuration/execution design.
+# Optional/target-specific examples are left commented so the file remains
+# easy to adapt without accidentally passing unsupported keys.
+
+version: "1"
+
+run:
+  name: "baseline-rag-evaluation"
+  seed: 42
+  resume: true
+  tags:
+    - baseline
+    - local
+  metadata:
+    purpose: "Example rag-eval test run"
+
+dataset:
+  # Native benchmark manifest. The manifest can in turn reference JSON/JSONL cases,
+  # source documents, and canonical chunks.
+  manifest: "./examples/benchmark-manifest.yaml"
+
+target:
+  # Supported adapter families: http | python
+  adapter: "http"
+
+  # For adapter=http:
+  base_url: "http://localhost:8000"
+
+  # For adapter=python, use the repository's import-target field instead of base_url,
+  # e.g. a value conceptually like:
+  # import: "my_project.eval_target:MyTarget"
+
+  corpus:
+    # DOCUMENTS: upload benchmark documents to the target
+    # CHUNKS:    upload canonical benchmark chunks
+    # EXTERNAL:  use an already-managed target corpus
+    mode: "DOCUMENTS"
+
+    # Required for EXTERNAL mode:
+    # corpus_id: "existing-corpus-id"
+
+    # Passed to target corpus creation/ingestion without hard-coding RAG internals.
+    parameters: {}
+
+  # Arbitrary target/RAG-specific settings belong here.
+  # Exact keys are interpreted by the selected target, not by rag-eval core.
+  parameters:
+    top_k: 10
+    # embedding_model: "bge-m3"
+    # chunk_size: 512
+    # chunk_overlap: 64
+    # reranker: "none"
+    # generation_model: "qwen-3.5-397b"
+    # prompt_version: "v1"
+
+  # Authentication should reference environment-backed secrets rather than
+  # embedding secret values in this file. Exact auth shape depends on the
+  # configured adapter/config model in your checkout.
+  #
+  # authentication:
+  #   type: "bearer"
+  #   token_env: "RAG_EVAL_TARGET_TOKEN"
+  #
+  # or conceptually:
+  #
+  # authentication:
+  #   type: "api_key"
+  #   key_env: "RAG_EVAL_TARGET_API_KEY"
+  #   header: "X-API-Key"
+
+execution:
+  concurrency: 4
+  connect_timeout: 10.0
+  request_timeout: 60.0
+  total_timeout: 120.0
+
+  # Retry configuration is part of the experiment design. Field names below
+  # reflect the Stage-3 contract; keep commented until confirmed against the
+  # exact RetryConfig model in your checkout.
+  #
+  # retry:
+  #   max_attempts: 3
+  #   strategy: "exponential"
+  #   initial_delay: 1.0
+  #   maximum_delay: 30.0
+  #   retryable_http_statuses: [429, 500, 502, 503, 504]
+  #   retryable_categories:
+  #     - RATE_LIMIT
+  #     - TIMEOUT
+  #     - CONNECTION
+
+metrics:
+  # all_available: execute every registered metric whose inputs are available
+  # explicit:      execute only selected_metrics
+  mode: "all_available"
+
+  # Used when mode=explicit:
+  selected_metrics: []
+
+  # Optional structures reserved by the configuration design.
+  # judge: {}
+  # parameters: {}
+
+# Storage/persistence/output are configuration concerns in the Stage-3 design,
+# but deployments may also obtain them from application Settings/environment.
+# Uncomment only if your current ExperimentConfig exposes these exact sections.
+#
+# storage:
+#   database:
+#     url_env: "RAG_EVAL_DATABASE_URL"
+#   artifacts:
+#     endpoint_env: "RAG_EVAL_S3_ENDPOINT"
+#     bucket: "rag-eval"
+#
+# persistence: {}
+#
+# output:
+#   directory: "./exports"
+
+# Optional deterministic Cartesian-product expansion.
+# Each key is a dotted path into the configuration.
+#
+# matrix:
+#   target.parameters.top_k:
+#     - 5
+#     - 10
+#   target.parameters.chunk_size:
+#     - 256
+#     - 512
