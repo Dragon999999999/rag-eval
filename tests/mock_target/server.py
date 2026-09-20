@@ -52,8 +52,10 @@ from rag_eval.models.enums import (
     FinishReason,
     HealthState,
     OperationStatus,
+    RequestStatus,
     RetrievalStageType,
 )
+from rag_eval.models.retrieval import RetrievalScore
 from rag_eval.models.target import (
     RetrievalMetadataCapabilities,
     UsageCapabilities,
@@ -307,12 +309,19 @@ def create_deterministic_trace(request_id: str) -> Trace:
 def create_deterministic_usage() -> Usage:
     """Create deterministic usage data."""
     return Usage(
-        tokens={"input": 100, "output": 50, "total": 150},
-        calls={"retrieval": 1, "generation": 1},
-        cost={"total": 0.002, "currency": "USD"},
-        resources={},
-        network={},
-        metadata={},
+        tokens={
+            "input": 100,
+            "output": 50,
+            "total": 150,
+        },
+        calls={
+            "retrieval": 1,
+            "generation": 1,
+        },
+        cost={
+            "total": 0.002,
+            "currency": "USD",
+        },
     )
 
 
@@ -350,7 +359,10 @@ def create_deterministic_retrieval(query: str) -> RetrievalResult:
                 start_char=0,
                 end_char=100,
             ),
-            score={"value": 0.95, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.95,
+                type="similarity",
+            ),
             metadata={"stage": "candidate"},
         ),
         RetrievedItem(
@@ -363,7 +375,10 @@ def create_deterministic_retrieval(query: str) -> RetrievalResult:
                 start_char=0,
                 end_char=80,
             ),
-            score={"value": 0.85, "type": "similarity"},
+            score=RetrievalScore(
+                value=0.85,
+                type="similarity",
+            ),
             metadata={"stage": "candidate"},
         ),
     ]
@@ -587,13 +602,8 @@ async def get_operation(operation_id: str) -> Operation:
         operation_id=operation.operation_id,
         kind=operation.kind,
         status=operation.status,
-        metadata={
-            "progress": operation.progress,
-            "result": operation.result,
-            "error": operation.error,
-        },
+        result=operation.result,
     )
-
 
 @app.post("/eval/v1/retrieve")
 async def retrieve(request: RetrieveRequest) -> RetrieveResponse:
@@ -684,21 +694,21 @@ async def get_request(request_id: str) -> RequestRecoveryResult:
     if mock_request.status == "RUNNING":
         return RequestRecoveryResult(
             request_id=request_id,
-            status="RUNNING",
+            status=RequestStatus.RUNNING,
         )
     elif mock_request.status == "COMPLETED" and mock_request.result:
         return RequestRecoveryResult(
             request_id=request_id,
-            status="COMPLETED",
+            status=RequestStatus.COMPLETED,
             response=QueryResponse(**mock_request.result),
         )
     else:
         return RequestRecoveryResult(
             request_id=request_id,
-            status="FAILED",
+            status=RequestStatus.FAILED,
             error=ErrorRecord(
                 error_id=f"error-{uuid.uuid4()}",
-                category=ErrorCategory.ERROR,
+                category=ErrorCategory.UNKNOWN,
                 code="REQUEST_FAILED",
                 message=mock_request.error or "Unknown error",
             ),
