@@ -74,6 +74,8 @@ class BenchmarkManifest(CanonicalModel):
     benchmark_id: str
     name: str
     version: str
+    corpus_mode: CorpusMode = CorpusMode.DOCUMENTS
+    
     schema_version: str = "1.0"
     content_hash: str | None = None
     corpus_id: str | None = None

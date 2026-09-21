@@ -10,32 +10,54 @@ Provides REST API endpoints for:
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from rag_eval.artifacts.local import LocalArtifactStore
 from rag_eval.config import get_settings
+from rag_eval.db.session import create_async_engine, create_session_factory
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager.
-
-    Handles startup and shutdown events.
-    """
-    # Startup
+    """Own application-lifetime infrastructure."""
     logger.info("Starting rag-eval API")
+
     settings = get_settings()
-    logger.info("Database URL: %s", settings.async_database_url.replace("://", "://***@"))
 
-    yield
+    logger.info(
+        "Database URL: %s",
+        settings.async_database_url.replace("://", "://***@"),
+    )
 
-    # Shutdown
-    logger.info("Shutting down rag-eval API")
+    engine = create_async_engine(settings)
+
+    app.state.engine = engine
+    app.state.session_factory = create_session_factory(engine)
+
+    artifact_root = Path(
+        os.getenv(
+            "RAG_EVAL_ARTIFACT_ROOT",
+            "./.rag-eval",
+        )
+    )
+
+    app.state.artifact_store = LocalArtifactStore(
+        artifact_root,
+    )
+
+    try:
+        yield
+    finally:
+        logger.info("Shutting down rag-eval API")
+        await engine.dispose()
 
 
 # Create FastAPI application

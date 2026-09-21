@@ -1,6 +1,7 @@
 """Public canonical Pydantic models for rag-eval's protocol and data flow."""
 
 from rag_eval.models.benchmark import (
+    Benchmark,
     BenchmarkCase,
     BenchmarkManifest,
     Chunk,
@@ -70,6 +71,7 @@ __all__ = [
     "Answerability",
     "ArtifactRef",
     "ArtifactType",
+    "Benchmark",
     "BenchmarkCase",
     "BenchmarkManifest",
     "Chunk",

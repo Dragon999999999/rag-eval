@@ -2,4 +2,4 @@
 
 
 class DatasetValidationError(ValueError):
-    """A malformed or internally inconsistent native benchmark dataset."""
+    """A malformed or internally inconsistent benchmark dataset."""

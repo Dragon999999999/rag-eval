@@ -11,12 +11,16 @@ import os
 from collections.abc import AsyncGenerator
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Security, status
+from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from rag_eval.artifacts import ArtifactService
+from rag_eval.artifacts.base import ArtifactStore
+from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.session import create_async_engine, create_session_factory
 from rag_eval.metrics.registry import MetricRegistry
+from rag_eval.services.benchmark import BenchmarkService
 from rag_eval.services.metric_configs import MetricConfigService
 from rag_eval.services.test_definitions import TestDefinitionService
 
@@ -97,20 +101,11 @@ async def verify_api_key(
 # ============================================================================
 
 
-async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Get async database session.
-
-    Yields:
-        AsyncSession for database operations.
-
-    Note:
-        Session is automatically closed after use.
-    """
-    from rag_eval.config import get_settings
-
-    settings = get_settings()
-    engine = create_async_engine(settings)
-    session_factory = create_session_factory(engine)
+async def get_db_session(
+    request: Request,
+) -> AsyncGenerator[AsyncSession, None]:
+    """Provide one transaction-scoped database session."""
+    session_factory = request.app.state.session_factory
 
     async with session_factory() as session:
         try:
@@ -120,9 +115,71 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
             await session.rollback()
             raise
 
-# Type alias for dependency-injected session
-DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 
+DbSession = Annotated[
+    AsyncSession,
+    Depends(get_db_session),
+]
+
+
+def get_repository(
+    session: DbSession,
+) -> PersistenceRepository:
+    """Provide the persistence repository for the current transaction."""
+    return PersistenceRepository(session)
+
+
+RepositoryDep = Annotated[
+    PersistenceRepository,
+    Depends(get_repository),
+]
+
+# ============================================================================
+# Benchmark / Artifact Services
+# ============================================================================
+
+
+def get_benchmark_service(
+    repository: RepositoryDep,
+) -> BenchmarkService:
+    """Provide benchmark management service."""
+    return BenchmarkService(repository)
+
+
+BenchmarkServiceDep = Annotated[
+    BenchmarkService,
+    Depends(get_benchmark_service),
+]
+
+
+def get_artifact_store(
+    request: Request,
+) -> ArtifactStore:
+    """Return the application-lifetime artifact store."""
+    return request.app.state.artifact_store
+
+
+ArtifactStoreDep = Annotated[
+    ArtifactStore,
+    Depends(get_artifact_store),
+]
+
+
+def get_artifact_service(
+    repository: RepositoryDep,
+    store: ArtifactStoreDep,
+) -> ArtifactService:
+    """Provide transaction-aware artifact coordination."""
+    return ArtifactService(
+        store,
+        repository,
+    )
+
+
+ArtifactServiceDep = Annotated[
+    ArtifactService,
+    Depends(get_artifact_service),
+]
 
 # ============================================================================
 # Services

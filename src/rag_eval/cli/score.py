@@ -6,6 +6,7 @@ from typing import Any
 
 import typer
 
+from rag_eval.cli.benchmark import app as benchmark_app
 from rag_eval.db import create_async_engine, create_session_factory
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.metrics import get_stage12_catalog
@@ -15,7 +16,6 @@ from rag_eval.reporting import ExportService, ReportGenerator, RunComparator
 app = typer.Typer(help="Score runs and generate reports.")
 
 target_app = typer.Typer(help="Manage evaluation targets.")
-benchmark_app = typer.Typer(help="Manage evaluation benchmarks.")
 metrics_app = typer.Typer(help="Manage metrics and metric configurations.")
 test_app = typer.Typer(help="Manage test definitions.")
 run_app = typer.Typer(help="Manage evaluation runs.")

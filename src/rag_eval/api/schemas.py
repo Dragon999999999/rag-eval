@@ -100,44 +100,42 @@ class TargetCapabilities(BaseModel):
 
 
 class BenchmarkCreate(BaseModel):
-    """Request to create/register a benchmark."""
+    """Create an empty benchmark."""
 
     name: str = Field(..., min_length=1, max_length=255)
-    version: str = Field(..., min_length=1, max_length=64)
-    manifest_path: str | None = None
-    source: str | None = None
-    provenance: dict[str, Any] = Field(default_factory=dict)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-
-class BenchmarkUpdate(BaseModel):
-    """Request to update benchmark metadata."""
-
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    version: str | None = None
-    metadata: dict[str, Any] | None = None
+    version: str = Field(default="1", min_length=1, max_length=64)
+    corpus_mode: str = Field(
+        default="DOCUMENTS",
+        pattern="^(DOCUMENTS|CHUNKS|EXTERNAL)$",
+    )
 
 
 class BenchmarkInfo(BaseModel):
-    """Benchmark information."""
+    """Canonical benchmark information."""
 
     benchmark_id: str
     name: str
     version: str
-    manifest_path: str | None
-    manifest_hash: str | None
     schema_version: str
+    corpus_mode: str
+    content_hash: str | None
+    corpus_id: str | None
     source: str | None
-    provenance: dict[str, Any]
-    case_count: int | None
-    document_count: int | None
+    tags: list[str]
     metadata: dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+
+    case_count: int
+    document_count: int
+    chunk_count: int
+
+    is_complete: bool
+    available_corpus_modes: list[str]
+
+    created_at: datetime | None
 
 
 class BenchmarkCaseSummary(BaseModel):
-    """Benchmark case summary for listing."""
+    """Benchmark case summary."""
 
     case_id: str
     query: str
@@ -145,7 +143,7 @@ class BenchmarkCaseSummary(BaseModel):
     tags: list[str]
     metadata: dict[str, Any]
 
-
+    
 # ============================================================================
 # MetricConfig Schemas
 # ============================================================================

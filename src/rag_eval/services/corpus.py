@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from time import monotonic
 from uuid import uuid4
 
-from rag_eval.adapters import DocumentUpload, DocumentContent, TargetAdapter
+from rag_eval.adapters import DocumentContent, DocumentUpload, TargetAdapter
 from rag_eval.adapters.errors import TargetAdapterError
 from rag_eval.artifacts import ArtifactService
 from rag_eval.config.models import CorpusConfig
-from rag_eval.datasets import BenchmarkDataset
 from rag_eval.db.models import CorpusRecord
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.models import (
+    Benchmark,
     CorpusMode,
     CreateCorpusRequest,
     Document,
@@ -35,10 +35,12 @@ class PreparedCorpus:
 
 
 class CorpusPreparationService:
-    """Create, ingest, poll, and persist benchmark corpora through TargetAdapter.
+    """Prepare one benchmark corpus through the TargetAdapter boundary.
 
-    This service owns bounded ingestion polling. It never executes target
-    queries, generates chunks, or branches on the adapter's transport.
+    The benchmark owns the available source representation.
+    The experiment/run selects one mode from benchmark.available_corpus_modes.
+
+    This service never executes benchmark queries or generates chunks.
     """
 
     def __init__(
@@ -50,7 +52,7 @@ class CorpusPreparationService:
         poll_interval_seconds: float = 0.1,
         poll_timeout_seconds: float = 120.0,
     ) -> None:
-        """Bind target, persistence, and optional existing artifact access."""
+        """Bind target, persistence, and artifact access."""
         self._adapter = adapter
         self._repository = repository
         self._artifact_service = artifact_service
@@ -58,32 +60,69 @@ class CorpusPreparationService:
         self._poll_timeout_seconds = poll_timeout_seconds
 
     async def prepare(
-        self, dataset: BenchmarkDataset, corpus_config: CorpusConfig
+        self,
+        benchmark: Benchmark,
+        corpus_config: CorpusConfig,
     ) -> PreparedCorpus:
-        """Validate and prepare one DOCUMENTS, CHUNKS, or EXTERNAL corpus."""
-        dataset.validate()
-        manifest = dataset.load_manifest()
+        """Prepare DOCUMENTS, CHUNKS, or EXTERNAL corpus for a benchmark."""
+        manifest = benchmark.manifest
+
+        if not benchmark.is_complete:
+            raise ValueError(
+                f"benchmark {manifest.benchmark_id} has no cases"
+            )
+
+        if corpus_config.mode not in benchmark.available_corpus_modes:
+            available = ", ".join(
+                sorted(mode.value for mode in benchmark.available_corpus_modes)
+            )
+
+            raise ValueError(
+                f"corpus mode {corpus_config.mode.value} is not available "
+                f"for benchmark {manifest.benchmark_id}; "
+                f"available modes: {available or 'none'}"
+            )
+
         capabilities = await self._adapter.capabilities()
         target_id = self._target_id(capabilities.target)
-        await self._repository.persist_target(target_id, capabilities.target)
-        await self._repository.persist_capabilities(target_id, capabilities)
-        content_hash = self._content_hash(dataset, corpus_config)
+
+        await self._repository.persist_target(
+            target_id,
+            capabilities.target,
+        )
+        await self._repository.persist_capabilities(
+            target_id,
+            capabilities,
+        )
+
+        content_hash = self._content_hash(
+            benchmark,
+            corpus_config,
+        )
 
         if corpus_config.mode is CorpusMode.EXTERNAL:
             if corpus_config.corpus_id is None:
                 raise ValueError(
-                    "EXTERNAL corpus mode requires target.corpus.corpus_id"
+                    "EXTERNAL corpus mode requires a target corpus_id"
                 )
+
             await self._persist_corpus(
                 corpus_config.corpus_id,
                 target_id,
-                corpus_config.mode,
+                CorpusMode.EXTERNAL,
                 "READY",
                 content_hash,
-                {"external": True, "manifest_id": manifest.benchmark_id},
+                {
+                    "external": True,
+                    "benchmark_id": manifest.benchmark_id,
+                },
             )
+
             return PreparedCorpus(
-                corpus_config.corpus_id, "READY", corpus_config.mode, content_hash
+                corpus_id=corpus_config.corpus_id,
+                status="READY",
+                mode=CorpusMode.EXTERNAL,
+                content_hash=content_hash,
             )
 
         if (
@@ -96,7 +135,11 @@ class CorpusPreparationService:
                 code="UNSUPPORTED_CAPABILITY",
                 stage="corpus_prepare",
             )
-        if corpus_config.mode is CorpusMode.CHUNKS and not capabilities.chunk_ingestion:
+
+        if (
+            corpus_config.mode is CorpusMode.CHUNKS
+            and not capabilities.chunk_ingestion
+        ):
             raise TargetAdapterError(
                 "Target does not advertise chunk ingestion.",
                 category=ErrorCategory.UNSUPPORTED_CAPABILITY,
@@ -112,10 +155,11 @@ class CorpusPreparationService:
                 parameters=corpus_config.parameters,
                 metadata={
                     "benchmark_id": manifest.benchmark_id,
-                    "manifest_sha256": getattr(dataset, "manifest_sha256", None),
+                    "benchmark_content_hash": manifest.content_hash,
                 },
             )
         )
+
         await self._persist_corpus(
             created.corpus_id,
             target_id,
@@ -123,47 +167,29 @@ class CorpusPreparationService:
             created.status,
             content_hash,
             {
-                "manifest_id": manifest.benchmark_id,
+                "benchmark_id": manifest.benchmark_id,
                 "requested_configuration": corpus_config.parameters,
-                "effective_configuration": created.configuration.effective
-                if created.configuration
-                else {},
+                "effective_configuration": (
+                    created.configuration.effective
+                    if created.configuration
+                    else {}
+                ),
             },
         )
+
         try:
             if corpus_config.mode is CorpusMode.DOCUMENTS:
-                for document in dataset.iter_documents():
-                    await self._repository.persist_document(created.corpus_id, document)
-                    content = await self._document_content(dataset, document)
-                    operation = await self._adapter.upload_document(
-                        created.corpus_id, DocumentUpload(document, content)
-                    )
-                    await self._await_operation(operation)
-            else:
-                document_count = 0
-                for document in dataset.iter_documents():
-                    await self._repository.persist_document(created.corpus_id, document)
-                    document_count += 1
-
-                async def chunks():
-                    for chunk in dataset.iter_chunks():
-                        yield chunk
-
-                operation = await self._adapter.upload_chunks(
-                    created.corpus_id, chunks()
-                )
-                await self._await_operation(operation)
-                await self._persist_corpus(
+                await self._prepare_documents(
+                    benchmark,
                     created.corpus_id,
-                    target_id,
-                    corpus_config.mode,
-                    "BUILDING",
-                    content_hash,
-                    {
-                        "manifest_id": manifest.benchmark_id,
-                        "document_count": document_count,
-                    },
                 )
+
+            elif corpus_config.mode is CorpusMode.CHUNKS:
+                await self._prepare_chunks(
+                    benchmark,
+                    created.corpus_id,
+                )
+
         except Exception:
             await self._persist_corpus(
                 created.corpus_id,
@@ -171,44 +197,113 @@ class CorpusPreparationService:
                 corpus_config.mode,
                 "FAILED",
                 content_hash,
-                {"manifest_id": manifest.benchmark_id},
+                {
+                    "benchmark_id": manifest.benchmark_id,
+                },
             )
             raise
+
         await self._persist_corpus(
             created.corpus_id,
             target_id,
             corpus_config.mode,
             "READY",
             content_hash,
-            {"manifest_id": manifest.benchmark_id},
+            {
+                "benchmark_id": manifest.benchmark_id,
+            },
         )
+
         return PreparedCorpus(
-            created.corpus_id, "READY", corpus_config.mode, content_hash
+            corpus_id=created.corpus_id,
+            status="READY",
+            mode=corpus_config.mode,
+            content_hash=content_hash,
         )
+
+    async def _prepare_documents(
+        self,
+        benchmark: Benchmark,
+        corpus_id: str,
+    ) -> None:
+        """Upload all benchmark documents to the target corpus."""
+        for document in benchmark.documents:
+            await self._repository.persist_document(
+                corpus_id,
+                document,
+            )
+
+            content = await self._document_content(document)
+
+            operation = await self._adapter.upload_document(
+                corpus_id,
+                DocumentUpload(
+                    document,
+                    content,
+                ),
+            )
+
+            await self._await_operation(operation)
+
+    async def _prepare_chunks(
+        self,
+        benchmark: Benchmark,
+        corpus_id: str,
+    ) -> None:
+        """Upload all canonical benchmark chunks to the target corpus."""
+
+        async def chunks():
+            for chunk in benchmark.chunks:
+                yield chunk
+
+        operation = await self._adapter.upload_chunks(
+            corpus_id,
+            chunks(),
+        )
+
+        await self._await_operation(operation)
 
     async def _document_content(
-        self, dataset: BenchmarkDataset, document: Document
+        self,
+        document: Document,
     ) -> DocumentContent:
-        """Resolve supported local or durable-artifact document bytes for upload."""
-        path = dataset.source_path(document)
-        if path is not None:
-            return path
-        artifact = document.artifact
-        if artifact is not None and self._artifact_service is not None:
-            return await self._artifact_service.get(artifact)
-        raise ValueError(f"document {document.document_id} has no readable source")
+        """Resolve stored document bytes for target upload."""
+        if document.artifact is None:
+            raise ValueError(
+                f"document {document.document_id} has no stored artifact"
+            )
 
-    async def _await_operation(self, operation: Operation) -> Operation:
-        """Poll one ingestion operation until terminal success, failure, or timeout."""
+        if self._artifact_service is None:
+            raise ValueError(
+                "ArtifactService is required for DOCUMENTS corpus preparation"
+            )
+
+        return await self._artifact_service.get(document.artifact)
+
+    async def _await_operation(
+        self,
+        operation: Operation,
+    ) -> Operation:
+        """Poll one ingestion operation until terminal completion."""
         current = operation
         deadline = monotonic() + self._poll_timeout_seconds
-        while current.status in {OperationStatus.PENDING, OperationStatus.RUNNING}:
+
+        while current.status in {
+            OperationStatus.PENDING,
+            OperationStatus.RUNNING,
+        }:
             if monotonic() >= deadline:
                 raise TimeoutError(
-                    f"ingestion operation timed out: {current.operation_id}"
+                    f"ingestion operation timed out: "
+                    f"{current.operation_id}"
                 )
+
             await asyncio.sleep(self._poll_interval_seconds)
-            current = await self._adapter.get_operation(current.operation_id)
+
+            current = await self._adapter.get_operation(
+                current.operation_id
+            )
+
         if current.status is not OperationStatus.SUCCEEDED:
             if current.error is not None:
                 error = TargetAdapterError(
@@ -219,12 +314,15 @@ class CorpusPreparationService:
                 )
                 error.record = current.error
                 raise error
+
             raise TargetAdapterError(
-                f"ingestion operation {current.operation_id} ended as {current.status}",
+                f"ingestion operation {current.operation_id} "
+                f"ended as {current.status}",
                 category=ErrorCategory.INGESTION,
                 code="INGESTION_OPERATION_FAILED",
                 stage="ingestion",
             )
+
         return current
 
     async def _persist_corpus(
@@ -236,7 +334,7 @@ class CorpusPreparationService:
         content_hash: str,
         metadata: dict[str, object],
     ) -> None:
-        """Persist one corpus lifecycle transition through the Stage 4 repository."""
+        """Persist one target-corpus lifecycle state."""
         await self._repository.persist_corpus(
             CorpusRecord(
                 corpus_id=corpus_id,
@@ -249,30 +347,50 @@ class CorpusPreparationService:
         )
 
     @staticmethod
-    def _content_hash(dataset: BenchmarkDataset, config: CorpusConfig) -> str:
-        """Build deterministic corpus identity from canonical input metadata only."""
+    def _content_hash(
+        benchmark: Benchmark,
+        config: CorpusConfig,
+    ) -> str:
+        """Build deterministic target-corpus identity."""
         digest = hashlib.sha256()
-        values = (
-            dataset.load_manifest().model_dump(mode="json"),
-            {"mode": config.mode.value, "parameters": config.parameters},
+
+        configuration = {
+            "benchmark_id": benchmark.manifest.benchmark_id,
+            "mode": config.mode.value,
+            "corpus_id": config.corpus_id,
+            "parameters": config.parameters,
+        }
+
+        digest.update(
+            json.dumps(
+                configuration,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
         )
-        for value in values:
-            digest.update(
-                json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-            )
-        for document in dataset.iter_documents():
-            digest.update(document.model_dump_json().encode())
-        if config.mode is CorpusMode.CHUNKS:
-            for chunk in dataset.iter_chunks():
-                digest.update(chunk.model_dump_json().encode())
+
+        if config.mode is CorpusMode.DOCUMENTS:
+            for document in benchmark.documents:
+                digest.update(
+                    document.model_dump_json().encode()
+                )
+
+        elif config.mode is CorpusMode.CHUNKS:
+            for chunk in benchmark.chunks:
+                digest.update(
+                    chunk.model_dump_json().encode()
+                )
+
         return digest.hexdigest()
 
     @staticmethod
     def _target_id(target: object) -> str:
-        """Derive a stable persistence key when a target omits explicit identity."""
+        """Derive a stable persistence key if target_id is absent."""
         target_id = getattr(target, "target_id", None)
+
         if target_id is not None:
             return target_id
+
         return ":".join(
             str(value or "unknown")
             for value in (
