@@ -1,496 +1,996 @@
-{
+[
+  {
     "case_id": "northstar-001",
     "query": "What is the nominal capacity of Mixing Tank M2?",
     "reference_answer": "Mixing Tank M2 has a nominal capacity of 600 liters.",
-    "gold_evidence": ev(1),
-    "tags": ["factual", "equipment", "capacity"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-001-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "equipment",
+      "capacity"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "2. FACILITY LAYOUT"}
-},
-{
+    "metadata": {
+      "source_section": "2. FACILITY LAYOUT"
+    }
+  },
+  {
     "case_id": "northstar-002",
     "query": "Which cultivation zones share AHU-1?",
     "reference_answer": "Zones A and B share AHU-1.",
-    "gold_evidence": ev(2),
-    "tags": ["factual", "air-handling"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-002-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "air-handling"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "2. FACILITY LAYOUT"}
-},
-{
+    "metadata": {
+      "source_section": "2. FACILITY LAYOUT"
+    }
+  },
+  {
     "case_id": "northstar-003",
     "query": "How often do most sensors report to ORBIT, and how often are nutrient pH and EC sensors sampled?",
     "reference_answer": "Most sensors report once every 30 seconds. Nutrient pH and electrical conductivity sensors are sampled every 10 seconds.",
-    "gold_evidence": ev(3),
-    "tags": ["factual", "monitoring", "comparison"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-003-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "monitoring",
+      "comparison"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "3. ORBIT MONITORING SYSTEM"}
-},
-{
+    "metadata": {
+      "source_section": "3. ORBIT MONITORING SYSTEM"
+    }
+  },
+  {
     "case_id": "northstar-004",
     "query": "For how long does ORBIT retain high-resolution sensor data, and what happens to older data?",
     "reference_answer": "ORBIT retains high-resolution sensor records for 90 days. After 90 days, the data is compressed into five-minute averages, which are retained for five years.",
-    "gold_evidence": ev(4),
-    "tags": ["factual", "monitoring", "retention"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-004-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "monitoring",
+      "retention"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "3. ORBIT MONITORING SYSTEM"}
-},
-{
+    "metadata": {
+      "source_section": "3. ORBIT MONITORING SYSTEM"
+    }
+  },
+  {
     "case_id": "northstar-005",
     "query": "Can a Level 1 Operator independently change nutrient dosing parameters?",
     "reference_answer": "No. A Level 1 Operator may not independently change nutrient dosing parameters.",
-    "gold_evidence": ev(5),
-    "tags": ["permissions", "operator-role"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-005-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "permissions",
+      "operator-role"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "4. OPERATOR ROLES"}
-},
-{
+    "metadata": {
+      "source_section": "4. OPERATOR ROLES"
+    }
+  },
+  {
     "case_id": "northstar-006",
     "query": "What are Zone A's standard lighting hours?",
     "reference_answer": "Zone A's standard light period begins at 05:00 and ends at 21:00, for a total of 16 hours per day.",
-    "gold_evidence": ev(6),
-    "tags": ["factual", "lighting", "zone-a"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-006-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "lighting",
+      "zone-a"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "5.1 Zone A: Leafy Greens"}
-},
-{
+    "metadata": {
+      "source_section": "5.1 Zone A: Leafy Greens"
+    }
+  },
+  {
     "case_id": "northstar-007",
     "query": "What is the standard daytime carbon dioxide target in Zone C, and when must carbon dioxide injection stop?",
     "reference_answer": "During the light period, Zone C has a carbon dioxide target of 850 ppm. Carbon dioxide injection must stop if the measured concentration exceeds 1,100 ppm.",
-    "gold_evidence": ev(7),
-    "tags": ["threshold", "carbon-dioxide", "zone-c"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-007-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "carbon-dioxide",
+      "zone-c"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "5.3 Zone C: Fruiting Crops"}
-},
-{
+    "metadata": {
+      "source_section": "5.3 Zone C: Fruiting Crops"
+    }
+  },
+  {
     "case_id": "northstar-008",
     "query": "What happens if Zone C carbon dioxide concentration exceeds 1,300 ppm?",
     "reference_answer": "ORBIT generates a high-priority alarm and commands the carbon dioxide supply valve closed.",
-    "gold_evidence": ev(8),
-    "tags": ["threshold", "alarm", "carbon-dioxide"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-008-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "alarm",
+      "carbon-dioxide"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "5.3 Zone C: Fruiting Crops"}
-},
-{
+    "metadata": {
+      "source_section": "5.3 Zone C: Fruiting Crops"
+    }
+  },
+  {
     "case_id": "northstar-009",
     "query": "What is the normal pH operating range for Zones A, B, and C, and at what values is operator intervention required?",
     "reference_answer": "The normal pH range is 5.6 to 6.1. Operator intervention is required below pH 5.3 or above pH 6.4.",
-    "gold_evidence": ev(9),
-    "tags": ["threshold", "nutrients", "ph"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-009-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "nutrients",
+      "ph"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "6. NUTRIENT SOLUTION PARAMETERS"}
-},
-{
+    "metadata": {
+      "source_section": "6. NUTRIENT SOLUTION PARAMETERS"
+    }
+  },
+  {
     "case_id": "northstar-010",
     "query": "What are the standard EC targets for Zones A, B, and C?",
     "reference_answer": "Zone A: 1.7 mS/cm; Zone B: 1.9 mS/cm; Zone C: 2.4 mS/cm.",
-    "gold_evidence": ev(10),
-    "tags": ["factual", "nutrients", "ec", "comparison"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-010-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "nutrients",
+      "ec",
+      "comparison"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "6. NUTRIENT SOLUTION PARAMETERS"}
-},
-{
+    "metadata": {
+      "source_section": "6. NUTRIENT SOLUTION PARAMETERS"
+    }
+  },
+  {
     "case_id": "northstar-011",
     "query": "In what order are Nutrient Concentrates A and B added during standard nutrient preparation, and how long must the solution mix between them?",
     "reference_answer": "Nutrient Concentrate A is added first, followed by at least two minutes of mixing. Nutrient Concentrate B is then added.",
-    "gold_evidence": ev(11),
-    "tags": ["procedure", "nutrient-preparation", "sequence"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-011-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "procedure",
+      "nutrient-preparation",
+      "sequence"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "7. NUTRIENT PREPARATION"}
-},
-{
+    "metadata": {
+      "source_section": "7. NUTRIENT PREPARATION"
+    }
+  },
+  {
     "case_id": "northstar-012",
     "query": "Why must Nutrient Concentrates A and B not be combined in concentrated form?",
     "reference_answer": "Combining the concentrates before sufficient dilution can cause precipitation and may permanently alter nutrient availability.",
-    "gold_evidence": ev(12),
-    "tags": ["causal", "nutrient-preparation", "safety"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-012-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "causal",
+      "nutrient-preparation",
+      "safety"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "7. NUTRIENT PREPARATION"}
-},
-{
+    "metadata": {
+      "source_section": "7. NUTRIENT PREPARATION"
+    }
+  },
+  {
     "case_id": "northstar-013",
     "query": "Which cultivation zone has the largest primary nutrient reservoir, and what is its capacity?",
     "reference_answer": "Zone C has the largest primary nutrient reservoir, with a capacity of 1,500 liters.",
-    "gold_evidence": ev(13),
-    "tags": ["comparison", "reservoir", "capacity"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-013-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "comparison",
+      "reservoir",
+      "capacity"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "8. RESERVOIRS AND IRRIGATION"}
-},
-{
+    "metadata": {
+      "source_section": "8. RESERVOIRS AND IRRIGATION"
+    }
+  },
+  {
     "case_id": "northstar-014",
     "query": "At what reservoir levels are the low-level warning, critical low-level alarm, and automatic primary pump shutdown triggered?",
     "reference_answer": "The low-level warning occurs at 30 percent, the critical low-level alarm at 20 percent, and the primary irrigation pump is automatically stopped at 15 percent.",
-    "gold_evidence": ev(14),
-    "tags": ["threshold", "reservoir", "alarm", "pump"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-014-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "reservoir",
+      "alarm",
+      "pump"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "8. RESERVOIRS AND IRRIGATION"}
-},
-{
+    "metadata": {
+      "source_section": "8. RESERVOIRS AND IRRIGATION"
+    }
+  },
+  {
     "case_id": "northstar-015",
     "query": "Under what conditions may a standby irrigation pump start automatically?",
     "reference_answer": "Automatic standby-pump start is permitted only when the primary pump reports a motor fault and the reservoir level is above 25 percent.",
-    "gold_evidence": ev(15),
-    "tags": ["conditional", "pump", "irrigation"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-015-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "conditional",
+      "pump",
+      "irrigation"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "8. RESERVOIRS AND IRRIGATION"}
-},
-{
+    "metadata": {
+      "source_section": "8. RESERVOIRS AND IRRIGATION"
+    }
+  },
+  {
     "case_id": "northstar-016",
     "query": "What is the normal purified-water production rate of RO-1, and what rate triggers a maintenance warning if sustained?",
     "reference_answer": "RO-1 normally produces 380 to 430 liters per hour. A rate below 320 liters per hour for more than 20 continuous minutes generates a maintenance warning.",
-    "gold_evidence": ev(16),
-    "tags": ["threshold", "water-treatment", "ro"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-016-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "water-treatment",
+      "ro"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "9. WATER TREATMENT"}
-},
-{
+    "metadata": {
+      "source_section": "9. WATER TREATMENT"
+    }
+  },
+  {
     "case_id": "northstar-017",
     "query": "When is purified water automatically diverted away from PW-1 because of conductivity?",
     "reference_answer": "Water is automatically diverted away from PW-1 if purified-water conductivity exceeds 70 microsiemens per centimeter for more than five minutes.",
-    "gold_evidence": ev(17),
-    "tags": ["threshold", "water-quality", "conductivity"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-017-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "water-quality",
+      "conductivity"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "9. WATER TREATMENT"}
-},
-{
+    "metadata": {
+      "source_section": "9. WATER TREATMENT"
+    }
+  },
+  {
     "case_id": "northstar-018",
     "query": "How do cultivation lights recover after a power outage longer than five minutes?",
     "reference_answer": "ORBIT applies a ten-minute ramp from 20 percent output to the scheduled output level.",
-    "gold_evidence": ev(18),
-    "tags": ["procedure", "lighting", "power-outage"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-018-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "procedure",
+      "lighting",
+      "power-outage"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "10. LIGHTING SYSTEM"}
-},
-{
+    "metadata": {
+      "source_section": "10. LIGHTING SYSTEM"
+    }
+  },
+  {
     "case_id": "northstar-019",
     "query": "If AHU-1 fails completely, which cultivation zones may be affected?",
     "reference_answer": "Zones A and B may be affected because both are served by AHU-1.",
-    "gold_evidence": ev(19),
-    "tags": ["factual", "air-handling", "dependency"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-019-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "factual",
+      "air-handling",
+      "dependency"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "11. AIR HANDLING"}
-},
-{
+    "metadata": {
+      "source_section": "11. AIR HANDLING"
+    }
+  },
+  {
     "case_id": "northstar-020",
     "query": "What happens to lighting after an air-handling unit has been unavailable for 5, 20, and 45 minutes?",
     "reference_answer": "After 5 minutes, lighting is reduced to 50 percent. After 20 minutes, it is reduced to 25 percent. After 45 minutes, the cultivation lights in the affected zones are switched off.",
-    "gold_evidence": ev(20),
-    "tags": ["temporal", "air-handling", "lighting", "multi-step"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-020-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "temporal",
+      "air-handling",
+      "lighting",
+      "multi-step"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "11. AIR HANDLING"}
-},
-{
+    "metadata": {
+      "source_section": "11. AIR HANDLING"
+    }
+  },
+  {
     "case_id": "northstar-021",
     "query": "What additional actions occur for a Priority 3 alarm?",
     "reference_answer": "Priority 3 alarms generate an audible facility alarm and send notifications to the Level 3 on-call operator.",
-    "gold_evidence": ev(21),
-    "tags": ["alarm", "priority"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-021-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "alarm",
+      "priority"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "12. ALARM PRIORITIES"}
-},
-{
+    "metadata": {
+      "source_section": "12. ALARM PRIORITIES"
+    }
+  },
+  {
     "case_id": "northstar-022",
     "query": "How often are pH sensors calibrated, and which reference solutions are used?",
     "reference_answer": "pH sensors are calibrated every seven days using pH 4.00 and pH 7.00 reference solutions.",
-    "gold_evidence": ev(22),
-    "tags": ["maintenance", "calibration", "ph"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-022-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "maintenance",
+      "calibration",
+      "ph"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "13. SENSOR CALIBRATION"}
-},
-{
+    "metadata": {
+      "source_section": "13. SENSOR CALIBRATION"
+    }
+  },
+  {
     "case_id": "northstar-023",
     "query": "How often are carbon dioxide sensors checked and fully calibrated?",
     "reference_answer": "Carbon dioxide sensors are checked every 30 days and fully calibrated every 90 days.",
-    "gold_evidence": ev(23),
-    "tags": ["maintenance", "calibration", "carbon-dioxide"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-023-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "maintenance",
+      "calibration",
+      "carbon-dioxide"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "13. SENSOR CALIBRATION"}
-},
-{
+    "metadata": {
+      "source_section": "13. SENSOR CALIBRATION"
+    }
+  },
+  {
     "case_id": "northstar-024",
     "query": "Name two conditions that require a full sanitation cycle.",
     "reference_answer": "A full sanitation cycle is required if visible biological growth is found, if a rejected batch contained precipitation, if a reservoir has remained stagnant for more than 72 hours, or if contamination is suspected. Any two of these conditions are sufficient.",
-    "gold_evidence": ev(24),
-    "tags": ["sanitation", "conditions"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-024-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "sanitation",
+      "conditions"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "14. CLEANING AND SANITATION"}
-},
-{
+    "metadata": {
+      "source_section": "14. CLEANING AND SANITATION"
+    }
+  },
+  {
     "case_id": "northstar-025",
     "query": "How quickly does the backup generator normally begin supplying emergency circuits after utility power is lost?",
     "reference_answer": "The backup generator normally begins supplying emergency circuits within 12 seconds.",
-    "gold_evidence": ev(25),
-    "tags": ["power", "generator", "factual"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-025-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "power",
+      "generator",
+      "factual"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "15. POWER FAILURE BEHAVIOR"}
-},
-{
+    "metadata": {
+      "source_section": "15. POWER FAILURE BEHAVIOR"
+    }
+  },
+  {
     "case_id": "northstar-026",
     "query": "After a power outage lasting more than five minutes, does the facility extend the lighting period to make up all missed lighting hours?",
     "reference_answer": "No. Lighting schedules resume from the current clock time. Operators must not automatically extend the light period to compensate unless an experiment protocol specifically requires it.",
-    "gold_evidence": ev(26),
-    "tags": ["power-outage", "lighting", "conditional"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-026-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "power-outage",
+      "lighting",
+      "conditional"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "15. POWER FAILURE BEHAVIOR"}
-},
-{
+    "metadata": {
+      "source_section": "15. POWER FAILURE BEHAVIOR"
+    }
+  },
+  {
     "case_id": "northstar-027",
     "query": "When does an environmental temperature excursion officially begin?",
     "reference_answer": "A temperature excursion begins when zone temperature remains outside its normal operating range for more than ten consecutive minutes.",
-    "gold_evidence": ev(27),
-    "tags": ["threshold", "temperature", "definition"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-027-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "temperature",
+      "definition"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "16. TEMPERATURE EXCURSIONS"}
-},
-{
+    "metadata": {
+      "source_section": "16. TEMPERATURE EXCURSIONS"
+    }
+  },
+  {
     "case_id": "northstar-028",
     "query": "Zone A is at 25 degrees Celsius during the daytime and the condition persists long enough to trigger the applicable alarm logic. What alarm level applies?",
     "reference_answer": "A Priority 2 alarm applies because Zone A's daytime upper normal limit is 22 degrees Celsius and 25 degrees is 3 degrees above that limit.",
-    "gold_evidence": ev(28),
-    "tags": ["reasoning", "temperature", "threshold", "zone-a"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-028-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "reasoning",
+      "temperature",
+      "threshold",
+      "zone-a"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "16. TEMPERATURE EXCURSIONS"}
-},
-{
+    "metadata": {
+      "source_section": "16. TEMPERATURE EXCURSIONS"
+    }
+  },
+  {
     "case_id": "northstar-029",
     "query": "What nutrient-solution temperatures trigger Priority 2 and Priority 3 alarms?",
     "reference_answer": "A nutrient temperature above 23 degrees Celsius for more than 15 minutes triggers Priority 2. A temperature above 26 degrees Celsius triggers Priority 3 immediately.",
-    "gold_evidence": ev(29),
-    "tags": ["threshold", "nutrient-temperature", "alarm"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-029-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "threshold",
+      "nutrient-temperature",
+      "alarm"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "17. NUTRIENT TEMPERATURE"}
-},
-{
+    "metadata": {
+      "source_section": "17. NUTRIENT TEMPERATURE"
+    }
+  },
+  {
     "case_id": "northstar-030",
     "query": "How does ORBIT respond if two leak sensors in the same equipment area detect water simultaneously?",
     "reference_answer": "ORBIT escalates the event to Priority 3.",
-    "gold_evidence": ev(30),
-    "tags": ["leak", "alarm", "conditional"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-030-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "leak",
+      "alarm",
+      "conditional"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "18. WATER LEAK DETECTION"}
-},
-{
+    "metadata": {
+      "source_section": "18. WATER LEAK DETECTION"
+    }
+  },
+  {
     "case_id": "northstar-031",
     "query": "Is the daily physical inspection still required when every ORBIT indicator is normal?",
     "reference_answer": "Yes. The physical inspection is required even when all ORBIT indicators show normal conditions.",
-    "gold_evidence": ev(31),
-    "tags": ["inspection", "monitoring"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-031-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "inspection",
+      "monitoring"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "19. DAILY OPERATOR INSPECTION"}
-},
-{
+    "metadata": {
+      "source_section": "19. DAILY OPERATOR INSPECTION"
+    }
+  },
+  {
     "case_id": "northstar-032",
     "query": "How is the weekly irrigation emitter sample performed, and what flow tolerance is acceptable?",
     "reference_answer": "For each active zone, ten emitters distributed across the cultivation area are selected. Each is operated for exactly 60 seconds and its discharged volume is measured. An emitter is within tolerance if flow is within plus or minus 8 percent of nominal.",
-    "gold_evidence": ev(32),
-    "tags": ["procedure", "irrigation", "sampling"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-032-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "procedure",
+      "irrigation",
+      "sampling"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "20. IRRIGATION EMITTER CHECKS"}
-},
-{
+    "metadata": {
+      "source_section": "20. IRRIGATION EMITTER CHECKS"
+    }
+  },
+  {
     "case_id": "northstar-033",
     "query": "What sequence of actions is required if two of the ten sampled irrigation emitters are outside tolerance and then more than 10 percent of the expanded sample is outside tolerance?",
     "reference_answer": "First, an expanded inspection of at least 30 emitters must be performed. If more than 10 percent of that expanded sample is outside tolerance, the irrigation line must be cleaned before the next standard irrigation cycle.",
-    "gold_evidence": ev(33),
-    "tags": ["multi-step", "irrigation", "conditional"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-033-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "multi-step",
+      "irrigation",
+      "conditional"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "20. IRRIGATION EMITTER CHECKS"}
-},
-{
+    "metadata": {
+      "source_section": "20. IRRIGATION EMITTER CHECKS"
+    }
+  },
+  {
     "case_id": "northstar-034",
     "query": "What air-temperature condition causes a 'Major Environmental Deviation' flag?",
     "reference_answer": "A Major Environmental Deviation flag is applied if air temperature remains outside the normal experimental range for more than 120 cumulative minutes during any 24-hour period.",
-    "gold_evidence": ev(34),
-    "tags": ["experiment-validity", "temperature", "threshold"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-034-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "experiment-validity",
+      "temperature",
+      "threshold"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "21. DATA QUALITY AND EXPERIMENT VALIDITY"}
-},
-{
+    "metadata": {
+      "source_section": "21. DATA QUALITY AND EXPERIMENT VALIDITY"
+    }
+  },
+  {
     "case_id": "northstar-035",
     "query": "May the listed maintenance intervals be extended without authorization?",
     "reference_answer": "No. They may not be extended beyond the listed intervals without Level 3 authorization and a documented engineering justification.",
-    "gold_evidence": ev(35),
-    "tags": ["maintenance", "authorization"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-035-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "maintenance",
+      "authorization"
+    ],
     "difficulty": "easy",
     "language": "en",
-    "metadata": {"source_section": "22. MAINTENANCE SCHEDULE"}
-},
-{
+    "metadata": {
+      "source_section": "22. MAINTENANCE SCHEDULE"
+    }
+  },
+  {
     "case_id": "northstar-036",
     "query": "What happens when an emergency-stop button is activated, and who must authorize the reset?",
     "reference_answer": "Emergency-stop activation removes power from major process actuators including nutrient-transfer pumps, irrigation pumps, chemical dosing pumps, and carbon dioxide injection, while ORBIT servers, emergency monitoring, and emergency ventilation remain available. A Level 3 Operator must inspect the affected systems and authorize reset.",
-    "gold_evidence": ev(36),
-    "tags": ["emergency-stop", "safety", "multi-part"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-036-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "emergency-stop",
+      "safety",
+      "multi-part"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "24. EMERGENCY STOP SYSTEM"}
-},
-{
+    "metadata": {
+      "source_section": "24. EMERGENCY STOP SYSTEM"
+    }
+  },
+  {
     "case_id": "northstar-037",
     "query": "What happens if a dosing pump is commanded on continuously for longer than 90 seconds?",
     "reference_answer": "ORBIT stops the dosing pump and generates a Priority 2 alarm. A second dosing attempt is not automatically initiated.",
-    "gold_evidence": ev(37),
-    "tags": ["dosing", "alarm", "threshold"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-037-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "dosing",
+      "alarm",
+      "threshold"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "25. CHEMICAL DOSING FAILURE"}
-},
-{
+    "metadata": {
+      "source_section": "25. CHEMICAL DOSING FAILURE"
+    }
+  },
+  {
     "case_id": "northstar-038",
     "query": "How does the alarm severity change as communication with an individual controller remains unavailable?",
     "reference_answer": "A communication loss lasting more than 60 seconds creates a Priority 1 advisory. After five minutes it becomes Priority 2. If communication remains unavailable for 30 minutes, an operator must physically inspect the affected zone.",
-    "gold_evidence": ev(38),
-    "tags": ["communication", "temporal", "alarm"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-038-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "communication",
+      "temporal",
+      "alarm"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "26. COMMUNICATION FAILURE"}
-},
-{
+    "metadata": {
+      "source_section": "26. COMMUNICATION FAILURE"
+    }
+  },
+  {
     "case_id": "northstar-039",
     "query": "What reminders or alarms occur when a manual override remains active for two hours and then six hours?",
     "reference_answer": "ORBIT generates a reminder after a manual override remains active for more than two hours. After six hours, it generates a Priority 2 alarm unless the experiment protocol explicitly permits a longer override.",
-    "gold_evidence": ev(39),
-    "tags": ["manual-override", "temporal", "alarm"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-039-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "manual-override",
+      "temporal",
+      "alarm"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "27. MANUAL OVERRIDES"}
-},
-{
+    "metadata": {
+      "source_section": "27. MANUAL OVERRIDES"
+    }
+  },
+  {
     "case_id": "northstar-040",
     "query": "In the sample Zone B reservoir incident, why does standby pump P-B2 not start when the level reaches 15 percent?",
     "reference_answer": "P-B2 does not start because P-B1 was stopped due to low reservoir level rather than a motor fault. Starting the standby pump would not correct the lack of nutrient solution and could cause it to run dry as well.",
-    "gold_evidence": ev(40),
-    "tags": ["reasoning", "pump", "sample-incident", "conditional"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-040-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "reasoning",
+      "pump",
+      "sample-incident",
+      "conditional"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "28. SAMPLE INCIDENT"}
-},
-{
+    "metadata": {
+      "source_section": "28. SAMPLE INCIDENT"
+    }
+  },
+  {
     "case_id": "northstar-041",
     "query": "In the sample AHU-2 incident beginning at 10:00, what are the lighting states at 10:20 and 10:45?",
     "reference_answer": "At 10:20 the lighting in Zones C and D is reduced to 25 percent. At 10:45 the lighting is switched off.",
-    "gold_evidence": ev(41),
-    "tags": ["temporal", "air-handling", "sample-incident"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-041-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "temporal",
+      "air-handling",
+      "sample-incident"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "29. SAMPLE AIR-HANDLING INCIDENT"}
-},
-{
+    "metadata": {
+      "source_section": "29. SAMPLE AIR-HANDLING INCIDENT"
+    }
+  },
+  {
     "case_id": "northstar-042",
     "query": "In the sample RO-1 incident, conductivity rises above 70 microsiemens per centimeter at 07:30 and stays high. At what time is the produced water diverted from PW-1?",
     "reference_answer": "The produced water is diverted at 07:35, when the high-conductivity condition has persisted for five minutes.",
-    "gold_evidence": ev(42),
-    "tags": ["temporal", "water-quality", "sample-incident"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-042-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "temporal",
+      "water-quality",
+      "sample-incident"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "30. SAMPLE WATER-QUALITY INCIDENT"}
-},
-{
+    "metadata": {
+      "source_section": "30. SAMPLE WATER-QUALITY INCIDENT"
+    }
+  },
+  {
     "case_id": "northstar-043",
     "query": "When several faults occur simultaneously, what is Northstar's priority order from highest to lowest?",
     "reference_answer": "Personnel safety is first, equipment protection second, prevention of cross-contamination third, preservation of experimental conditions fourth, and crop preservation fifth. Data completeness must not outrank personnel safety or safe equipment operation.",
-    "gold_evidence": ev(43),
-    "tags": ["prioritization", "multi-fault", "safety"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-043-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "prioritization",
+      "multi-fault",
+      "safety"
+    ],
     "difficulty": "hard",
     "language": "en",
-    "metadata": {"source_section": "31. PRIORITIES DURING MULTIPLE FAULTS"}
-},
-{
+    "metadata": {
+      "source_section": "31. PRIORITIES DURING MULTIPLE FAULTS"
+    }
+  },
+  {
     "case_id": "northstar-044",
     "query": "Can an experiment protocol override facility-wide safety limits on its own?",
     "reference_answer": "No. An experiment protocol may override normal cultivation parameters, but facility-wide safety limits require separate Level 3 approval and documentation as an engineering deviation.",
-    "gold_evidence": ev(44),
-    "tags": ["authorization", "safety", "experiment-protocol"],
+    "gold_evidence": [
+      {
+        "evidence_id": "northstar-044-e1",
+        "document_id": "northstar-operations-manual"
+      }
+    ],
+    "tags": [
+      "authorization",
+      "safety",
+      "experiment-protocol"
+    ],
     "difficulty": "medium",
     "language": "en",
-    "metadata": {"source_section": "32. FINAL OPERATING PRINCIPLES"}
-},
-{
+    "metadata": {
+      "source_section": "32. FINAL OPERATING PRINCIPLES"
+    }
+  },
+  {
     "case_id": "northstar-045",
     "query": "What manufacturer and model is the Northstar backup generator?",
     "reference_answer": "The manual does not specify the manufacturer or model of the backup generator.",
     "gold_evidence": [],
-    "tags": ["unanswerable", "negative-control"],
+    "tags": [
+      "unanswerable",
+      "negative-control"
+    ],
     "difficulty": "medium",
     "language": "en",
     "metadata": {
-        "source_section": None,
-        "expected_answerability": "unanswerable",
-        "reason": "The document states generator behavior but gives no manufacturer or model."
+      "source_section": null,
+      "expected_answerability": "unanswerable",
+      "reason": "The document states generator behavior but gives no manufacturer or model."
     }
-},
-{
+  },
+  {
     "case_id": "northstar-046",
     "query": "What concentration of peroxide-based cleaning solution is used during routine cleaning?",
     "reference_answer": "The manual does not specify the concentration of the peroxide-based cleaning solution.",
     "gold_evidence": [],
-    "tags": ["unanswerable", "negative-control", "sanitation"],
+    "tags": [
+      "unanswerable",
+      "negative-control",
+      "sanitation"
+    ],
     "difficulty": "medium",
     "language": "en",
     "metadata": {
-        "source_section": "14. CLEANING AND SANITATION",
-        "expected_answerability": "unanswerable",
-        "reason": "The cleaning agent is named, but no concentration is provided."
+      "source_section": "14. CLEANING AND SANITATION",
+      "expected_answerability": "unanswerable",
+      "reason": "The cleaning agent is named, but no concentration is provided."
     }
-},
-{
+  },
+  {
     "case_id": "northstar-047",
     "query": "What is the nominal flow rate, in liters per minute, of each irrigation emitter?",
     "reference_answer": "The manual does not specify the nominal irrigation-emitter flow rate.",
     "gold_evidence": [],
-    "tags": ["unanswerable", "negative-control", "irrigation"],
+    "tags": [
+      "unanswerable",
+      "negative-control",
+      "irrigation"
+    ],
     "difficulty": "hard",
     "language": "en",
     "metadata": {
-        "source_section": "20. IRRIGATION EMITTER CHECKS",
-        "expected_answerability": "unanswerable",
-        "reason": "The manual defines tolerance relative to nominal flow but does not give the nominal flow value."
+      "source_section": "20. IRRIGATION EMITTER CHECKS",
+      "expected_answerability": "unanswerable",
+      "reason": "The manual defines tolerance relative to nominal flow but does not give the nominal flow value."
     }
-},
-{
+  },
+  {
     "case_id": "northstar-048",
     "query": "How many kilowatts of electrical power can the emergency generator supply?",
     "reference_answer": "The manual does not specify the electrical power rating of the emergency generator.",
     "gold_evidence": [],
-    "tags": ["unanswerable", "negative-control", "power"],
+    "tags": [
+      "unanswerable",
+      "negative-control",
+      "power"
+    ],
     "difficulty": "medium",
     "language": "en",
     "metadata": {
-        "source_section": "15. POWER FAILURE BEHAVIOR",
-        "expected_answerability": "unanswerable",
-        "reason": "The document lists emergency-powered systems and startup timing but not generator capacity."
+      "source_section": "15. POWER FAILURE BEHAVIOR",
+      "expected_answerability": "unanswerable",
+      "reason": "The document lists emergency-powered systems and startup timing but not generator capacity."
     }
-}
+  }
+]
