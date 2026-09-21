@@ -22,6 +22,7 @@ It deliberately does not:
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
@@ -93,6 +94,16 @@ class TargetSecretService(Protocol):
     ) -> ResolvedTargetCredentials:
         """Resolve SecretRef values into transient runtime credentials."""
         ...
+
+
+@dataclass(frozen=True)
+class UploadedPythonAdapterSourceInfo:
+    """Metadata describing the active uploaded Python adapter source."""
+
+    filename: str
+    artifact_id: str
+    content_hash: str | None
+    created_at: datetime | None
 
 
 class TargetService:
@@ -301,33 +312,145 @@ class TargetService:
 
         return content.decode("utf-8")
 
+    async def get_config_version(
+        self,
+        target_id: str,
+        version: int,
+    ) -> TargetConfigVersionRecord:
+        """Return one immutable target configuration version."""
+
+        await self._require_target(target_id)
+
+        record = await self._repository.get_config_version(
+            target_id,
+            version,
+        )
+
+        if record is None:
+            raise KeyError(
+                f"target configuration version not found: "
+                f"{target_id} v{version}"
+            )
+
+        return record
+
+    async def get_configuration_version_yaml(
+        self,
+        target_id: str,
+        version: int,
+    ) -> str:
+        """Return sanitized target.yaml for one immutable config version."""
+
+        record = await self.get_config_version(
+            target_id,
+            version,
+        )
+
+        artifact = await self._persistence_repository.get_artifact(
+            record.source_artifact_id
+        )
+
+        if artifact is None:
+            raise KeyError(
+                "target configuration artifact not found: "
+                f"{record.source_artifact_id}"
+            )
+
+        content = await self._artifact_service.get(
+            artifact
+        )
+
+        return content.decode("utf-8")
+
+    async def restore_configuration_version(
+        self,
+        target_id: str,
+        version: int,
+    ) -> TargetConfigVersionRecord:
+        """Restore a historical configuration as a new immutable version.
+
+        The historical declared/effective configuration and sanitized source
+        artifact are reused exactly. This preserves SecretRef identities and
+        avoids re-extracting or duplicating secrets.
+        """
+
+        target = await self._require_target(
+            target_id
+        )
+
+        historical = await self.get_config_version(
+            target_id,
+            version,
+        )
+
+        declared = TargetConfig.model_validate(
+            historical.declared_config
+        )
+
+        effective = EffectiveTargetConfig.model_validate(
+            historical.effective_config
+        )
+
+        next_version = (
+            (target.current_config_version or 0) + 1
+        )
+
+        record = await self._repository.persist_config_version(
+            config_version_id=f"tcfg-{uuid4()}",
+            target_id=target_id,
+            version=next_version,
+            source_artifact_id=historical.source_artifact_id,
+            declared=declared,
+            effective=effective,
+        )
+
+        # Restoring configuration changes the active runtime configuration,
+        # therefore previous connectivity information is no longer authoritative.
+        await self._repository.persist_connection_state(
+            target_id,
+            TargetConnectionState(
+                status=TargetConnectionStatus.NOT_TESTED,
+            ),
+        )
+
+        return record
+
     async def upload_python_adapter(
         self,
         target_id: str,
         content: bytes,
         *,
         filename: str = "target_adapter.py",
-    ) -> None:
+    ) -> UploadedPythonAdapterSourceInfo:
         """Configure a target directly from an uploaded Python adapter.
 
-        No user-provided target.yaml is required. A minimal canonical target
-        configuration is synthesized internally so target lifecycle and config
-        versioning remain uniform.
+        The Python source and synthesized target configuration are persisted as
+        separate artifacts:
+
+        - TARGET_ADAPTER_SOURCE contains the executable Python source.
+        - TARGET_CONFIG contains the synthesized sanitized configuration.
+
+        The config version points to TARGET_CONFIG while its parameters contain
+        the Python source artifact reference.
         """
 
-        target = await self._require_target(target_id)
+        target = await self._require_target(
+            target_id
+        )
 
         if not filename.lower().endswith(".py"):
-            raise ValueError("Uploaded target adapter must be a .py file.")
+            raise ValueError(
+                "Uploaded target adapter must be a .py file."
+            )
 
-        # Syntax validation only. Do not execute arbitrary code merely because it
-        # has been uploaded.
+        # Syntax validation only. Do not execute arbitrary code merely because
+        # it has been uploaded.
         validate_uploaded_python_source(
             content,
             filename=filename,
         )
 
-        artifact = await self._artifact_service.put(
+        source_artifact = await self._artifact_service.put(
             content,
             ArtifactType.TARGET_ADAPTER_SOURCE,
             content_type="text/x-python",
@@ -342,7 +465,7 @@ class TargetService:
                 type="uploaded_python",
             ),
             parameters={
-                "source_artifact_id": artifact.artifact_id,
+                "source_artifact_id": source_artifact.artifact_id,
                 "filename": filename,
                 "entrypoint": "create_adapter",
             },
@@ -356,25 +479,40 @@ class TargetService:
             metadata={},
         )
 
-        next_version = (target.current_config_version or 0) + 1
+        # Config versions must always reference a configuration artifact.
+        # The actual Python source remains referenced from declared/effective
+        # parameters.source_artifact_id.
+        sanitized_yaml = yaml.safe_dump(
+            declared.model_dump(
+                mode="json",
+                exclude_none=True,
+            ),
+            sort_keys=False,
+            allow_unicode=True,
+        )
+
+        config_artifact = await self._artifact_service.put(
+            sanitized_yaml.encode("utf-8"),
+            ArtifactType.TARGET_CONFIG,
+            content_type="application/yaml",
+            metadata={
+                "target_id": target_id,
+                "filename": "target.yaml",
+                "adapter_source_artifact_id": source_artifact.artifact_id,
+            },
+        )
+
+        next_version = (
+            (target.current_config_version or 0) + 1
+        )
 
         await self._repository.persist_config_version(
             config_version_id=f"tcfg-{uuid4()}",
             target_id=target_id,
             version=next_version,
-            source_artifact_id=artifact.artifact_id,
+            source_artifact_id=config_artifact.artifact_id,
             declared=declared,
             effective=effective,
-        )
-
-        await self._repository.set_configuration_status(
-            target_id,
-            TargetConfigurationStatus.CONFIGURED,
-        )
-
-        await self._repository.update_target_identity(
-            target_id,
-            adapter_type="uploaded_python",
         )
 
         await self._repository.persist_connection_state(
@@ -383,6 +521,78 @@ class TargetService:
                 status=TargetConnectionStatus.NOT_TESTED,
             ),
         )
+
+        return UploadedPythonAdapterSourceInfo(
+            filename=filename,
+            artifact_id=source_artifact.artifact_id,
+            content_hash=source_artifact.sha256,
+            created_at=source_artifact.created_at,
+        )
+
+
+    async def get_python_adapter_source(
+        self,
+        target_id: str,
+    ) -> UploadedPythonAdapterSourceInfo | None:
+        """Return metadata for the active uploaded Python adapter source."""
+
+        await self._require_target(
+            target_id
+        )
+
+        effective = await self._repository.load_current_effective_config(
+            target_id
+        )
+
+        if (
+            effective is None
+            or effective.adapter_type != "uploaded_python"
+        ):
+            return None
+
+        artifact_id = effective.parameters.get(
+            "source_artifact_id"
+        )
+
+        if not isinstance(artifact_id, str) or not artifact_id:
+            raise ValueError(
+                "uploaded_python configuration requires "
+                "parameters.source_artifact_id."
+            )
+
+        artifact = await self._persistence_repository.get_artifact(
+            artifact_id
+        )
+
+        if artifact is None:
+            raise KeyError(
+                f"uploaded Python adapter artifact not found: {artifact_id}"
+            )
+
+        filename_value = effective.parameters.get(
+            "filename"
+        )
+
+        if isinstance(filename_value, str) and filename_value:
+            filename = filename_value
+        else:
+            metadata_filename = artifact.metadata.get(
+                "filename"
+            )
+
+            filename = (
+                metadata_filename
+                if isinstance(metadata_filename, str)
+                else "target_adapter.py"
+            )
+
+        return UploadedPythonAdapterSourceInfo(
+            filename=filename,
+            artifact_id=artifact.artifact_id,
+            content_hash=artifact.sha256,
+            created_at=artifact.created_at,
+        )
+
 
     # ---------------------------------------------------------------------
     # Runtime adapter construction

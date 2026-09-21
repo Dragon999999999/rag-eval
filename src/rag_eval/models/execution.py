@@ -2,7 +2,7 @@
 
 from pydantic import Field
 
-from rag_eval.models.common import CanonicalModel, JsonDict
+from rag_eval.models.common import CanonicalModel
 
 
 class RunExecutionMode(CanonicalModel):

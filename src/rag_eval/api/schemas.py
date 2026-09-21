@@ -109,12 +109,48 @@ class TargetConfigVersionInfo(BaseModel):
     created_at: datetime
 
 
+class TargetConfigVersionDetail(BaseModel):
+    """One immutable target configuration version with secret-safe YAML."""
+
+    target_id: str
+    config_version_id: str
+    version: int
+    schema_version: str
+    source_artifact_id: str
+    config_hash: str
+    yaml: str
+    created_at: datetime
+
+
+class TargetConfigRestoreResponse(BaseModel):
+    """Result of restoring an earlier configuration as a new version."""
+
+    target_id: str
+    restored_from_version: int
+    config_version_id: str
+    version: int
+    schema_version: str
+    source_artifact_id: str
+    config_hash: str
+    created_at: datetime
+
+
 class TargetConfigurationResponse(BaseModel):
     """Current editable secret-safe target YAML."""
 
     target_id: str
     version: int
     yaml: str
+
+
+class TargetAdapterSourceInfo(BaseModel):
+    """Metadata for the currently configured uploaded Python adapter."""
+
+    target_id: str
+    filename: str
+    artifact_id: str
+    content_hash: str | None = None
+    created_at: datetime | None = None
 
 
 class TargetConnectionInfo(BaseModel):

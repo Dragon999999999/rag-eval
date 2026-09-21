@@ -19,8 +19,11 @@ from rag_eval.api.dependencies import (
 )
 from rag_eval.api.schemas import (
     TargetAdapterInfo,
+    TargetAdapterSourceInfo,
     TargetCapabilitiesInfo,
     TargetConfigurationResponse,
+    TargetConfigRestoreResponse,
+    TargetConfigVersionDetail,
     TargetConfigVersionInfo,
     TargetConnectionInfo,
     TargetCreate,
@@ -369,6 +372,87 @@ async def list_target_configuration_versions(
     ]
 
 
+@router.get(
+    "/{target_id}/configuration/versions/{version}",
+    response_model=TargetConfigVersionDetail,
+)
+async def get_target_configuration_version(
+    target_id: str,
+    version: int,
+    service: TargetServiceDep,
+) -> TargetConfigVersionDetail:
+    """Return one historical secret-safe target configuration version."""
+
+    try:
+        record = await service.get_config_version(
+            target_id,
+            version,
+        )
+
+        yaml_content = await service.get_configuration_version_yaml(
+            target_id,
+            version,
+        )
+
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    return TargetConfigVersionDetail(
+        target_id=target_id,
+        config_version_id=record.config_version_id,
+        version=record.version,
+        schema_version=record.schema_version,
+        source_artifact_id=record.source_artifact_id,
+        config_hash=record.config_hash,
+        yaml=yaml_content,
+        created_at=record.created_at,
+    )
+
+
+@router.post(
+    "/{target_id}/configuration/versions/{version}/restore",
+    response_model=TargetConfigRestoreResponse,
+)
+async def restore_target_configuration_version(
+    target_id: str,
+    version: int,
+    service: TargetServiceDep,
+) -> TargetConfigRestoreResponse:
+    """Restore a historical configuration by creating a new config version."""
+
+    try:
+        record = await service.restore_configuration_version(
+            target_id,
+            version,
+        )
+
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    return TargetConfigRestoreResponse(
+        target_id=target_id,
+        restored_from_version=version,
+        config_version_id=record.config_version_id,
+        version=record.version,
+        schema_version=record.schema_version,
+        source_artifact_id=record.source_artifact_id,
+        config_hash=record.config_hash,
+        created_at=record.created_at,
+    )
+
+
 # ============================================================================
 # Uploaded Python adapter
 # ============================================================================
@@ -376,7 +460,7 @@ async def list_target_configuration_versions(
 
 @router.post(
     "/{target_id}/adapter-source",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=TargetAdapterSourceInfo,
 )
 async def upload_target_adapter_source(
     target_id: str,
@@ -385,7 +469,7 @@ async def upload_target_adapter_source(
         UploadFile,
         File(...),
     ],
-) -> None:
+) -> TargetAdapterSourceInfo:
     """Configure a target from a trusted uploaded Python adapter."""
 
     filename = file.filename or "target_adapter.py"
@@ -405,7 +489,7 @@ async def upload_target_adapter_source(
         )
 
     try:
-        await service.upload_python_adapter(
+        source = await service.upload_python_adapter(
             target_id,
             content,
             filename=filename,
@@ -422,6 +506,48 @@ async def upload_target_adapter_source(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
+
+    return TargetAdapterSourceInfo(
+        target_id=target_id,
+        filename=source.filename,
+        artifact_id=source.artifact_id,
+        content_hash=source.content_hash,
+        created_at=source.created_at,
+    )
+
+
+@router.get(
+    "/{target_id}/adapter-source",
+    response_model=TargetAdapterSourceInfo,
+)
+async def get_target_adapter_source(
+    target_id: str,
+    service: TargetServiceDep,
+) -> TargetAdapterSourceInfo:
+    """Return metadata for the target's uploaded Python adapter."""
+
+    try:
+        source = await service.get_python_adapter_source(target_id)
+
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    if source is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Target has no uploaded Python adapter.",
+        )
+
+    return TargetAdapterSourceInfo(
+        target_id=target_id,
+        filename=source.filename,
+        artifact_id=source.artifact_id,
+        content_hash=source.content_hash,
+        created_at=source.created_at,
+    )
 
 
 # ============================================================================
