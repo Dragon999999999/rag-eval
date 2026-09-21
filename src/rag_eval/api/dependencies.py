@@ -17,10 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from rag_eval.artifacts import ArtifactService
 from rag_eval.artifacts.base import ArtifactStore
+from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.session import create_async_engine, create_session_factory
 from rag_eval.metrics.registry import MetricRegistry
-from rag_eval.services.benchmark import BenchmarkService
+from rag_eval.services.benchmark_service import BenchmarkService
 from rag_eval.services.metric_configs import MetricConfigService
 from rag_eval.services.test_definitions import TestDefinitionService
 
@@ -97,7 +98,7 @@ async def verify_api_key(
 
 
 # ============================================================================
-# Database
+# Database session
 # ============================================================================
 
 
@@ -122,10 +123,15 @@ DbSession = Annotated[
 ]
 
 
+# ============================================================================
+# Database repositories
+# ============================================================================
+
+
 def get_repository(
     session: DbSession,
 ) -> PersistenceRepository:
-    """Provide the persistence repository for the current transaction."""
+    """Provide general persistence for the current transaction."""
     return PersistenceRepository(session)
 
 
@@ -134,22 +140,23 @@ RepositoryDep = Annotated[
     Depends(get_repository),
 ]
 
-# ============================================================================
-# Benchmark / Artifact Services
-# ============================================================================
+
+def get_benchmark_repository(
+    session: DbSession,
+) -> BenchmarkRepository:
+    """Provide benchmark-specific persistence."""
+    return BenchmarkRepository(session)
 
 
-def get_benchmark_service(
-    repository: RepositoryDep,
-) -> BenchmarkService:
-    """Provide benchmark management service."""
-    return BenchmarkService(repository)
-
-
-BenchmarkServiceDep = Annotated[
-    BenchmarkService,
-    Depends(get_benchmark_service),
+BenchmarkRepositoryDep = Annotated[
+    BenchmarkRepository,
+    Depends(get_benchmark_repository),
 ]
+
+
+# ============================================================================
+# Artifact services
+# ============================================================================
 
 
 def get_artifact_store(
@@ -179,6 +186,28 @@ def get_artifact_service(
 ArtifactServiceDep = Annotated[
     ArtifactService,
     Depends(get_artifact_service),
+]
+
+
+# ============================================================================
+# Benchmark service
+# ============================================================================
+
+
+def get_benchmark_service(
+    repository: BenchmarkRepositoryDep,
+    artifact_service: ArtifactServiceDep,
+) -> BenchmarkService:
+    """Provide benchmark management and conversion service."""
+    return BenchmarkService(
+        repository,
+        artifact_service,
+    )
+
+
+BenchmarkServiceDep = Annotated[
+    BenchmarkService,
+    Depends(get_benchmark_service),
 ]
 
 # ============================================================================
