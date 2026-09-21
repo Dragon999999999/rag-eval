@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from rag_eval.api import benchmarks
 from rag_eval.artifacts.local import LocalArtifactStore
 from rag_eval.config import get_settings
 from rag_eval.db.session import create_async_engine, create_session_factory
@@ -125,19 +126,11 @@ async def health_check() -> dict:
     }
 
 
-# Import and include routers
-# These will be created in subsequent files
-# from rag_eval.api import targets, benchmarks, metric_configs, test_definitions, runs
-
-# app.include_router(targets.router, prefix="/api/v1", tags=["targets"])
-# app.include_router(benchmarks.router, prefix="/api/v1", tags=["benchmarks"])
-# app.include_router(
-#     metric_configs.router, prefix="/api/v1", tags=["metric-configs"]
-# )
-# app.include_router(
-#     test_definitions.router, prefix="/api/v1", tags=["test-definitions"]
-# )
-# app.include_router(runs.router, prefix="/api/v1", tags=["runs"])
+app.include_router(
+    benchmarks.router,
+    prefix="/api/v1",
+    tags=["benchmarks"],
+)
 
 
 # Root endpoint

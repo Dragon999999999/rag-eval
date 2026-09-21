@@ -31,7 +31,7 @@ export function FirstUseState() {
           title="Add an evaluation dataset"
           description="Upload or import benchmark cases"
           icon={Database}
-          href="/datasets"
+          href="/benchmarks"
         />
 
         <StepCard
@@ -52,7 +52,7 @@ export function FirstUseState() {
         </Button>
 
         <Button variant="secondary" asChild>
-          <Link to="/datasets">Import Dataset</Link>
+          <Link to="/benchmarks">Import Benchmark</Link>
         </Button>
       </div>
     </div>

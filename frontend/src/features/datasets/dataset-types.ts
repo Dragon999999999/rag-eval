@@ -1,22 +1,20 @@
 /**
- * Dataset domain types and data contracts.
+ * Frontend contracts for the benchmark API.
  *
- * Based on canonical backend Benchmark/BenchmarkCase models.
+ * Benchmarks are the primary resource. The `Dataset*` names at the bottom of
+ * this module are kept as source-compatible aliases for the test builder while
+ * the rest of the application moves away from the old dataset terminology.
  */
 
-/** Answerability enum - canonical backend values */
+export type CorpusMode = "DOCUMENTS" | "CHUNKS" | "EXTERNAL";
 export type Answerability = "ANSWERABLE" | "UNANSWERABLE" | "AMBIGUOUS" | "UNKNOWN";
-
-/** Conversation message role */
 export type MessageRole = "user" | "assistant" | "system";
 
-/** Single message in conversation history */
 export interface Message {
   role: MessageRole;
   content: string;
 }
 
-/** Gold evidence span - stable source location */
 export interface EvidenceSpan {
   evidence_id: string;
   document_id: string;
@@ -28,144 +26,90 @@ export interface EvidenceSpan {
   metadata?: Record<string, unknown>;
 }
 
-/** Benchmark case - single evaluation instance */
 export interface BenchmarkCase {
   case_id: string;
   query: string;
-  history: Message[];
+  history?: Message[];
   reference_answer?: string | null;
-  gold_evidence: EvidenceSpan[];
-  answerability?: Answerability | null;
+  gold_evidence?: EvidenceSpan[];
+  answerability?: string | null;
   tags: string[];
   difficulty?: string | null;
   language?: string | null;
   metadata?: Record<string, unknown>;
 }
 
-/** Dataset/benchmark manifest metadata */
-export interface BenchmarkManifest {
+export interface BenchmarkDocument {
+  document_id: string;
+  filename?: string | null;
+  mime_type?: string | null;
+  sha256?: string | null;
+  size_bytes?: number | null;
+  metadata?: Record<string, unknown>;
+}
+
+export interface BenchmarkChunk {
+  chunk_id: string;
+  document_id: string;
+  text: string;
+  location?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown>;
+}
+
+/** Metadata and counts returned by benchmark list/detail endpoints. */
+export interface BenchmarkInfo {
   benchmark_id: string;
   name: string;
   version: string;
-  schema_version: string;
-  content_hash?: string | null;
-  case_count?: number | null;
-  corpus_id?: string | null;
-  created_at?: string | null;
-  source?: string | null;
-  tags: string[];
-  metadata?: Record<string, unknown>;
-}
-
-/** Dataset info for listing - from backend API */
-export interface DatasetInfo {
-  dataset_id: string;
-  name: string;
-  version: string;
-  case_count: number | null;
-  manifest_hash?: string | null;
-  schema_version: string;
-  source?: string | null;
-  tags: string[];
-  metadata?: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-/** Dataset creation payload */
-export interface DatasetCreate {
-  name: string;
-  version: string;
   schema_version?: string;
+  corpus_mode: CorpusMode;
+  content_hash?: string | null;
+  corpus_id?: string | null;
   source?: string | null;
-  tags?: string[];
-  metadata?: Record<string, unknown>;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  case_count: number;
+  document_count: number;
+  chunk_count: number;
+  is_complete?: boolean;
+  available_corpus_modes?: CorpusMode[];
+  created_at?: string | null;
+  updated_at?: string | null;
+  /** Detail responses include the complete records when available. */
+  cases?: BenchmarkCase[];
+  documents?: BenchmarkDocument[];
+  chunks?: BenchmarkChunk[];
 }
 
-/** Dataset update payload */
-export interface DatasetUpdate {
-  name?: string;
+export type BenchmarkDetail = BenchmarkInfo & {
+  cases: BenchmarkCase[];
+  documents: BenchmarkDocument[];
+  chunks: BenchmarkChunk[];
+};
+
+export interface BenchmarkCreate {
+  name: string;
   version?: string;
-  metadata?: Record<string, unknown> | null;
+  corpus_mode?: CorpusMode;
 }
 
-/** Case creation payload */
-export interface CaseCreate {
-  case_id?: string;
-  query: string;
-  history?: Message[];
-  reference_answer?: string | null;
-  gold_evidence?: EvidenceSpan[];
-  answerability?: Answerability | null;
-  tags?: string[];
-  difficulty?: string | null;
-  language?: string | null;
-  metadata?: Record<string, unknown>;
+export interface BenchmarkFileCreate {
+  name: string;
+  version?: string;
+  corpus_mode?: CorpusMode;
+  cases?: File[];
+  documents?: File[];
+  chunks?: File[];
 }
 
-/** Case update payload */
-export interface CaseUpdate {
-  query?: string;
-  history?: Message[];
-  reference_answer?: string | null;
-  gold_evidence?: EvidenceSpan[];
-  answerability?: Answerability | null;
-  tags?: string[];
-  difficulty?: string | null;
-  language?: string | null;
-  metadata?: Record<string, unknown>;
-}
-
-/** Case summary for listing */
 export interface CaseSummary {
   case_id: string;
   query: string;
-  answerability: Answerability | null;
+  answerability: string | null;
   tags: string[];
   metadata?: Record<string, unknown>;
 }
 
-/** Validation error for a case */
-export interface CaseValidationError {
-  case_id: string;
-  field?: string;
-  message: string;
-}
-
-/** Dataset validation result */
-export interface DatasetValidationResult {
-  dataset_id: string;
-  valid: boolean;
-  total_cases: number;
-  valid_cases: number;
-  invalid_cases: number;
-  errors: CaseValidationError[];
-}
-
-/** Import format */
-export type ImportFormat = "json" | "jsonl" | "yaml";
-
-/** Import result */
-export interface ImportResult {
-  dataset_id: string;
-  format: ImportFormat;
-  total_cases: number;
-  valid_cases: number;
-  invalid_cases: number;
-  errors: CaseValidationError[];
-}
-
-/** Export format */
-export type ExportFormat = "json" | "jsonl" | "yaml";
-
-/** Pagination parameters */
-export interface PaginationParams {
-  limit?: number;
-  offset?: number;
-  page?: number;
-}
-
-/** Paginated response */
 export interface PaginatedCases {
   cases: CaseSummary[];
   total: number;
@@ -173,3 +117,39 @@ export interface PaginatedCases {
   offset: number;
   has_more: boolean;
 }
+
+// Compatibility types used by older consumers. New UI code should use the
+// benchmark names above.
+export type DatasetInfo = BenchmarkInfo;
+export type DatasetCreate = BenchmarkCreate;
+export type DatasetUpdate = Partial<BenchmarkCreate>;
+export type BenchmarkManifest = BenchmarkInfo;
+export type CaseCreate = Partial<BenchmarkCase> & Pick<BenchmarkCase, "query">;
+export type CaseUpdate = Partial<BenchmarkCase>;
+
+export interface CaseValidationError {
+  case_id: string;
+  field?: string;
+  message: string;
+}
+
+export interface DatasetValidationResult {
+  benchmark_id: string;
+  valid: boolean;
+  total_cases: number;
+  valid_cases: number;
+  invalid_cases: number;
+  errors: CaseValidationError[];
+}
+
+export interface ImportResult {
+  benchmark_id: string;
+  format: ImportFormat;
+  total_cases: number;
+  valid_cases: number;
+  invalid_cases: number;
+  errors: CaseValidationError[];
+}
+
+export type ImportFormat = "json" | "jsonl" | "yaml";
+export type ExportFormat = "json" | "jsonl" | "yaml";

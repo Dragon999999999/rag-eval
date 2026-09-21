@@ -24,11 +24,11 @@ export function ResourceSummarySection({ resources }: ResourceSummarySectionProp
       />
 
       <ResourceCard
-        label="Datasets"
+        label="Benchmarks"
         count={resources.datasets.total}
         secondaryLabel={resources.datasets.secondaryLabel}
         icon={Database}
-        href="/datasets"
+        href="/benchmarks"
       />
 
       <ResourceCard

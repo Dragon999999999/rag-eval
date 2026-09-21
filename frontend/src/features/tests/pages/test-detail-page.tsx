@@ -65,7 +65,7 @@ export function TestDetailPage() {
     try {
       const run = await runTest.mutateAsync({
         test_definition_id: testId,
-        name: `${test?.name ?? 'Test'} - Run ${new Date().toLocaleDateString()}`,
+        name: `${test?.name ?? "Test"} - Run ${new Date().toLocaleDateString()}`,
       });
 
       navigate(`/runs/${run.run_id}`);
@@ -106,7 +106,12 @@ export function TestDetailPage() {
         breadcrumbs={[{ label: "Tests", href: "/tests" }]}
         actions={
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => { void handleRunAgain(); }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void handleRunAgain();
+              }}
+            >
               <Play className="mr-2 h-4 w-4" />
               Run Again
             </Button>
@@ -123,7 +128,11 @@ export function TestDetailPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => { void handleDelete(); }}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    void handleDelete();
+                  }}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
@@ -143,7 +152,9 @@ export function TestDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => { setActiveTab("overview"); }}
+              onClick={() => {
+                setActiveTab("overview");
+              }}
             >
               Overview
             </button>
@@ -153,7 +164,9 @@ export function TestDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => { setActiveTab("runs"); }}
+              onClick={() => {
+                setActiveTab("runs");
+              }}
             >
               Runs ({runs?.length ?? 0})
             </button>
@@ -173,7 +186,7 @@ export function TestDetailPage() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-text-tertiary">Dataset</div>
+                    <div className="text-xs text-text-tertiary">Benchmark</div>
                     <div className="font-medium text-text-primary">
                       {test.benchmark_id}
                     </div>
@@ -255,7 +268,11 @@ export function TestDetailPage() {
                   title="No runs yet"
                   description="Run this test to see execution history here."
                   action={
-                    <Button onClick={() => { void handleRunAgain(); }}>
+                    <Button
+                      onClick={() => {
+                        void handleRunAgain();
+                      }}
+                    >
                       <Play className="mr-2 h-4 w-4" />
                       Run Test
                     </Button>

@@ -1,478 +1,172 @@
-/**
- * Dataset service API client.
- *
- * Centralized service for dataset and case CRUD operations.
- * Uses mock implementation - replace with real HTTP calls when backend is available.
- */
+/** HTTP client for the canonical benchmark API. */
+import { apiRequest } from "@/lib/api/client";
 import type {
-  DatasetInfo,
-  DatasetCreate,
-  DatasetUpdate,
   BenchmarkCase,
-  CaseCreate,
-  CaseUpdate,
+  BenchmarkCreate,
+  BenchmarkDetail,
+  BenchmarkFileCreate,
+  BenchmarkInfo,
+  CaseSummary,
   PaginatedCases,
-  DatasetValidationResult,
-  ImportResult,
-  CaseValidationError,
-  ImportFormat,
-  ExportFormat,
 } from "./dataset-types";
 
-const MOCK_DELAY_MS = 400;
+type ApiEnvelope<T> = T | { data: T } | { items: T };
 
-/** Error with code and status properties */
-interface ServiceError extends Error {
-  code?: string;
-  status?: number;
-}
-
-/** In-memory mock dataset store */
-const mockDatasets = new Map<string, DatasetInfo>();
-const mockCases = new Map<string, Map<string, BenchmarkCase>>(); // datasetId -> caseId -> case
-
-/** Initialize with mock data */
-function initializeMockData() {
-  if (mockDatasets.size > 0) return;
-
-  // QKD Benchmark dataset
-  const qkdDataset: DatasetInfo = {
-    dataset_id: "dataset-qkd-001",
-    name: "QKD Grounding Benchmark",
-    version: "1.0",
-    case_count: 250,
-    manifest_hash: "sha256:abc123...",
-    schema_version: "1.0",
-    source: "QKD Research Corp",
-    tags: ["qkd", "factual", "citation"],
-    metadata: { domain: "quantum-computing" },
-    created_at: new Date(Date.now() - 86400000 * 30).toISOString(), // 30 days ago
-    updated_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-  };
-
-  mockDatasets.set(qkdDataset.dataset_id, qkdDataset);
-
-  // Initialize cases for this dataset
-  const qkdCases = new Map<string, BenchmarkCase>();
-
-  // Add sample cases
-  for (let i = 1; i <= 10; i++) {
-    const caseId = `case-${String(i).padStart(3, "0")}`;
-    qkdCases.set(caseId, {
-      case_id: caseId,
-      query: `What is quantum key distribution case ${String(i)}?`,
-      history: i % 3 === 0 ? [{ role: "user" as const, content: "Explain QKD" }] : [],
-      reference_answer: i % 2 === 0 ? `Reference answer for case ${String(i)}` : null,
-      gold_evidence:
-        i % 2 === 0
-          ? [
-              {
-                evidence_id: `ev-${String(i)}`,
-                document_id: "qkd-paper.pdf",
-                page: 14,
-                start_char: 100,
-                end_char: 250,
-                text: "Quantum key distribution uses quantum mechanics...",
-              },
-            ]
-          : [],
-      answerability: i % 5 === 0 ? "UNANSWERABLE" : "ANSWERABLE",
-      tags: i % 3 === 0 ? ["advanced"] : ["basic"],
-      difficulty: i % 4 === 0 ? "hard" : "easy",
-      language: "en",
-      metadata: {},
-    });
+function unwrap<T>(payload: ApiEnvelope<T>): T {
+  if (typeof payload === "object" && payload !== null) {
+    if ("data" in payload) return payload.data;
+    if ("items" in payload) return payload.items;
   }
-
-  mockCases.set(qkdDataset.dataset_id, qkdCases);
-
-  // Citation benchmark dataset
-  const citationDataset: DatasetInfo = {
-    dataset_id: "dataset-citation-002",
-    name: "Citation Benchmark",
-    version: "2.1",
-    case_count: 100,
-    manifest_hash: "sha256:def456...",
-    schema_version: "1.0",
-    source: "Internal",
-    tags: ["citation", "legal"],
-    metadata: { domain: "legal" },
-    created_at: new Date(Date.now() - 86400000 * 60).toISOString(),
-    updated_at: new Date(Date.now() - 86400000 * 7).toISOString(),
-  };
-
-  mockDatasets.set(citationDataset.dataset_id, citationDataset);
-  mockCases.set(citationDataset.dataset_id, new Map());
+  return payload;
 }
 
-export const DatasetService = {
-  /** List all datasets */
-  async listDatasets(): Promise<DatasetInfo[]> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-    return Array.from(mockDatasets.values()).sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+function filesFormData(files: File[]): FormData {
+  const form = new FormData();
+  files.forEach((file) => {
+    form.append("files", file, file.name);
+  });
+  return form;
+}
+
+function createFormData(data: BenchmarkFileCreate): FormData {
+  const form = new FormData();
+  form.append("name", data.name);
+  if (data.version) form.append("version", data.version);
+  if (data.corpus_mode) form.append("corpus_mode", data.corpus_mode);
+  data.cases?.forEach((file) => {
+    form.append("cases", file, file.name);
+  });
+  data.documents?.forEach((file) => {
+    form.append("documents", file, file.name);
+  });
+  data.chunks?.forEach((file) => {
+    form.append("chunks", file, file.name);
+  });
+  return form;
+}
+
+function detailWithDefaults(benchmark: BenchmarkInfo): BenchmarkDetail {
+  return {
+    ...benchmark,
+    cases: benchmark.cases ?? [],
+    documents: benchmark.documents ?? [],
+    chunks: benchmark.chunks ?? [],
+  };
+}
+
+export const BenchmarkService = {
+  /** Load all benchmark summaries from the API. */
+  async listBenchmarks(): Promise<BenchmarkInfo[]> {
+    const payload =
+      await apiRequest<ApiEnvelope<BenchmarkInfo[]>>("/api/v1/benchmarks");
+    return unwrap(payload);
+  },
+
+  /** Load one complete benchmark and its attached records. */
+  async getBenchmark(benchmarkId: string): Promise<BenchmarkDetail> {
+    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}`
+    );
+    return detailWithDefaults(unwrap(payload));
+  },
+
+  /** Create an empty benchmark using the JSON API. */
+  async createBenchmark(data: BenchmarkCreate): Promise<BenchmarkInfo> {
+    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>("/api/v1/benchmarks", {
+      method: "POST",
+      body: {
+        name: data.name,
+        version: data.version ?? "1",
+        corpus_mode: data.corpus_mode ?? "DOCUMENTS",
+      },
+    });
+    return unwrap(payload);
+  },
+
+  /** Create a benchmark and optionally attach multiple uploaded files. */
+  async createBenchmarkFromFiles(data: BenchmarkFileCreate): Promise<BenchmarkInfo> {
+    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+      "/api/v1/benchmarks/from-files",
+      { method: "POST", body: createFormData(data) }
+    );
+    return unwrap(payload);
+  },
+
+  /** Upload one or more JSON/JSONL case files to an existing benchmark. */
+  async addCases(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases`,
+        { method: "POST", body: filesFormData(files) }
+      )
     );
   },
 
-  /** Get a single dataset */
-  async getDataset(datasetId: string): Promise<DatasetInfo> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-    const dataset = mockDatasets.get(datasetId);
-    if (!dataset) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-    return dataset;
+  /** Upload source documents to an existing DOCUMENTS benchmark. */
+  async addDocuments(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/documents`,
+        { method: "POST", body: filesFormData(files) }
+      )
+    );
   },
 
-  /** Create a new dataset */
-  async createDataset(data: DatasetCreate): Promise<DatasetInfo> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const datasetId = `dataset-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
-    const now = new Date().toISOString();
-
-    const dataset: DatasetInfo = {
-      dataset_id: datasetId,
-      name: data.name,
-      version: data.version,
-      case_count: 0,
-      schema_version: data.schema_version ?? "1.0",
-      source: data.source ?? null,
-      tags: data.tags ?? [],
-      metadata: data.metadata,
-      created_at: now,
-      updated_at: now,
-    };
-
-    mockDatasets.set(datasetId, dataset);
-    mockCases.set(datasetId, new Map());
-    return dataset;
+  /** Upload canonical JSON/JSONL chunks to an existing CHUNKS benchmark. */
+  async addChunks(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks`,
+        { method: "POST", body: filesFormData(files) }
+      )
+    );
   },
 
-  /** Update dataset metadata */
-  async updateDataset(datasetId: string, data: DatasetUpdate): Promise<DatasetInfo> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const existing = mockDatasets.get(datasetId);
-    if (!existing) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const updated: DatasetInfo = {
-      ...existing,
-      name: data.name ?? existing.name,
-      version: data.version ?? existing.version,
-      metadata: data.metadata ?? existing.metadata,
-      updated_at: new Date().toISOString(),
-    };
-
-    mockDatasets.set(datasetId, updated);
-    return updated;
+  // Compatibility aliases for existing feature consumers.
+  listDatasets() {
+    return this.listBenchmarks();
   },
-
-  /** Delete a dataset */
-  async deleteDataset(datasetId: string): Promise<void> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    if (!mockDatasets.has(datasetId)) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    mockDatasets.delete(datasetId);
-    mockCases.delete(datasetId);
+  getDataset(benchmarkId: string) {
+    return this.getBenchmark(benchmarkId);
   },
-
-  /** List cases with pagination */
+  createDataset(data: BenchmarkCreate) {
+    return this.createBenchmark(data);
+  },
   async listCases(
-    datasetId: string,
+    benchmarkId: string,
     params?: { limit?: number; offset?: number; search?: string; tag?: string }
   ): Promise<PaginatedCases> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    let allCases = Array.from(cases.values());
-
-    // Apply search filter
+    const detail = await this.getBenchmark(benchmarkId);
+    let cases: CaseSummary[] = detail.cases.map((item) => ({
+      case_id: item.case_id,
+      query: item.query,
+      answerability: item.answerability ?? null,
+      tags: item.tags,
+      metadata: item.metadata,
+    }));
     if (params?.search) {
       const search = params.search.toLowerCase();
-      allCases = allCases.filter((c) => c.query.toLowerCase().includes(search));
+      cases = cases.filter((item) => item.query.toLowerCase().includes(search));
     }
-
-    // Apply tag filter
-    if (params?.tag) {
-      const tag = params.tag;
-      allCases = allCases.filter((c) => c.tags.includes(tag));
-    }
-
-    const total = allCases.length;
-    const limit = params?.limit ?? 20;
+    if (params?.tag)
+      cases = cases.filter((item) => item.tags.includes(params.tag ?? ""));
     const offset = params?.offset ?? 0;
-
-    const paginatedCases = allCases.slice(offset, offset + limit);
-
+    const limit = params?.limit ?? (cases.length || 20);
     return {
-      cases: paginatedCases.map((c) => ({
-        case_id: c.case_id,
-        query: c.query,
-        answerability: c.answerability ?? null,
-        tags: c.tags,
-        metadata: c.metadata,
-      })),
-      total,
+      cases: cases.slice(offset, offset + limit),
+      total: cases.length,
       limit,
       offset,
-      has_more: offset + limit < total,
+      has_more: offset + limit < cases.length,
     };
   },
-
-  /** Get a single case */
-  async getCase(datasetId: string, caseId: string): Promise<BenchmarkCase> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const caseData = cases.get(caseId);
-    if (!caseData) {
-      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
-      error.code = "CASE_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    return caseData;
-  },
-
-  /** Create a new case */
-  async createCase(datasetId: string, data: CaseCreate): Promise<BenchmarkCase> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const caseId =
-      data.case_id ??
-      `case-${String(Date.now())}-${Math.random().toString(36).slice(2, 8)}`;
-
-    const caseData: BenchmarkCase = {
-      case_id: caseId,
-      query: data.query,
-      history: data.history ?? [],
-      reference_answer: data.reference_answer ?? null,
-      gold_evidence: data.gold_evidence ?? [],
-      answerability: data.answerability ?? null,
-      tags: data.tags ?? [],
-      difficulty: data.difficulty ?? null,
-      language: data.language ?? null,
-      metadata: data.metadata ?? {},
-    };
-
-    cases.set(caseId, caseData);
-
-    // Update dataset case count
-    const dataset = mockDatasets.get(datasetId);
-    if (dataset) {
-      dataset.case_count = (dataset.case_count ?? 0) + 1;
-      dataset.updated_at = new Date().toISOString();
-    }
-
-    return caseData;
-  },
-
-  /** Update a case */
-  async updateCase(
-    datasetId: string,
-    caseId: string,
-    data: CaseUpdate
-  ): Promise<BenchmarkCase> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const existing = cases.get(caseId);
-    if (!existing) {
-      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
-      error.code = "CASE_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const updated: BenchmarkCase = {
-      ...existing,
-      query: data.query ?? existing.query,
-      history: data.history ?? existing.history,
-      reference_answer: data.reference_answer ?? existing.reference_answer,
-      gold_evidence: data.gold_evidence ?? existing.gold_evidence,
-      answerability: data.answerability ?? existing.answerability,
-      tags: data.tags ?? existing.tags,
-      difficulty: data.difficulty ?? existing.difficulty,
-      language: data.language ?? existing.language,
-      metadata: data.metadata ?? existing.metadata,
-    };
-
-    cases.set(caseId, updated);
-    return updated;
-  },
-
-  /** Delete a case */
-  async deleteCase(datasetId: string, caseId: string): Promise<void> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    if (!cases.has(caseId)) {
-      const error = new Error(`Case not found: ${caseId}`) as ServiceError;
-      error.code = "CASE_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    cases.delete(caseId);
-
-    // Update dataset case count
-    const dataset = mockDatasets.get(datasetId);
-    if (dataset) {
-      dataset.case_count = Math.max(0, (dataset.case_count ?? 1) - 1);
-      dataset.updated_at = new Date().toISOString();
-    }
-  },
-
-  /** Validate dataset */
-  async validateDataset(datasetId: string): Promise<DatasetValidationResult> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 500));
-
-    const cases = mockCases.get(datasetId);
-    if (!cases) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    const errors: CaseValidationError[] = [];
-    let validCases = 0;
-
-    cases.forEach((caseData, caseId) => {
-      // Simple validation: query must exist
-      if (!caseData.query || caseData.query.trim().length === 0) {
-        errors.push({
-          case_id: caseId,
-          field: "query",
-          message: "Query is required",
-        });
-      } else {
-        validCases++;
-      }
-    });
-
-    return {
-      dataset_id: datasetId,
-      valid: errors.length === 0,
-      total_cases: cases.size,
-      valid_cases: validCases,
-      invalid_cases: errors.length,
-      errors,
-    };
-  },
-
-  /** Import dataset from file */
-  async importDataset(_file: File, _format?: ImportFormat): Promise<ImportResult> {
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS + 1000));
-
-    // Mock import - in real impl would upload file to backend
-    const datasetId = `dataset-import-${String(Date.now())}`;
-    const totalCases = Math.floor(Math.random() * 100) + 50;
-    const invalidCases = Math.floor(Math.random() * 5);
-
-    return {
-      dataset_id: datasetId,
-      format: _format ?? "json",
-      total_cases: totalCases,
-      valid_cases: totalCases - invalidCases,
-      invalid_cases: invalidCases,
-      errors:
-        invalidCases > 0
-          ? [
-              {
-                case_id: "case-001",
-                field: "query",
-                message: "Query is required",
-              },
-            ]
-          : [],
-    };
-  },
-
-  /** Export dataset */
-  async exportDataset(datasetId: string, _format: ExportFormat): Promise<Blob> {
-    initializeMockData();
-    await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
-
-    const dataset = mockDatasets.get(datasetId);
-    if (!dataset) {
-      const error = new Error(`Dataset not found: ${datasetId}`) as ServiceError;
-      error.code = "DATASET_NOT_FOUND";
-      error.status = 404;
-      throw error;
-    }
-
-    // Mock export - in real impl would download from backend
-    const exportData = {
-      manifest: dataset,
-      cases: Array.from(mockCases.get(datasetId)?.values() ?? []),
-    };
-
-    return new Blob([JSON.stringify(exportData, null, 2)], {
-      type: _format === "json" ? "application/json" : "application/jsonl",
-    });
+  async getCase(benchmarkId: string, caseId: string): Promise<BenchmarkCase> {
+    const detail = await this.getBenchmark(benchmarkId);
+    const item = detail.cases.find((candidate) => candidate.case_id === caseId);
+    if (!item) throw new Error(`Case not found: ${caseId}`);
+    return item;
   },
 };
+
+/** Backward-compatible export name; all calls use benchmark endpoints. */
+export const DatasetService = BenchmarkService;

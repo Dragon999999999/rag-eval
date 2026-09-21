@@ -1,12 +1,10 @@
 /**
  * Dataset formatters and utilities.
  */
-import type { Answerability, DatasetInfo, BenchmarkCase } from "./dataset-types";
+import type { DatasetInfo, BenchmarkCase } from "./dataset-types";
 
 /** Format answerability for display */
-export function formatAnswerability(
-  answerability: Answerability | null | undefined
-): string {
+export function formatAnswerability(answerability: string | null | undefined): string {
   if (!answerability) return "Unknown";
 
   switch (answerability) {
@@ -25,7 +23,7 @@ export function formatAnswerability(
 
 /** Get answerability badge variant */
 export function getAnswerabilityVariant(
-  answerability: Answerability | null | undefined
+  answerability: string | null | undefined
 ): "success" | "error" | "warning" | "neutral" {
   if (!answerability) return "neutral";
 
@@ -77,14 +75,14 @@ export function getValidationStatus(
 export function getEvidenceCount(
   caseData: Pick<BenchmarkCase, "gold_evidence">
 ): number {
-  return caseData.gold_evidence.length;
+  return caseData.gold_evidence?.length ?? 0;
 }
 
 /** Get history message count */
 export function getHistoryMessageCount(
   caseData: Pick<BenchmarkCase, "history">
 ): number {
-  return caseData.history.length;
+  return caseData.history?.length ?? 0;
 }
 
 /** Format dataset name with version */

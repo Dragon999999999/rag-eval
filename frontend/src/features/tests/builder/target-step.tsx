@@ -60,7 +60,9 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => { void refetch(); }}
+            onClick={() => {
+              void refetch();
+            }}
             className="ml-4"
           >
             Retry
@@ -114,7 +116,9 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
                 key={target.targetId}
                 target={target}
                 isSelected={selectedTargetId === target.targetId}
-                onSelect={() => { setSelectedTargetId(target.targetId); }}
+                onSelect={() => {
+                  setSelectedTargetId(target.targetId);
+                }}
               />
             ))}
           </TableBody>
@@ -123,7 +127,7 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
 
       <div className="flex justify-end">
         <Button onClick={onNext} disabled={!selectedTargetId}>
-          Next: Select Dataset
+          Next: Select Benchmark
         </Button>
       </div>
     </div>

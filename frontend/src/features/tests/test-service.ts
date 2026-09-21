@@ -299,7 +299,7 @@ export const TestService = {
     }
 
     if (!data.benchmark_id) {
-      errors.push("Dataset must be selected");
+      errors.push("Benchmark must be selected");
     }
 
     if (!data.metric_config_id || !data.metric_config_id.startsWith("mc-")) {
@@ -392,13 +392,8 @@ export const TestService = {
       };
       run.progress = {
         ...progress,
-        complete_cases: Math.min(
-          progress.total_cases,
-          progress.complete_cases + 10
-        ),
-        percent: Math.round(
-          (progress.complete_cases / progress.total_cases) * 100
-        ),
+        complete_cases: Math.min(progress.total_cases, progress.complete_cases + 10),
+        percent: Math.round((progress.complete_cases / progress.total_cases) * 100),
       };
     }
 
@@ -485,12 +480,12 @@ export const MetricService = {
           break;
         case "GOLD_EVIDENCE":
           if (!datasetFeatures.gold_evidence) {
-            missingRequirements.push("Dataset has no gold evidence");
+            missingRequirements.push("Benchmark has no gold evidence");
           }
           break;
         case "REFERENCE_ANSWER":
           if (!datasetFeatures.reference_answer) {
-            missingRequirements.push("Dataset has no reference answers");
+            missingRequirements.push("Benchmark has no reference answers");
           }
           break;
       }

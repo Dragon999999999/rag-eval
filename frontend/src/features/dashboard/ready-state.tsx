@@ -34,10 +34,10 @@ export function ReadyToEvaluateState({ resources }: ReadyToEvaluateStateProps) {
 
         {resources.datasets.total > 0 && (
           <ResourceReady
-            label="Dataset"
+            label="Benchmark"
             secondary={resources.datasets.secondaryLabel}
             icon={Database}
-            href="/datasets"
+            href="/benchmarks"
           />
         )}
       </div>

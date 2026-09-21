@@ -6,24 +6,32 @@ export { DatasetCreatePage } from "./pages/dataset-create-page";
 export { DatasetDetailPage } from "./pages/dataset-detail-page";
 
 export {
+  useBenchmarkList,
+  useBenchmark,
+  useCreateBenchmark,
+  useCreateBenchmarkFromFiles,
+  useAddBenchmarkCases,
+  useAddBenchmarkDocuments,
+  useAddBenchmarkChunks,
   useDatasetList,
   useDataset,
-  useCreateDataset,
-  useUpdateDataset,
-  useDeleteDataset,
   useCaseList,
   useCase,
-  useCreateCase,
-  useUpdateCase,
-  useDeleteCase,
   useValidateDataset,
-  useExportDataset,
+  benchmarkQueryKeys,
   datasetQueryKeys,
 } from "./use-datasets";
 
-export { DatasetService } from "./dataset-service";
+export { BenchmarkService, DatasetService } from "./dataset-service";
 
 export type {
+  BenchmarkInfo,
+  BenchmarkDetail,
+  BenchmarkDocument,
+  BenchmarkChunk,
+  BenchmarkCreate,
+  BenchmarkFileCreate,
+  CorpusMode,
   DatasetInfo,
   DatasetCreate,
   DatasetUpdate,

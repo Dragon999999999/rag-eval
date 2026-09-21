@@ -3,7 +3,7 @@
  *
  * Manages the 5-step builder flow:
  * 1. Target Selection
- * 2. Dataset Selection
+ * 2. Benchmark Selection
  * 3. Metrics Configuration
  * 4. Execution Settings
  * 5. Review
@@ -118,14 +118,16 @@ export function TestBuilder({}: TestBuilderProps) {
             const stepNum = index + 1;
             const isCurrent = step === currentStep;
             // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-            const isPast = stepNum < (currentStep);
+            const isPast = stepNum < currentStep;
             // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
-            const canNavigate = stepNum <= (currentStep);
+            const canNavigate = stepNum <= currentStep;
 
             return (
               <div key={step} className="flex items-center">
                 <button
-                  onClick={() => { if (canNavigate) handleStepClick(step as BuilderStep); }}
+                  onClick={() => {
+                    if (canNavigate) handleStepClick(step as BuilderStep);
+                  }}
                   disabled={!canNavigate}
                   className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
                     isCurrent

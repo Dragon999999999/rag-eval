@@ -1,5 +1,5 @@
 /**
- * Step 2: Dataset Selection component.
+ * Step 2: Benchmark selection component.
  */
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useDatasetList } from "@/features/datasets/use-datasets";
-import type { DatasetInfo } from "@/features/datasets/dataset-types";
+import { useBenchmarkList } from "@/features/datasets/use-datasets";
+import type { BenchmarkInfo } from "@/features/datasets/dataset-types";
 import type { UseFormReturn } from "react-hook-form";
 import type { TestBuilderValues } from "../test-builder-form";
 import type { CaseScope } from "../test-types";
@@ -30,7 +30,7 @@ interface DatasetStepProps {
 }
 
 export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
-  const { data: datasets, isLoading, error, refetch } = useDatasetList();
+  const { data: benchmarks, isLoading, error, refetch } = useBenchmarkList();
 
   const selectedBenchmarkId = form.watch("benchmark_id");
   const caseScope = form.watch("case_scope");
@@ -53,7 +53,7 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Select Dataset</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Select Benchmark</h2>
         </div>
         <Surface>
           <div className="flex items-center justify-center py-12">
@@ -72,7 +72,9 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => { void refetch(); }}
+            onClick={() => {
+              void refetch();
+            }}
             className="ml-4"
           >
             Retry
@@ -82,14 +84,14 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
     );
   }
 
-  if (!datasets || datasets.length === 0) {
+  if (!benchmarks || benchmarks.length === 0) {
     return (
       <EmptyState
-        title="No datasets available"
-        description="You need to upload or register at least one benchmark dataset."
+        title="No benchmarks available"
+        description="You need to upload or register at least one benchmark."
         action={
           <Button asChild>
-            <Link to="/datasets/new">Upload Dataset</Link>
+            <Link to="/benchmarks/new">Upload Benchmark</Link>
           </Button>
         }
       />
@@ -100,9 +102,9 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-text-primary">Select Dataset</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Select Benchmark</h2>
           <p className="text-sm text-text-tertiary">
-            Choose the benchmark dataset to evaluate against.
+            Choose the benchmark to evaluate against.
           </p>
         </div>
       </div>
@@ -119,12 +121,14 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {datasets.map((dataset: DatasetInfo) => (
-              <DatasetRow
-                key={dataset.dataset_id}
-                dataset={dataset}
-                isSelected={selectedBenchmarkId === dataset.dataset_id}
-                onSelect={() => { setSelectedBenchmarkId(dataset.dataset_id); }}
+            {benchmarks.map((benchmark: BenchmarkInfo) => (
+              <BenchmarkRow
+                key={benchmark.benchmark_id}
+                benchmark={benchmark}
+                isSelected={selectedBenchmarkId === benchmark.benchmark_id}
+                onSelect={() => {
+                  setSelectedBenchmarkId(benchmark.benchmark_id);
+                }}
               />
             ))}
           </TableBody>
@@ -140,13 +144,15 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "all"}
-                onChange={() => { setCaseScope({ mode: "all" }); }}
+                onChange={() => {
+                  setCaseScope({ mode: "all" });
+                }}
                 className="mt-1 h-4 w-4"
               />
               <div className="flex-1">
                 <div className="font-medium text-text-primary">All Cases</div>
                 <div className="text-sm text-text-tertiary">
-                  Run evaluation on all cases in the dataset.
+                  Run evaluation on all cases in the benchmark.
                 </div>
               </div>
             </label>
@@ -211,7 +217,9 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
                 type="radio"
                 name="case_scope_mode"
                 checked={caseScope?.mode === "filtered"}
-                onChange={() => { setCaseScope({ mode: "filtered", filters: {} }); }}
+                onChange={() => {
+                  setCaseScope({ mode: "filtered", filters: {} });
+                }}
                 className="mt-1 h-4 w-4"
               />
               <div className="flex-1">
@@ -246,15 +254,15 @@ export function DatasetStep({ form, onPrevious, onNext }: DatasetStepProps) {
   );
 }
 
-interface DatasetRowProps {
-  dataset: DatasetInfo;
+interface BenchmarkRowProps {
+  benchmark: BenchmarkInfo;
   isSelected: boolean;
   onSelect: () => void;
 }
 
-function DatasetRow({ dataset, isSelected, onSelect }: DatasetRowProps) {
-  const caseCount = dataset.case_count;
-  const tags = dataset.tags;
+function BenchmarkRow({ benchmark, isSelected, onSelect }: BenchmarkRowProps) {
+  const caseCount = benchmark.case_count;
+  const tags = benchmark.tags;
 
   return (
     <TableRow
@@ -268,19 +276,19 @@ function DatasetRow({ dataset, isSelected, onSelect }: DatasetRowProps) {
           checked={isSelected}
           onChange={onSelect}
           className="h-4 w-4"
-          aria-label={`Select ${dataset.name}`}
+          aria-label={`Select ${benchmark.name}`}
         />
       </TableCell>
       <TableCell>
         <div>
-          <div className="font-medium text-text-primary">{dataset.name}</div>
+          <div className="font-medium text-text-primary">{benchmark.name}</div>
         </div>
       </TableCell>
       <TableCell>
         <Badge variant="info">{caseCount.toLocaleString()}</Badge>
       </TableCell>
       <TableCell>
-        <span className="text-sm text-text-secondary">{dataset.version}</span>
+        <span className="text-sm text-text-secondary">{benchmark.version}</span>
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">

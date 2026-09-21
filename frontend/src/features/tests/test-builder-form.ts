@@ -3,7 +3,7 @@
  *
  * Uses React Hook Form with Zod validation for the 5-step builder:
  * 1. Target Selection
- * 2. Dataset Selection
+ * 2. Benchmark Selection
  * 3. Metrics Configuration
  * 4. Execution Settings
  * 5. Review
@@ -37,8 +37,8 @@ export const STEP_METADATA: Record<
     description: "Choose the target system to evaluate",
   },
   [BuilderStep.DATASET]: {
-    title: "Select Dataset",
-    description: "Choose the benchmark dataset",
+    title: "Select Benchmark",
+    description: "Choose the benchmark",
   },
   [BuilderStep.METRICS]: {
     title: "Configure Metrics",
@@ -62,10 +62,10 @@ const targetStepSchema = z.object({
 });
 
 /**
- * Form schema for Step 2: Dataset Selection.
+ * Form schema for Step 2: Benchmark Selection.
  */
 const datasetStepSchema = z.object({
-  benchmark_id: z.string({ required_error: "Dataset must be selected" }),
+  benchmark_id: z.string({ required_error: "Benchmark must be selected" }),
   case_scope: z
     .object({
       mode: z.enum(["all", "filtered", "sample"]),
@@ -241,6 +241,8 @@ export function testDefinitionToFormValues(test: {
   tags?: string[];
   metadata?: Record<string, unknown>;
 }): Partial<TestBuilderValues> {
+  const executionConfig = test.execution_config as
+    Partial<NonNullable<TestBuilderValues["execution_config"]>> | undefined;
   return {
     name: test.name,
     description: test.description ?? null,
@@ -248,13 +250,13 @@ export function testDefinitionToFormValues(test: {
     benchmark_id: test.benchmark_id,
     metric_config_name: test.metric_config_id,
     execution_config: {
-      concurrency: test.execution_config?.concurrency ?? 4,
-      timeout_per_request: test.execution_config?.timeout_per_request ?? 30,
-      retries: test.execution_config?.retries ?? 2,
-      failure_policy: test.execution_config?.failure_policy ?? "continue",
-      store_raw_responses: test.execution_config?.store_raw_responses ?? false,
-      store_traces: test.execution_config?.store_traces ?? false,
-      store_usage: test.execution_config?.store_usage ?? false,
+      concurrency: executionConfig?.concurrency ?? 4,
+      timeout_per_request: executionConfig?.timeout_per_request ?? 30,
+      retries: executionConfig?.retries ?? 2,
+      failure_policy: executionConfig?.failure_policy ?? "continue",
+      store_raw_responses: executionConfig?.store_raw_responses ?? false,
+      store_traces: executionConfig?.store_traces ?? false,
+      store_usage: executionConfig?.store_usage ?? false,
     },
     seed: test.seed ?? null,
     tags: test.tags ?? [],
@@ -267,7 +269,7 @@ export function testDefinitionToFormValues(test: {
  */
 export function getNextStep(currentStep: BuilderStep): BuilderStep | null {
   if (currentStep >= BuilderStep.REVIEW) return null;
-  return (currentStep + 1);
+  return currentStep + 1;
 }
 
 /**
@@ -275,7 +277,7 @@ export function getNextStep(currentStep: BuilderStep): BuilderStep | null {
  */
 export function getPreviousStep(currentStep: BuilderStep): BuilderStep | null {
   if (currentStep <= BuilderStep.TARGET) return null;
-  return (currentStep - 1);
+  return currentStep - 1;
 }
 
 /**

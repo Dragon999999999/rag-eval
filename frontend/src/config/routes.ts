@@ -9,7 +9,8 @@ export const ROUTES = {
   // Top-level routes
   dashboard: "/",
   targets: "/targets",
-  datasets: "/datasets",
+  benchmarks: "/benchmarks",
+  datasets: "/benchmarks",
   tests: "/tests",
   results: "/results",
   settings: "/settings",
@@ -17,7 +18,8 @@ export const ROUTES = {
 
   // Detail routes
   targetDetail: (targetId: string) => `/targets/${targetId}`,
-  datasetDetail: (datasetId: string) => `/datasets/${datasetId}`,
+  benchmarkDetail: (benchmarkId: string) => `/benchmarks/${benchmarkId}`,
+  datasetDetail: (datasetId: string) => `/benchmarks/${datasetId}`,
   testDetail: (testId: string) => `/tests/${testId}`,
   runDetail: (runId: string) => `/runs/${runId}`,
   runCaseDetail: (runId: string, caseId: string) => `/runs/${runId}/cases/${caseId}`,
@@ -30,7 +32,7 @@ export const ROUTES = {
 export const PRIMARY_NAVIGATION = [
   { label: "Dashboard", path: ROUTES.dashboard, icon: "LayoutDashboard" as const },
   { label: "Targets", path: ROUTES.targets, icon: "Waypoints" as const },
-  { label: "Datasets", path: ROUTES.datasets, icon: "Database" as const },
+  { label: "Benchmarks", path: ROUTES.benchmarks, icon: "Database" as const },
   { label: "Tests", path: ROUTES.tests, icon: "FlaskConical" as const },
   { label: "Results", path: ROUTES.results, icon: "BarChart" as const },
 ] as const;

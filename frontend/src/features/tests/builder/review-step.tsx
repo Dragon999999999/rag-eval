@@ -123,7 +123,9 @@ export function ReviewStep({
             <Input
               id="review-name"
               value={formValues.name}
-              onChange={(e) => { form.setValue("name", e.target.value, { shouldValidate: true }); }}
+              onChange={(e) => {
+                form.setValue("name", e.target.value, { shouldValidate: true });
+              }}
             />
             {!formValues.name && (
               <p className="text-destructive text-xs">Test name is required</p>
@@ -135,9 +137,11 @@ export function ReviewStep({
             <Textarea
               id="review-description"
               value={formValues.description ?? ""}
-              onChange={(e) => { form.setValue("description", e.target.value || null, {
+              onChange={(e) => {
+                form.setValue("description", e.target.value || null, {
                   shouldValidate: true,
-                }); }}
+                });
+              }}
               placeholder="Describe the purpose of this test..."
               rows={3}
             />
@@ -145,9 +149,11 @@ export function ReviewStep({
         </div>
       </Surface>
 
-      {/* Target and Dataset */}
+      {/* Target and Benchmark */}
       <Surface className="p-4">
-        <h3 className="mb-3 text-sm font-medium text-text-primary">Target & Dataset</h3>
+        <h3 className="mb-3 text-sm font-medium text-text-primary">
+          Target & Benchmark
+        </h3>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <Label className="text-xs text-text-tertiary">Target</Label>
@@ -157,9 +163,9 @@ export function ReviewStep({
           </div>
 
           <div>
-            <Label className="text-xs text-text-tertiary">Dataset</Label>
+            <Label className="text-xs text-text-tertiary">Benchmark</Label>
             <div className="mt-1 font-medium text-text-primary">
-              Dataset: {formValues.benchmark_id}
+              Benchmark: {formValues.benchmark_id}
             </div>
           </div>
         </div>
@@ -292,13 +298,17 @@ export function ReviewStep({
         <div className="flex gap-2">
           <Button
             variant="secondary"
-            onClick={() => { void handleSubmit(false); }}
+            onClick={() => {
+              void handleSubmit(false);
+            }}
             disabled={isSaving || !formValues.name}
           >
             {isSaving ? <Spinner size="sm" /> : "Save Test"}
           </Button>
           <Button
-            onClick={() => { void handleSubmit(true); }}
+            onClick={() => {
+              void handleSubmit(true);
+            }}
             disabled={isSaving || !formValues.name}
           >
             {isSaving ? <Spinner size="sm" /> : "Save & Run"}

@@ -1,8 +1,7 @@
-/**
- * Dataset detail page - /datasets/:datasetId
- */
-import { useState } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+/** Benchmark detail page with case and corpus attachment controls. */
+import { Children, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { Link, useParams } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/layout/surface";
@@ -16,125 +15,100 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
+import { Database, Upload } from "lucide-react";
+import { toast } from "@/lib/toast";
 import {
-  useDataset,
-  useCaseList,
-  useDeleteDataset,
-  useValidateDataset,
+  useAddBenchmarkCases,
+  useAddBenchmarkChunks,
+  useAddBenchmarkDocuments,
+  useBenchmark,
 } from "../use-datasets";
-import type { Answerability } from "../dataset-types";
+import type {
+  BenchmarkCase,
+  BenchmarkChunk,
+  BenchmarkDocument,
+} from "../dataset-types";
 import {
-  formatCaseCount,
-  formatRelativeTime,
-  truncateQuery,
   formatAnswerability,
   getAnswerabilityVariant,
+  truncateQuery,
 } from "../dataset-formatters";
-import { toast } from "@/lib/toast";
-import { Database, Trash2 } from "lucide-react";
-import {
-  Dialog,
-  DialogTrigger,
-  DialogPortal,
-  DialogOverlay,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 export function DatasetDetailPage() {
-  const { datasetId } = useParams<{ datasetId: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const { benchmarkId, datasetId } = useParams<{
+    benchmarkId?: string;
+    datasetId?: string;
+  }>();
+  const id = benchmarkId ?? datasetId ?? "";
+  const { data: benchmark, isLoading, error } = useBenchmark(id);
+  const caseInput = useRef<HTMLInputElement>(null);
+  const documentInput = useRef<HTMLInputElement>(null);
+  const chunkInput = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const search = searchParams.get("search") ?? "";
-  const page = parseInt(searchParams.get("page") ?? "1", 10) || 1;
-  const limit = 20;
-
-  const {
-    data: dataset,
-    isLoading: isLoadingDataset,
-    error: datasetError,
-  } = useDataset(datasetId ?? "");
-
-  const { data: caseData, isLoading: isLoadingCases } = useCaseList(datasetId ?? "", {
-    limit,
-    offset: (page - 1) * limit,
-    search: search || undefined,
+  const onUploadSuccess = () => {
+    setUploadError(null);
+    toast.success("Benchmark updated");
+  };
+  const onUploadError = (uploadErrorValue: Error) => {
+    setUploadError(uploadErrorValue.message);
+  };
+  const addCases = useAddBenchmarkCases(id, {
+    onSuccess: onUploadSuccess,
+    onError: onUploadError,
+  });
+  const addDocuments = useAddBenchmarkDocuments(id, {
+    onSuccess: onUploadSuccess,
+    onError: onUploadError,
+  });
+  const addChunks = useAddBenchmarkChunks(id, {
+    onSuccess: onUploadSuccess,
+    onError: onUploadError,
   });
 
-  const deleteDataset = useDeleteDataset({
-    onSuccess: () => {
-      toast.success("Dataset deleted");
-      window.location.href = "/datasets";
-    },
-    onError: (error) => {
-      toast.error(`Failed to delete dataset: ${error.message}`);
-    },
-  });
-
-  const validateDataset = useValidateDataset({
-    onSuccess: (result) => {
-      toast.success(
-        `Validation complete: ${String(result.valid_cases)}/${String(result.total_cases)} cases valid`
-      );
-    },
-  });
-
-  const handleDelete = () => {
-    if (datasetId) {
-      deleteDataset.mutate(datasetId);
-      setShowDeleteDialog(false);
-    }
+  const upload = (
+    files: FileList | null,
+    mutation: { mutate: (files: File[]) => void }
+  ) => {
+    if (!files || files.length === 0) return;
+    mutation.mutate(Array.from(files));
   };
 
-  const handleSearch = (value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value) {
-      newParams.set("search", value);
-    } else {
-      newParams.delete("search");
-    }
-    newParams.set("page", "1");
-    setSearchParams(newParams);
-  };
-
-  if (isLoadingDataset) {
+  if (isLoading) {
     return (
       <Page>
-        <Page.Header title="Loading..." description="Loading dataset..." />
+        <Page.Header
+          title="Loading benchmark..."
+          description="Loading benchmark metadata and records."
+        />
         <Page.Content>
           <Spinner />
         </Page.Content>
       </Page>
     );
   }
-
-  if (datasetError || !dataset) {
+  if (error || !benchmark) {
     return (
       <Page>
         <Page.Header
-          title="Dataset not found"
-          description="The requested dataset does not exist."
+          title="Benchmark not found"
+          description="The requested benchmark does not exist."
           actions={
             <Button variant="secondary" asChild>
-              <Link to="/datasets">Back to Datasets</Link>
+              <Link to="/benchmarks">Back to Benchmarks</Link>
             </Button>
           }
         />
         <Page.Content>
           <EmptyState
             icon={<Database className="h-8 w-8" />}
-            title="Dataset not found"
-            description="This dataset may have been deleted."
+            title="Benchmark not found"
+            description="This benchmark may have been deleted."
             action={
               <Button asChild>
-                <Link to="/datasets">Browse Datasets</Link>
+                <Link to="/benchmarks">Browse Benchmarks</Link>
               </Button>
             }
           />
@@ -143,219 +117,135 @@ export function DatasetDetailPage() {
     );
   }
 
-  const handleValidate = () => {
-    if (datasetId) {
-      validateDataset.mutate(datasetId);
-    }
-  };
+  const corpusLabel = benchmark.corpus_mode === "CHUNKS" ? "Chunks" : "Documents";
+  const corpusCount =
+    benchmark.corpus_mode === "CHUNKS"
+      ? benchmark.chunk_count
+      : benchmark.document_count;
+  const busy = addCases.isPending || addDocuments.isPending || addChunks.isPending;
 
   return (
     <Page>
       <Page.Header
-        title={dataset.name}
-        description={`${formatCaseCount(dataset.case_count ?? 0)} · Version ${dataset.version}`}
-        breadcrumbs={[{ label: "Datasets", href: "/datasets" }]}
+        title={benchmark.name}
+        description={`${benchmark.corpus_mode} · ${String(benchmark.case_count)} cases · ${String(corpusCount)} ${corpusLabel.toLowerCase()}`}
+        breadcrumbs={[{ label: "Benchmarks", href: "/benchmarks" }]}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="secondary"
               size="sm"
-              onClick={handleValidate}
-              disabled={validateDataset.isPending}
+              onClick={() => caseInput.current?.click()}
+              disabled={busy}
             >
-              {validateDataset.isPending ? "Validating..." : "Validate"}
+              <Upload className="h-4 w-4" />
+              Add Cases
             </Button>
-            <Button variant="secondary" size="sm" asChild>
-              <Link to={`/datasets/${String(datasetId)}/cases/new`}>Add Case</Link>
-            </Button>
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="text-error">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogPortal>
-                <DialogOverlay />
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Delete dataset?</DialogTitle>
-                    <DialogDescription>
-                      <p>
-                        <strong>{dataset.name}</strong> will be permanently removed.
-                      </p>
-                      <p className="mt-2">
-                        Existing evaluation runs will remain available because they
-                        contain immutable snapshots.
-                      </p>
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        setShowDeleteDialog(false);
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      variant="danger"
-                      onClick={handleDelete}
-                      disabled={deleteDataset.isPending}
-                    >
-                      {deleteDataset.isPending ? "Deleting..." : "Delete Dataset"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </DialogPortal>
-            </Dialog>
+            {benchmark.corpus_mode === "CHUNKS" ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => chunkInput.current?.click()}
+                disabled={busy}
+              >
+                <Upload className="h-4 w-4" />
+                Add Chunks
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => documentInput.current?.click()}
+                disabled={busy}
+              >
+                <Upload className="h-4 w-4" />
+                Add Documents
+              </Button>
+            )}
           </div>
         }
+      />
+      <input
+        ref={caseInput}
+        className="hidden"
+        type="file"
+        accept=".json,.jsonl,application/json"
+        multiple
+        onChange={(event) => {
+          upload(event.target.files, addCases);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={documentInput}
+        className="hidden"
+        type="file"
+        multiple
+        onChange={(event) => {
+          upload(event.target.files, addDocuments);
+          event.target.value = "";
+        }}
+      />
+      <input
+        ref={chunkInput}
+        className="hidden"
+        type="file"
+        accept=".json,.jsonl,application/json"
+        multiple
+        onChange={(event) => {
+          upload(event.target.files, addChunks);
+          event.target.value = "";
+        }}
       />
 
       <Page.Content>
         <div className="space-y-6">
-          {/* Metadata summary */}
           <Surface className="p-6">
             <h3 className="text-base font-medium text-text-primary">
-              Dataset Information
+              Benchmark Information
             </h3>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <InfoRow label="Name" value={dataset.name} />
-              <InfoRow label="Version" value={dataset.version} />
-              <InfoRow label="Schema" value={dataset.schema_version} />
-              <InfoRow label="Cases" value={formatCaseCount(dataset.case_count)} />
-              <InfoRow label="Source" value={dataset.source ?? "—"} />
-              <InfoRow label="Created" value={formatRelativeTime(dataset.created_at)} />
-              <InfoRow label="Updated" value={formatRelativeTime(dataset.updated_at)} />
+              <InfoRow label="Name" value={benchmark.name} />
+              <InfoRow label="Corpus mode" value={benchmark.corpus_mode} />
+              <InfoRow label="Cases" value={String(benchmark.case_count)} />
+              <InfoRow label={corpusLabel} value={String(corpusCount)} />
+              <InfoRow label="Version" value={benchmark.version} />
+              <InfoRow label="Schema" value={benchmark.schema_version ?? "—"} />
+              <InfoRow
+                label="Created"
+                value={
+                  benchmark.created_at
+                    ? new Date(benchmark.created_at).toLocaleDateString()
+                    : "—"
+                }
+              />
+              <InfoRow
+                label="Status"
+                value={benchmark.is_complete ? "Complete" : "Incomplete"}
+              />
             </div>
-            {dataset.tags.length > 0 && (
-              <div className="mt-4">
-                <p className="text-sm text-text-tertiary">Tags</p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {dataset.tags.map((tag) => (
-                    <Badge key={tag} variant="default">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+            {uploadError && <p className="mt-4 text-sm text-error">{uploadError}</p>}
           </Surface>
 
-          {/* Cases table */}
-          <Surface>
-            <div className="flex items-center justify-between p-4">
-              <h3 className="text-base font-medium text-text-primary">
-                Benchmark Cases
-              </h3>
-              <div className="w-64">
-                <SearchInput
-                  value={search}
-                  onChange={(e) => {
-                    handleSearch(e.target.value);
-                  }}
-                  placeholder="Search cases..."
-                />
-              </div>
-            </div>
-
-            {isLoadingCases ? (
-              <div className="p-4">
-                <Spinner />
-              </div>
-            ) : caseData && caseData.cases.length > 0 ? (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">ID</TableHead>
-                      <TableHead>Query</TableHead>
-                      <TableHead className="w-[120px]">Answerability</TableHead>
-                      <TableHead className="w-[150px]">Tags</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {caseData.cases.map((caseSummary) => (
-                      <CaseRow
-                        key={caseSummary.case_id}
-                        datasetId={datasetId}
-                        caseSummary={caseSummary}
-                      />
-                    ))}
-                  </TableBody>
-                </Table>
-
-                {/* Pagination */}
-                <div className="border-border flex items-center justify-between border-t p-4">
-                  <p className="text-sm text-text-tertiary">
-                    Showing {String(caseData.offset + 1)}–
-                    {String(Math.min(caseData.offset + caseData.limit, caseData.total))}{" "}
-                    of {String(caseData.total)}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={page <= 1}
-                      onClick={() => {
-                        const newParams = new URLSearchParams(searchParams);
-                        newParams.set("page", String(page - 1));
-                        setSearchParams(newParams);
-                      }}
-                    >
-                      Previous
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={!caseData.has_more}
-                      onClick={() => {
-                        const newParams = new URLSearchParams(searchParams);
-                        newParams.set("page", String(page + 1));
-                        setSearchParams(newParams);
-                      }}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="p-6">
-                <EmptyState
-                  title={search ? "No matching cases" : "No cases yet"}
-                  description={
-                    search
-                      ? "Try adjusting your search."
-                      : "Add cases to this dataset to begin building your benchmark."
-                  }
-                  action={
-                    !search && (
-                      <Button asChild>
-                        <Link to={`/datasets/${String(datasetId)}/cases/new`}>
-                          Add Case
-                        </Link>
-                      </Button>
-                    )
-                  }
-                />
-              </div>
-            )}
-          </Surface>
+          <CaseTable cases={benchmark.cases} onAdd={() => caseInput.current?.click()} />
+          {benchmark.corpus_mode === "CHUNKS" ? (
+            <ChunkTable
+              chunks={benchmark.chunks}
+              onAdd={() => chunkInput.current?.click()}
+            />
+          ) : (
+            <DocumentTable
+              documents={benchmark.documents}
+              onAdd={() => documentInput.current?.click()}
+            />
+          )}
         </div>
       </Page.Content>
     </Page>
   );
 }
 
-interface InfoRowProps {
-  label: string;
-  value: string;
-}
-
-function InfoRow({ label, value }: InfoRowProps) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <p className="text-sm text-text-tertiary">{label}</p>
@@ -364,59 +254,185 @@ function InfoRow({ label, value }: InfoRowProps) {
   );
 }
 
-interface CaseRowProps {
-  datasetId: string | undefined;
-  caseSummary: {
-    case_id: string;
-    query: string;
-    answerability: Answerability | null | undefined;
-    tags: string[];
-  };
+function CaseTable({ cases, onAdd }: { cases: BenchmarkCase[]; onAdd: () => void }) {
+  return (
+    <Surface>
+      <div className="flex items-center justify-between p-4">
+        <h3 className="text-base font-medium text-text-primary">Benchmark Cases</h3>
+        <Button variant="secondary" size="sm" onClick={onAdd}>
+          <Upload className="h-4 w-4" />
+          Add Cases
+        </Button>
+      </div>
+      {cases.length === 0 ? (
+        <EmptyState
+          title="No cases yet"
+          description="Upload JSON or JSONL case files to this benchmark."
+          action={<Button onClick={onAdd}>Add Cases</Button>}
+        />
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Query</TableHead>
+              <TableHead>Answerability</TableHead>
+              <TableHead>Tags</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cases.map((item) => (
+              <CaseRow key={item.case_id} item={item} />
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </Surface>
+  );
 }
 
-function CaseRow({ datasetId, caseSummary }: CaseRowProps) {
+function CaseRow({ item }: { item: BenchmarkCase }) {
   return (
     <TableRow>
       <TableCell>
-        <code className="text-xs text-text-secondary">{caseSummary.case_id}</code>
+        <code className="text-xs text-text-secondary">{item.case_id}</code>
       </TableCell>
       <TableCell>
-        <div
-          className="max-w-xl truncate text-sm text-text-primary"
-          title={caseSummary.query}
-        >
-          {truncateQuery(caseSummary.query, 80)}
+        <div className="max-w-xl truncate text-sm text-text-primary" title={item.query}>
+          {truncateQuery(item.query)}
         </div>
       </TableCell>
       <TableCell>
-        <StatusBadge
-          status={getAnswerabilityVariant(caseSummary.answerability)}
-          showDot
-        >
-          {formatAnswerability(caseSummary.answerability)}
+        <StatusBadge status={getAnswerabilityVariant(item.answerability)} showDot>
+          {formatAnswerability(item.answerability)}
         </StatusBadge>
       </TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
-          {caseSummary.tags.slice(0, 2).map((tag) => (
+          {item.tags.slice(0, 3).map((tag) => (
             <Badge key={tag} variant="default" className="text-xs">
               {tag}
             </Badge>
           ))}
-          {caseSummary.tags.length > 2 && (
-            <span className="text-xs text-text-tertiary">
-              +{caseSummary.tags.length - 2}
-            </span>
-          )}
         </div>
       </TableCell>
-      <TableCell className="text-right">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to={`/datasets/${String(datasetId)}/cases/${caseSummary.case_id}`}>
-            View
-          </Link>
-        </Button>
-      </TableCell>
     </TableRow>
+  );
+}
+
+function DocumentTable({
+  documents,
+  onAdd,
+}: {
+  documents: BenchmarkDocument[];
+  onAdd: () => void;
+}) {
+  return (
+    <CorpusTable
+      title="Documents"
+      emptyDescription="Upload source documents for this DOCUMENTS benchmark."
+      onAdd={onAdd}
+    >
+      {documents.map((document) => (
+        <TableRow key={document.document_id}>
+          <TableCell>
+            <code className="text-xs text-text-secondary">{document.document_id}</code>
+          </TableCell>
+          <TableCell className="font-medium">
+            {document.filename ?? "Unnamed document"}
+          </TableCell>
+          <TableCell>{document.mime_type ?? "—"}</TableCell>
+          <TableCell>
+            {document.size_bytes == null ? "—" : `${String(document.size_bytes)} bytes`}
+          </TableCell>
+        </TableRow>
+      ))}
+    </CorpusTable>
+  );
+}
+
+function ChunkTable({
+  chunks,
+  onAdd,
+}: {
+  chunks: BenchmarkChunk[];
+  onAdd: () => void;
+}) {
+  return (
+    <CorpusTable
+      title="Chunks"
+      emptyDescription="Upload JSON or JSONL chunks for this CHUNKS benchmark."
+      onAdd={onAdd}
+    >
+      {chunks.map((chunk) => (
+        <TableRow key={chunk.chunk_id}>
+          <TableCell>
+            <code className="text-xs text-text-secondary">{chunk.chunk_id}</code>
+          </TableCell>
+          <TableCell>
+            <code className="text-xs text-text-secondary">{chunk.document_id}</code>
+          </TableCell>
+          <TableCell>
+            <div className="max-w-2xl truncate" title={chunk.text}>
+              {chunk.text}
+            </div>
+          </TableCell>
+        </TableRow>
+      ))}
+    </CorpusTable>
+  );
+}
+
+function CorpusTable({
+  title,
+  emptyDescription,
+  onAdd,
+  children,
+}: {
+  title: string;
+  emptyDescription: string;
+  onAdd: () => void;
+  children: ReactNode;
+}) {
+  const hasRows = Children.count(children) > 0;
+  return (
+    <Surface>
+      <div className="flex items-center justify-between p-4">
+        <h3 className="text-base font-medium text-text-primary">{title}</h3>
+        <Button variant="secondary" size="sm" onClick={onAdd}>
+          <Upload className="h-4 w-4" />
+          Add {title}
+        </Button>
+      </div>
+      {hasRows ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {title === "Chunks" ? (
+                <>
+                  <TableHead>Chunk ID</TableHead>
+                  <TableHead>Document ID</TableHead>
+                  <TableHead>Text</TableHead>
+                </>
+              ) : (
+                <>
+                  <TableHead>Document ID</TableHead>
+                  <TableHead>Filename</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Size</TableHead>
+                </>
+              )}
+            </TableRow>
+          </TableHeader>
+          <TableBody>{children}</TableBody>
+        </Table>
+      ) : (
+        <EmptyState
+          title={`No ${title.toLowerCase()} yet`}
+          description={emptyDescription}
+          action={<Button onClick={onAdd}>Add {title}</Button>}
+        />
+      )}
+    </Surface>
   );
 }

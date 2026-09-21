@@ -41,7 +41,10 @@ const routes: RouteObject[] = [
       { path: "targets/:targetId", element: <TargetDetailPage /> },
       { path: "targets/:targetId/edit", element: <TargetEditPage /> },
 
-      // Datasets
+      // Benchmarks (the /datasets paths remain as compatibility aliases)
+      { path: "benchmarks", element: <DatasetsPage /> },
+      { path: "benchmarks/new", element: <DatasetCreatePage /> },
+      { path: "benchmarks/:benchmarkId", element: <DatasetDetailPage /> },
       { path: "datasets", element: <DatasetsPage /> },
       { path: "datasets/new", element: <DatasetCreatePage /> },
       { path: "datasets/:datasetId", element: <DatasetDetailPage /> },

@@ -1,262 +1,184 @@
-/**
- * TanStack Query hooks for dataset management.
- */
+/** TanStack Query hooks for benchmark retrieval and file uploads. */
 import {
-  useQuery,
   useMutation,
+  useQuery,
   useQueryClient,
   type UseQueryOptions,
 } from "@tanstack/react-query";
-import { DatasetService } from "./dataset-service";
+import { BenchmarkService } from "./dataset-service";
 import type {
-  DatasetInfo,
-  DatasetCreate,
-  DatasetUpdate,
-  BenchmarkCase,
-  CaseCreate,
-  CaseUpdate,
-  PaginatedCases,
+  BenchmarkCreate,
+  BenchmarkDetail,
+  BenchmarkFileCreate,
+  BenchmarkInfo,
   DatasetValidationResult,
+  PaginatedCases,
 } from "./dataset-types";
 
-/** Query key factory */
-export const datasetQueryKeys = {
-  all: ["datasets"] as const,
-  lists: () => [...datasetQueryKeys.all, "list"] as const,
-  list: (filters?: { search?: string; tag?: string }) =>
-    [...datasetQueryKeys.lists(), filters] as const,
-  details: () => [...datasetQueryKeys.all, "detail"] as const,
-  detail: (datasetId: string) => [...datasetQueryKeys.details(), datasetId] as const,
-  cases: (datasetId: string) =>
-    [...datasetQueryKeys.detail(datasetId), "cases"] as const,
-  caseList: (
-    datasetId: string,
-    filters?: { limit?: number; offset?: number; search?: string; tag?: string }
-  ) => [...datasetQueryKeys.cases(datasetId), "list", filters] as const,
-  case: (datasetId: string, caseId: string) =>
-    [...datasetQueryKeys.cases(datasetId), "case", caseId] as const,
-  validation: (datasetId: string) =>
-    [...datasetQueryKeys.detail(datasetId), "validation"] as const,
+export const benchmarkQueryKeys = {
+  all: ["benchmarks"] as const,
+  list: () => [...benchmarkQueryKeys.all, "list"] as const,
+  detail: (benchmarkId: string) => [...benchmarkQueryKeys.all, benchmarkId] as const,
 };
 
-/** Hook to list datasets */
-export function useDatasetList(
-  options?: Omit<UseQueryOptions<DatasetInfo[]>, "queryKey" | "queryFn">
+export const datasetQueryKeys = benchmarkQueryKeys;
+
+export function useBenchmarkList(
+  options?: Omit<UseQueryOptions<BenchmarkInfo[]>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: datasetQueryKeys.list(),
-    queryFn: () => DatasetService.listDatasets(),
+    queryKey: benchmarkQueryKeys.list(),
+    queryFn: () => BenchmarkService.listBenchmarks(),
     ...options,
   });
 }
 
-/** Hook to get a single dataset */
-export function useDataset(
-  datasetId: string,
-  options?: Omit<UseQueryOptions<DatasetInfo>, "queryKey" | "queryFn">
+export function useBenchmark(
+  benchmarkId: string,
+  options?: Omit<UseQueryOptions<BenchmarkDetail>, "queryKey" | "queryFn">
 ) {
   return useQuery({
-    queryKey: datasetQueryKeys.detail(datasetId),
-    queryFn: () => DatasetService.getDataset(datasetId),
-    enabled: !!datasetId,
+    queryKey: benchmarkQueryKeys.detail(benchmarkId),
+    queryFn: () => BenchmarkService.getBenchmark(benchmarkId),
+    enabled: Boolean(benchmarkId),
     ...options,
   });
 }
 
-/** Hook to create a dataset */
-export function useCreateDataset(options?: {
-  onSuccess?: (data: DatasetInfo) => void;
+export function useCreateBenchmark(options?: {
+  onSuccess?: (data: BenchmarkInfo) => void;
   onError?: (error: Error) => void;
 }) {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (data: DatasetCreate) => DatasetService.createDataset(data),
+    mutationFn: (data: BenchmarkCreate) => BenchmarkService.createBenchmark(data),
     onSuccess: (data) => {
-      void queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: benchmarkQueryKeys.list() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
   });
 }
 
-/** Hook to update a dataset */
-export function useUpdateDataset(
-  datasetId: string,
+export function useCreateBenchmarkFromFiles(options?: {
+  onSuccess?: (data: BenchmarkInfo) => void;
+  onError?: (error: Error) => void;
+}) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: BenchmarkFileCreate) =>
+      BenchmarkService.createBenchmarkFromFiles(data),
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: benchmarkQueryKeys.list() });
+      options?.onSuccess?.(data);
+    },
+    onError: options?.onError,
+  });
+}
+
+function useBenchmarkUpload(
+  benchmarkId: string,
+  upload: (id: string, files: File[]) => Promise<BenchmarkInfo>,
   options?: {
-    onSuccess?: (data: DatasetInfo) => void;
+    onSuccess?: (data: BenchmarkInfo) => void;
     onError?: (error: Error) => void;
   }
 ) {
   const queryClient = useQueryClient();
-
   return useMutation({
-    mutationFn: (data: DatasetUpdate) => DatasetService.updateDataset(datasetId, data),
+    mutationFn: (files: File[]) => upload(benchmarkId, files),
     onSuccess: (data) => {
       void queryClient.invalidateQueries({
-        queryKey: datasetQueryKeys.detail(datasetId),
+        queryKey: benchmarkQueryKeys.detail(benchmarkId),
       });
-      void queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: benchmarkQueryKeys.list() });
       options?.onSuccess?.(data);
     },
     onError: options?.onError,
   });
 }
 
-/** Hook to delete a dataset */
-export function useDeleteDataset(options?: {
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (datasetId: string) => {
-      await DatasetService.deleteDataset(datasetId);
-      return datasetId;
-    },
-    onSuccess: (datasetId) => {
-       
-      queryClient.removeQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.lists() });
-      options?.onSuccess?.();
-    },
-    onError: options?.onError,
-  });
+export function useAddBenchmarkCases(
+  benchmarkId: string,
+  options?: {
+    onSuccess?: (data: BenchmarkInfo) => void;
+    onError?: (error: Error) => void;
+  }
+) {
+  return useBenchmarkUpload(
+    benchmarkId,
+    (id, files) => BenchmarkService.addCases(id, files),
+    options
+  );
 }
 
-/** Hook to list cases with pagination */
-export function useCaseList(
-  datasetId: string,
+export function useAddBenchmarkDocuments(
+  benchmarkId: string,
+  options?: {
+    onSuccess?: (data: BenchmarkInfo) => void;
+    onError?: (error: Error) => void;
+  }
+) {
+  return useBenchmarkUpload(
+    benchmarkId,
+    (id, files) => BenchmarkService.addDocuments(id, files),
+    options
+  );
+}
+
+export function useAddBenchmarkChunks(
+  benchmarkId: string,
+  options?: {
+    onSuccess?: (data: BenchmarkInfo) => void;
+    onError?: (error: Error) => void;
+  }
+) {
+  return useBenchmarkUpload(
+    benchmarkId,
+    (id, files) => BenchmarkService.addChunks(id, files),
+    options
+  );
+}
+
+// Compatibility hook names for existing test-builder code.
+export const useDatasetList = useBenchmarkList;
+export const useDataset = useBenchmark;
+export const useCaseList = (
+  benchmarkId: string,
   params?: { limit?: number; offset?: number; search?: string; tag?: string },
   options?: Omit<UseQueryOptions<PaginatedCases>, "queryKey" | "queryFn">
-) {
-  return useQuery({
-    queryKey: datasetQueryKeys.caseList(datasetId, params),
-    queryFn: () => DatasetService.listCases(datasetId, params),
-    enabled: !!datasetId,
+) =>
+  useQuery({
+    queryKey: [...benchmarkQueryKeys.detail(benchmarkId), "cases", params] as const,
+    queryFn: () => BenchmarkService.listCases(benchmarkId, params),
+    enabled: Boolean(benchmarkId),
     ...options,
   });
-}
-
-/** Hook to get a single case */
-export function useCase(
-  datasetId: string,
-  caseId: string,
-  options?: Omit<UseQueryOptions<BenchmarkCase>, "queryKey" | "queryFn">
-) {
-  return useQuery({
-    queryKey: datasetQueryKeys.case(datasetId, caseId),
-    queryFn: () => DatasetService.getCase(datasetId, caseId),
-    enabled: !!datasetId && !!caseId,
-    ...options,
+export const useCase = (benchmarkId: string, caseId: string) =>
+  useQuery({
+    queryKey: [...benchmarkQueryKeys.detail(benchmarkId), "case", caseId] as const,
+    queryFn: () => BenchmarkService.getCase(benchmarkId, caseId),
+    enabled: Boolean(benchmarkId && caseId),
   });
-}
 
-/** Hook to create a case */
-export function useCreateCase(
-  datasetId: string,
-  options?: {
-    onSuccess?: (data: BenchmarkCase) => void;
-    onError?: (error: Error) => void;
-  }
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CaseCreate) => DatasetService.createCase(datasetId, data),
-    onSuccess: (data) => {
-      void queryClient.invalidateQueries({
-        queryKey: datasetQueryKeys.cases(datasetId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: datasetQueryKeys.detail(datasetId),
-      });
-      options?.onSuccess?.(data);
-    },
-    onError: options?.onError,
-  });
-}
-
-/** Hook to update a case */
-export function useUpdateCase(
-  datasetId: string,
-  caseId: string,
-  options?: {
-    onSuccess?: (data: BenchmarkCase) => void;
-    onError?: (error: Error) => void;
-  }
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CaseUpdate) =>
-      DatasetService.updateCase(datasetId, caseId, data),
-    onSuccess: (data) => {
-      void queryClient.invalidateQueries({
-        queryKey: datasetQueryKeys.case(datasetId, caseId),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: datasetQueryKeys.cases(datasetId),
-      });
-      options?.onSuccess?.(data);
-    },
-    onError: options?.onError,
-  });
-}
-
-/** Hook to delete a case */
-export function useDeleteCase(
-  datasetId: string,
-  caseId: string,
-  options?: { onSuccess?: () => void; onError?: (error: Error) => void }
-) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      await DatasetService.deleteCase(datasetId, caseId);
-      return caseId;
-    },
-    onSuccess: () => {
-       
-      queryClient.removeQueries({ queryKey: datasetQueryKeys.case(datasetId, caseId) });
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.cases(datasetId) });
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      queryClient.invalidateQueries({ queryKey: datasetQueryKeys.detail(datasetId) });
-      options?.onSuccess?.();
-    },
-    onError: options?.onError,
-  });
-}
-
-/** Hook to validate a dataset */
+/** Deprecated no-op compatibility hook; benchmarks are append-only via uploads. */
 export function useValidateDataset(options?: {
   onSuccess?: (data: DatasetValidationResult) => void;
 }) {
   return useMutation({
-    mutationFn: async (datasetId: string) => {
-      return await DatasetService.validateDataset(datasetId);
+    mutationFn: async (benchmarkId: string): Promise<DatasetValidationResult> => {
+      const detail = await BenchmarkService.getBenchmark(benchmarkId);
+      const total = detail.cases.length;
+      return {
+        benchmark_id: benchmarkId,
+        valid: detail.cases.every((item) => item.query.trim().length > 0),
+        total_cases: total,
+        valid_cases: detail.cases.filter((item) => item.query.trim().length > 0).length,
+        invalid_cases: detail.cases.filter((item) => item.query.trim().length === 0)
+          .length,
+        errors: [],
+      };
     },
-    onSuccess: (data) => {
-      options?.onSuccess?.(data);
-    },
-  });
-}
-
-/** Hook to export a dataset */
-export function useExportDataset() {
-  return useMutation({
-    mutationFn: async ({
-      datasetId,
-      format,
-    }: {
-      datasetId: string;
-      format: "json" | "jsonl" | "yaml";
-    }) => {
-      return await DatasetService.exportDataset(datasetId, format);
-    },
+    onSuccess: options?.onSuccess,
   });
 }

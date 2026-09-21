@@ -63,7 +63,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
 
 /**
  * Generate breadcrumbs from pathname.
- * Example: /datasets/123 → [{label: "Datasets", href: "/datasets"}, {label: "QKD Benchmark"}]
+ * Example: /benchmarks/123 → [{label: "Benchmarks", href: "/benchmarks"}, {label: "QKD Benchmark"}]
  */
 function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
   const segments = pathname.split("/").filter(Boolean);
@@ -75,7 +75,8 @@ function generateBreadcrumbs(pathname: string): BreadcrumbItem[] {
   // Map known routes to labels
   const routeLabels: Record<string, string> = {
     targets: "Targets",
-    datasets: "Datasets",
+    datasets: "Benchmarks",
+    benchmarks: "Benchmarks",
     tests: "Tests",
     runs: "Runs",
     results: "Results",

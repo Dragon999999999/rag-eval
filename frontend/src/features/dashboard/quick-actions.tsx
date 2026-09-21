@@ -19,7 +19,7 @@ export function QuickActions() {
           </Button>
 
           <Button variant="secondary" asChild>
-            <Link to="/datasets">Create Dataset</Link>
+            <Link to="/benchmarks">Create Benchmark</Link>
           </Button>
 
           <Button variant="secondary" asChild>

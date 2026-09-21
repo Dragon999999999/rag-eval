@@ -35,7 +35,7 @@ export function RecentRuns({ runs }: RecentRunsProps) {
             <TableRow>
               <TableHead className="w-[200px]">Test</TableHead>
               <TableHead>Target</TableHead>
-              <TableHead>Dataset</TableHead>
+              <TableHead>Benchmark</TableHead>
               <TableHead className="w-[100px]">Status</TableHead>
               <TableHead className="w-[100px] text-right">Result</TableHead>
               <TableHead className="w-[100px] text-right">Duration</TableHead>

@@ -40,7 +40,9 @@ export function TestsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => { void refetch(); }}
+            onClick={() => {
+              void refetch();
+            }}
             className="ml-4"
           >
             Retry
@@ -82,7 +84,7 @@ export function TestsPage() {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Target</TableHead>
-              <TableHead>Dataset</TableHead>
+              <TableHead>Benchmark</TableHead>
               <TableHead>Metrics</TableHead>
               <TableHead>Execution</TableHead>
               <TableHead>Tags</TableHead>

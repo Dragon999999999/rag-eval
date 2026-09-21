@@ -65,6 +65,25 @@ async def create_benchmark(
 
 
 @router.get(
+    "",
+    response_model=list[BenchmarkInfo],
+)
+async def list_benchmarks(
+    service: BenchmarkServiceDep,
+) -> list[BenchmarkInfo]:
+    """Return all benchmarks."""
+    records = await service.list()
+
+    benchmarks: list[BenchmarkInfo] = []
+
+    for record in records:
+        benchmark = await service.get(record.benchmark_id)
+        benchmarks.append(_benchmark_info(benchmark))
+
+    return benchmarks
+
+
+@router.get(
     "/{benchmark_id}",
     response_model=BenchmarkInfo,
 )

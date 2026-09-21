@@ -3,6 +3,7 @@
 from collections.abc import Sequence
 from uuid import uuid4
 
+from rag_eval.db.models import BenchmarkRecord
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.models import (
     Benchmark,
@@ -39,6 +40,12 @@ class BenchmarkService:
         await self._repository.persist_benchmark(manifest)
 
         return Benchmark(manifest=manifest)
+
+
+    async def list(self) -> Sequence[BenchmarkRecord]:
+        """List all persisted benchmarks."""
+        return await self._repository.list_benchmarks()
+
 
     async def get(self, benchmark_id: str) -> Benchmark:
         """Load a complete benchmark by ID."""
