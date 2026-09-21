@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +33,7 @@ import {
   useCreateBenchmarkFromFiles,
 } from "../use-datasets";
 import { formatCaseCount, formatRelativeTime } from "../dataset-formatters";
+import { getConflictMessage } from "../dataset-errors";
 import type { BenchmarkFileCreate, BenchmarkInfo } from "../dataset-types";
 
 export function DatasetsPage() {
@@ -209,6 +211,7 @@ function BenchmarkCreateDialog({ open, onOpenChange }: BenchmarkCreateDialogProp
   const [name, setName] = useState("");
   const [caseFiles, setCaseFiles] = useState<File[]>([]);
   const [documentFiles, setDocumentFiles] = useState<File[]>([]);
+  const [conflict, setConflict] = useState<string | null>(null);
   const caseInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
 
@@ -216,6 +219,7 @@ function BenchmarkCreateDialog({ open, onOpenChange }: BenchmarkCreateDialogProp
     setName("");
     setCaseFiles([]);
     setDocumentFiles([]);
+    setConflict(null);
     if (caseInput.current) caseInput.current.value = "";
     if (documentInput.current) documentInput.current.value = "";
   };
@@ -224,11 +228,20 @@ function BenchmarkCreateDialog({ open, onOpenChange }: BenchmarkCreateDialogProp
     onOpenChange(false);
   };
   const onSuccess = (benchmark: BenchmarkInfo) => {
+    setConflict(null);
     toast.success(`Benchmark created: ${benchmark.name}`);
     close();
   };
-  const create = useCreateBenchmark({ onSuccess });
-  const createFromFiles = useCreateBenchmarkFromFiles({ onSuccess });
+  const onError = (error: Error) => {
+    const message = getConflictMessage(error, "Benchmark file import");
+    if (message) {
+      setConflict(message);
+      return;
+    }
+    toast.error(error.message);
+  };
+  const create = useCreateBenchmark({ onSuccess, onError });
+  const createFromFiles = useCreateBenchmarkFromFiles({ onSuccess, onError });
   const pending = create.isPending || createFromFiles.isPending;
   const error = create.error ?? createFromFiles.error;
 
@@ -310,7 +323,14 @@ function BenchmarkCreateDialog({ open, onOpenChange }: BenchmarkCreateDialogProp
               Optional source documents. Multiple files are supported.
             </p>
           </div>
-          {error && <p className="text-sm text-error">{error.message}</p>}
+          {conflict ? (
+            <Alert variant="error">
+              <AlertTitle>Upload conflict</AlertTitle>
+              <AlertDescription>{conflict}</AlertDescription>
+            </Alert>
+          ) : (
+            error && <p className="text-sm text-error">{error.message}</p>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={close}>

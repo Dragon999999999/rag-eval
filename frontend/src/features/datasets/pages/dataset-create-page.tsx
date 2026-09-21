@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "@/lib/toast";
 import { useCreateBenchmark, useCreateBenchmarkFromFiles } from "../use-datasets";
+import { getConflictMessage } from "../dataset-errors";
 import type { BenchmarkFileCreate, BenchmarkInfo } from "../dataset-types";
 
 export function DatasetCreatePage() {
@@ -15,12 +16,22 @@ export function DatasetCreatePage() {
   const [name, setName] = useState("");
   const [cases, setCases] = useState<File[]>([]);
   const [documents, setDocuments] = useState<File[]>([]);
+  const [conflict, setConflict] = useState<string | null>(null);
   const onSuccess = (benchmark: BenchmarkInfo) => {
+    setConflict(null);
     toast.success(`Benchmark created: ${benchmark.name}`);
     navigate(`/benchmarks/${benchmark.benchmark_id}`);
   };
-  const create = useCreateBenchmark({ onSuccess });
-  const createFromFiles = useCreateBenchmarkFromFiles({ onSuccess });
+  const onError = (error: Error) => {
+    const message = getConflictMessage(error, "Benchmark file import");
+    if (message) {
+      setConflict(message);
+      return;
+    }
+    toast.error(error.message);
+  };
+  const create = useCreateBenchmark({ onSuccess, onError });
+  const createFromFiles = useCreateBenchmarkFromFiles({ onSuccess, onError });
   const submit = () => {
     if (!name.trim()) return;
     if (cases.length === 0 && documents.length === 0)
@@ -42,11 +53,19 @@ export function DatasetCreatePage() {
       />
       <Page.Content>
         <div className="mx-auto max-w-2xl space-y-6">
-          {error && (
+          {conflict ? (
+            <Alert variant="error">
+              <AlertDescription>
+                <strong>Upload conflict</strong>
+                <br />
+                {conflict}
+              </AlertDescription>
+            </Alert>
+          ) : error ? (
             <Alert variant="error">
               <AlertDescription>{error.message}</AlertDescription>
             </Alert>
-          )}
+          ) : null}
           <div className="space-y-4">
             <div>
               <Label htmlFor="benchmark-name">Name *</Label>

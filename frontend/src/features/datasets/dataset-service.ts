@@ -1,13 +1,13 @@
-/** HTTP client for the canonical benchmark API. */
+/** HTTP client for the canonical benchmark and content resource APIs. */
 import { apiRequest } from "@/lib/api/client";
 import type {
   BenchmarkCase,
   BenchmarkCreate,
-  BenchmarkDetail,
+  BenchmarkDocument,
   BenchmarkFileCreate,
   BenchmarkInfo,
-  CaseSummary,
-  PaginatedCases,
+  BenchmarkChunk,
+  CorpusMode,
 } from "./dataset-types";
 
 type ApiEnvelope<T> = T | { data: T } | { items: T };
@@ -31,8 +31,8 @@ function filesFormData(files: File[]): FormData {
 function createFormData(data: BenchmarkFileCreate): FormData {
   const form = new FormData();
   form.append("name", data.name);
-  if (data.version) form.append("version", data.version);
-  if (data.corpus_mode) form.append("corpus_mode", data.corpus_mode);
+  form.append("version", data.version ?? "1");
+  form.append("corpus_mode", data.corpus_mode ?? "DOCUMENTS");
   data.cases?.forEach((file) => {
     form.append("cases", file, file.name);
   });
@@ -45,65 +45,127 @@ function createFormData(data: BenchmarkFileCreate): FormData {
   return form;
 }
 
-function detailWithDefaults(benchmark: BenchmarkInfo): BenchmarkDetail {
-  return {
-    ...benchmark,
-    cases: benchmark.cases ?? [],
-    documents: benchmark.documents ?? [],
-    chunks: benchmark.chunks ?? [],
-  };
-}
-
 export const BenchmarkService = {
-  /** Load all benchmark summaries from the API. */
   async listBenchmarks(): Promise<BenchmarkInfo[]> {
-    const payload =
-      await apiRequest<ApiEnvelope<BenchmarkInfo[]>>("/api/v1/benchmarks");
-    return unwrap(payload);
+    return unwrap(await apiRequest<ApiEnvelope<BenchmarkInfo[]>>("/api/v1/benchmarks"));
   },
 
-  /** Load one complete benchmark and its attached records. */
-  async getBenchmark(benchmarkId: string): Promise<BenchmarkDetail> {
-    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>(
-      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}`
-    );
-    return detailWithDefaults(unwrap(payload));
-  },
-
-  /** Create an empty benchmark using the JSON API. */
-  async createBenchmark(data: BenchmarkCreate): Promise<BenchmarkInfo> {
-    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>("/api/v1/benchmarks", {
-      method: "POST",
-      body: {
-        name: data.name,
-        version: data.version ?? "1",
-        corpus_mode: data.corpus_mode ?? "DOCUMENTS",
-      },
-    });
-    return unwrap(payload);
-  },
-
-  /** Create a benchmark and optionally attach multiple uploaded files. */
-  async createBenchmarkFromFiles(data: BenchmarkFileCreate): Promise<BenchmarkInfo> {
-    const payload = await apiRequest<ApiEnvelope<BenchmarkInfo>>(
-      "/api/v1/benchmarks/from-files",
-      { method: "POST", body: createFormData(data) }
-    );
-    return unwrap(payload);
-  },
-
-  /** Upload one or more JSON/JSONL case files to an existing benchmark. */
-  async addCases(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+  async getBenchmark(benchmarkId: string): Promise<BenchmarkInfo> {
     return unwrap(
       await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}`
+      )
+    );
+  },
+
+  async createBenchmark(data: BenchmarkCreate): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>("/api/v1/benchmarks", {
+        method: "POST",
+        body: {
+          name: data.name,
+          version: data.version ?? "1",
+          corpus_mode: data.corpus_mode ?? "DOCUMENTS",
+        },
+      })
+    );
+  },
+
+  async createBenchmarkFromFiles(data: BenchmarkFileCreate): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>("/api/v1/benchmarks/from-files", {
+        method: "POST",
+        body: createFormData(data),
+      })
+    );
+  },
+
+  async deleteBenchmark(benchmarkId: string): Promise<void> {
+    await apiRequest<undefined>(
+      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}`,
+      {
+        method: "DELETE",
+      }
+    );
+  },
+
+  async changeCorpusMode(
+    benchmarkId: string,
+    corpusMode: CorpusMode
+  ): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/corpus-mode`,
+        { method: "PUT", body: { corpus_mode: corpusMode } }
+      )
+    );
+  },
+
+  async listCases(benchmarkId: string): Promise<BenchmarkCase[]> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkCase[]>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases`
+      )
+    );
+  },
+
+  async createCase(benchmarkId: string, data: BenchmarkCase): Promise<BenchmarkCase> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkCase>>(
         `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases`,
+        { method: "POST", body: data }
+      )
+    );
+  },
+
+  async importCases(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkInfo>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases/import`,
         { method: "POST", body: filesFormData(files) }
       )
     );
   },
 
-  /** Upload source documents to an existing DOCUMENTS benchmark. */
-  async addDocuments(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+  /** Compatibility name for callers that still use the pre-import API. */
+  addCases(benchmarkId: string, files: File[]) {
+    return this.importCases(benchmarkId, files);
+  },
+
+  async getCase(benchmarkId: string, caseId: string): Promise<BenchmarkCase> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkCase>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases/${encodeURIComponent(caseId)}`
+      )
+    );
+  },
+
+  updateCase(
+    _benchmarkId: string,
+    _caseId: string,
+    _data: Partial<BenchmarkCase>
+  ): Promise<BenchmarkCase> {
+    return Promise.reject(
+      new Error("Case editing is not supported by the backend yet")
+    );
+  },
+
+  async deleteCase(benchmarkId: string, caseId: string): Promise<void> {
+    await apiRequest<undefined>(
+      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/cases/${encodeURIComponent(caseId)}`,
+      { method: "DELETE" }
+    );
+  },
+
+  async listDocuments(benchmarkId: string): Promise<BenchmarkDocument[]> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkDocument[]>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/documents`
+      )
+    );
+  },
+
+  async uploadDocuments(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
     return unwrap(
       await apiRequest<ApiEnvelope<BenchmarkInfo>>(
         `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/documents`,
@@ -112,17 +174,79 @@ export const BenchmarkService = {
     );
   },
 
-  /** Upload canonical JSON/JSONL chunks to an existing CHUNKS benchmark. */
-  async addChunks(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
+  /** Compatibility name for callers that still use the pre-upload API. */
+  addDocuments(benchmarkId: string, files: File[]) {
+    return this.uploadDocuments(benchmarkId, files);
+  },
+
+  async getDocument(
+    benchmarkId: string,
+    documentId: string
+  ): Promise<BenchmarkDocument> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkDocument>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/documents/${encodeURIComponent(documentId)}`
+      )
+    );
+  },
+
+  async deleteDocument(benchmarkId: string, documentId: string): Promise<void> {
+    await apiRequest<undefined>(
+      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/documents/${encodeURIComponent(documentId)}`,
+      { method: "DELETE" }
+    );
+  },
+
+  async listChunks(benchmarkId: string): Promise<BenchmarkChunk[]> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkChunk[]>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks`
+      )
+    );
+  },
+
+  async createChunk(
+    benchmarkId: string,
+    data: BenchmarkChunk
+  ): Promise<BenchmarkChunk> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkChunk>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks`,
+        { method: "POST", body: data }
+      )
+    );
+  },
+
+  async importChunks(benchmarkId: string, files: File[]): Promise<BenchmarkInfo> {
     return unwrap(
       await apiRequest<ApiEnvelope<BenchmarkInfo>>(
-        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks`,
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks/import`,
         { method: "POST", body: filesFormData(files) }
       )
     );
   },
 
-  // Compatibility aliases for existing feature consumers.
+  /** Compatibility name for callers that still use the pre-import API. */
+  addChunks(benchmarkId: string, files: File[]) {
+    return this.importChunks(benchmarkId, files);
+  },
+
+  async getChunk(benchmarkId: string, chunkId: string): Promise<BenchmarkChunk> {
+    return unwrap(
+      await apiRequest<ApiEnvelope<BenchmarkChunk>>(
+        `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks/${encodeURIComponent(chunkId)}`
+      )
+    );
+  },
+
+  async deleteChunk(benchmarkId: string, chunkId: string): Promise<void> {
+    await apiRequest<undefined>(
+      `/api/v1/benchmarks/${encodeURIComponent(benchmarkId)}/chunks/${encodeURIComponent(chunkId)}`,
+      { method: "DELETE" }
+    );
+  },
+
+  // Legacy names retained for consumers not yet migrated to benchmark naming.
   listDatasets() {
     return this.listBenchmarks();
   },
@@ -132,41 +256,6 @@ export const BenchmarkService = {
   createDataset(data: BenchmarkCreate) {
     return this.createBenchmark(data);
   },
-  async listCases(
-    benchmarkId: string,
-    params?: { limit?: number; offset?: number; search?: string; tag?: string }
-  ): Promise<PaginatedCases> {
-    const detail = await this.getBenchmark(benchmarkId);
-    let cases: CaseSummary[] = detail.cases.map((item) => ({
-      case_id: item.case_id,
-      query: item.query,
-      answerability: item.answerability ?? null,
-      tags: item.tags,
-      metadata: item.metadata,
-    }));
-    if (params?.search) {
-      const search = params.search.toLowerCase();
-      cases = cases.filter((item) => item.query.toLowerCase().includes(search));
-    }
-    if (params?.tag)
-      cases = cases.filter((item) => item.tags.includes(params.tag ?? ""));
-    const offset = params?.offset ?? 0;
-    const limit = params?.limit ?? (cases.length || 20);
-    return {
-      cases: cases.slice(offset, offset + limit),
-      total: cases.length,
-      limit,
-      offset,
-      has_more: offset + limit < cases.length,
-    };
-  },
-  async getCase(benchmarkId: string, caseId: string): Promise<BenchmarkCase> {
-    const detail = await this.getBenchmark(benchmarkId);
-    const item = detail.cases.find((candidate) => candidate.case_id === caseId);
-    if (!item) throw new Error(`Case not found: ${caseId}`);
-    return item;
-  },
 };
 
-/** Backward-compatible export name; all calls use benchmark endpoints. */
 export const DatasetService = BenchmarkService;

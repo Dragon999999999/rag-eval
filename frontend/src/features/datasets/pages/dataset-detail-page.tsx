@@ -1,12 +1,21 @@
-/** Benchmark detail page with case and corpus attachment controls. */
-import { Children, useRef, useState } from "react";
-import type { ReactNode } from "react";
+/** Benchmark detail page backed by dedicated content resource endpoints. */
+import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/layout/surface";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,24 +26,53 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Badge } from "@/components/ui/badge";
-import { Database, Upload } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Database, Eye, Pencil, Trash2, Upload } from "lucide-react";
 import { toast } from "@/lib/toast";
 import {
-  useAddBenchmarkCases,
-  useAddBenchmarkChunks,
-  useAddBenchmarkDocuments,
   useBenchmark,
+  useBenchmarkCase,
+  useBenchmarkCases,
+  useBenchmarkChunk,
+  useBenchmarkChunks,
+  useBenchmarkDocuments,
+  useChangeCorpusMode,
+  useCreateBenchmarkCase,
+  useCreateBenchmarkChunk,
+  useDeleteBenchmark,
+  useDeleteBenchmarkCase,
+  useDeleteBenchmarkChunk,
+  useDeleteBenchmarkDocument,
+  useImportBenchmarkCases,
+  useImportBenchmarkChunks,
+  useUpdateBenchmarkCase,
+  useUploadBenchmarkDocuments,
 } from "../use-datasets";
 import type {
   BenchmarkCase,
   BenchmarkChunk,
   BenchmarkDocument,
+  BenchmarkInfo,
+  CorpusMode,
 } from "../dataset-types";
 import {
   formatAnswerability,
   getAnswerabilityVariant,
   truncateQuery,
 } from "../dataset-formatters";
+import { getConflictMessage, getStatusMessage } from "../dataset-errors";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+const notifyError = (error: Error) => {
+  toast.error(error.message);
+};
 
 export function DatasetDetailPage() {
   const { benchmarkId, datasetId } = useParams<{
@@ -42,41 +80,54 @@ export function DatasetDetailPage() {
     datasetId?: string;
   }>();
   const id = benchmarkId ?? datasetId ?? "";
-  const { data: benchmark, isLoading, error } = useBenchmark(id);
+  const benchmarkQuery = useBenchmark(id);
+  const casesQuery = useBenchmarkCases(id);
+  const documentsQuery = useBenchmarkDocuments(id);
+  const chunksQuery = useBenchmarkChunks(id);
   const caseInput = useRef<HTMLInputElement>(null);
   const documentInput = useRef<HTMLInputElement>(null);
   const chunkInput = useRef<HTMLInputElement>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  const onUploadSuccess = () => {
-    setUploadError(null);
-    toast.success("Benchmark updated");
+  const [uploadConflict, setUploadConflict] = useState<string | null>(null);
+  const [caseDialog, setCaseDialog] = useState<"create" | "edit" | null>(null);
+  const [selectedCase, setSelectedCase] = useState<BenchmarkCase | null>(null);
+  const [selectedChunk, setSelectedChunk] = useState<BenchmarkChunk | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const handleUploadError = (subject: string) => (error: Error) => {
+    const conflict = getConflictMessage(error, subject);
+    if (conflict) {
+      setUploadConflict(conflict);
+      toast.error(conflict);
+      return;
+    }
+    notifyError(error);
   };
-  const onUploadError = (uploadErrorValue: Error) => {
-    setUploadError(uploadErrorValue.message);
-  };
-  const addCases = useAddBenchmarkCases(id, {
-    onSuccess: onUploadSuccess,
-    onError: onUploadError,
+  const importCases = useImportBenchmarkCases(id, {
+    onSuccess: () => {
+      setUploadConflict(null);
+      toast.success("Cases imported");
+    },
+    onError: handleUploadError("Case import"),
   });
-  const addDocuments = useAddBenchmarkDocuments(id, {
-    onSuccess: onUploadSuccess,
-    onError: onUploadError,
+  const uploadDocuments = useUploadBenchmarkDocuments(id, {
+    onSuccess: () => {
+      setUploadConflict(null);
+      toast.success("Documents uploaded");
+    },
+    onError: handleUploadError("Document upload"),
   });
-  const addChunks = useAddBenchmarkChunks(id, {
-    onSuccess: onUploadSuccess,
-    onError: onUploadError,
+  const importChunks = useImportBenchmarkChunks(id, {
+    onSuccess: () => {
+      setUploadConflict(null);
+      toast.success("Chunks imported");
+    },
+    onError: handleUploadError("Chunk import"),
   });
-
-  const upload = (
-    files: FileList | null,
-    mutation: { mutate: (files: File[]) => void }
-  ) => {
-    if (!files || files.length === 0) return;
-    mutation.mutate(Array.from(files));
-  };
-
-  if (isLoading) {
+  const error =
+    benchmarkQuery.error ??
+    casesQuery.error ??
+    documentsQuery.error ??
+    chunksQuery.error;
+  if (benchmarkQuery.isLoading)
     return (
       <Page>
         <Page.Header
@@ -88,8 +139,7 @@ export function DatasetDetailPage() {
         </Page.Content>
       </Page>
     );
-  }
-  if (error || !benchmark) {
+  if (error || !benchmarkQuery.data)
     return (
       <Page>
         <Page.Header
@@ -115,56 +165,84 @@ export function DatasetDetailPage() {
         </Page.Content>
       </Page>
     );
-  }
-
-  const corpusLabel = benchmark.corpus_mode === "CHUNKS" ? "Chunks" : "Documents";
-  const corpusCount =
-    benchmark.corpus_mode === "CHUNKS"
-      ? benchmark.chunk_count
-      : benchmark.document_count;
-  const busy = addCases.isPending || addDocuments.isPending || addChunks.isPending;
-
+  const benchmark = benchmarkQuery.data;
+  const cases = casesQuery.data ?? [];
+  const documents = documentsQuery.data ?? [];
+  const chunks = chunksQuery.data ?? [];
+  const corpusItems =
+    benchmark.corpus_mode === "CHUNKS" ? chunks.length : documents.length;
+  const description =
+    benchmark.corpus_mode +
+    " · " +
+    String(cases.length) +
+    " cases · " +
+    String(corpusItems) +
+    " " +
+    (benchmark.corpus_mode === "CHUNKS" ? "chunks" : "documents");
   return (
     <Page>
       <Page.Header
         title={benchmark.name}
-        description={`${benchmark.corpus_mode} · ${String(benchmark.case_count)} cases · ${String(corpusCount)} ${corpusLabel.toLowerCase()}`}
+        description={description}
         breadcrumbs={[{ label: "Benchmarks", href: "/benchmarks" }]}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => caseInput.current?.click()}
-              disabled={busy}
-            >
-              <Upload className="h-4 w-4" />
-              Add Cases
-            </Button>
-            {benchmark.corpus_mode === "CHUNKS" ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => chunkInput.current?.click()}
-                disabled={busy}
-              >
-                <Upload className="h-4 w-4" />
-                Add Chunks
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => documentInput.current?.click()}
-                disabled={busy}
-              >
-                <Upload className="h-4 w-4" />
-                Add Documents
-              </Button>
-            )}
-          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setDeleteOpen(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
         }
       />
+      <Page.Content>
+        <div className="space-y-6">
+          {uploadConflict && (
+            <Alert variant="error">
+              <AlertTitle>Upload conflict</AlertTitle>
+              <AlertDescription className="flex items-center justify-between gap-4">
+                <span>{uploadConflict}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setUploadConflict(null);
+                  }}
+                >
+                  Dismiss
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          <BenchmarkSummary benchmark={benchmark} id={id} />
+          <CaseSection
+            id={id}
+            cases={cases}
+            inputRef={caseInput}
+            onCreate={() => {
+              setCaseDialog("create");
+            }}
+            onView={setSelectedCase}
+            onEdit={(item) => {
+              setSelectedCase(item);
+              setCaseDialog("edit");
+            }}
+          />
+          {benchmark.corpus_mode === "CHUNKS" ? (
+            <ChunkSection
+              id={id}
+              chunks={chunks}
+              inputRef={chunkInput}
+              onView={setSelectedChunk}
+            />
+          ) : (
+            <DocumentSection id={id} documents={documents} inputRef={documentInput} />
+          )}
+        </div>
+      </Page.Content>
       <input
         ref={caseInput}
         className="hidden"
@@ -172,7 +250,8 @@ export function DatasetDetailPage() {
         accept=".json,.jsonl,application/json"
         multiple
         onChange={(event) => {
-          upload(event.target.files, addCases);
+          if (event.target.files?.length)
+            importCases.mutate(Array.from(event.target.files));
           event.target.value = "";
         }}
       />
@@ -182,7 +261,8 @@ export function DatasetDetailPage() {
         type="file"
         multiple
         onChange={(event) => {
-          upload(event.target.files, addDocuments);
+          if (event.target.files?.length)
+            uploadDocuments.mutate(Array.from(event.target.files));
           event.target.value = "";
         }}
       />
@@ -193,58 +273,117 @@ export function DatasetDetailPage() {
         accept=".json,.jsonl,application/json"
         multiple
         onChange={(event) => {
-          upload(event.target.files, addChunks);
+          if (event.target.files?.length)
+            importChunks.mutate(Array.from(event.target.files));
           event.target.value = "";
         }}
       />
-
-      <Page.Content>
-        <div className="space-y-6">
-          <Surface className="p-6">
-            <h3 className="text-base font-medium text-text-primary">
-              Benchmark Information
-            </h3>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <InfoRow label="Name" value={benchmark.name} />
-              <InfoRow label="Corpus mode" value={benchmark.corpus_mode} />
-              <InfoRow label="Cases" value={String(benchmark.case_count)} />
-              <InfoRow label={corpusLabel} value={String(corpusCount)} />
-              <InfoRow label="Version" value={benchmark.version} />
-              <InfoRow label="Schema" value={benchmark.schema_version ?? "—"} />
-              <InfoRow
-                label="Created"
-                value={
-                  benchmark.created_at
-                    ? new Date(benchmark.created_at).toLocaleDateString()
-                    : "—"
-                }
-              />
-              <InfoRow
-                label="Status"
-                value={benchmark.is_complete ? "Complete" : "Incomplete"}
-              />
-            </div>
-            {uploadError && <p className="mt-4 text-sm text-error">{uploadError}</p>}
-          </Surface>
-
-          <CaseTable cases={benchmark.cases} onAdd={() => caseInput.current?.click()} />
-          {benchmark.corpus_mode === "CHUNKS" ? (
-            <ChunkTable
-              chunks={benchmark.chunks}
-              onAdd={() => chunkInput.current?.click()}
-            />
-          ) : (
-            <DocumentTable
-              documents={benchmark.documents}
-              onAdd={() => documentInput.current?.click()}
-            />
-          )}
-        </div>
-      </Page.Content>
+      <CaseDialog
+        id={id}
+        mode={caseDialog}
+        item={selectedCase}
+        onClose={() => {
+          setCaseDialog(null);
+          setSelectedCase(null);
+        }}
+      />
+      <CaseViewDialog
+        id={id}
+        item={selectedCase}
+        open={caseDialog === null && selectedCase !== null}
+        onClose={() => {
+          setSelectedCase(null);
+        }}
+      />
+      <ChunkViewDialog
+        id={id}
+        item={selectedChunk}
+        onClose={() => {
+          setSelectedChunk(null);
+        }}
+      />
+      <DeleteBenchmarkDialog
+        id={id}
+        open={deleteOpen}
+        onClose={() => {
+          setDeleteOpen(false);
+        }}
+      />
     </Page>
   );
 }
 
+function BenchmarkSummary({ benchmark, id }: { benchmark: BenchmarkInfo; id: string }) {
+  const [modeError, setModeError] = useState<string | null>(null);
+  const mode = useChangeCorpusMode(id, {
+    onSuccess: () => {
+      setModeError(null);
+      toast.success("Corpus mode updated");
+    },
+    onError: (error) => {
+      const message = getStatusMessage(error, 422, "Corpus mode conversion rejected");
+      if (message) {
+        setModeError(message);
+        return;
+      }
+      notifyError(error);
+    },
+  });
+  return (
+    <Surface className="p-6">
+      {modeError && (
+        <Alert variant="error" className="mb-4">
+          <AlertTitle>Cannot change corpus mode</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>{modeError}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setModeError(null);
+              }}
+            >
+              Dismiss
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-medium text-text-primary">
+            Benchmark Information
+          </h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <InfoRow label="Name" value={benchmark.name} />
+            <InfoRow label="Corpus mode" value={benchmark.corpus_mode} />
+            <InfoRow label="Cases" value={String(benchmark.case_count)} />
+            <InfoRow label="Documents" value={String(benchmark.document_count)} />
+            <InfoRow label="Chunks" value={String(benchmark.chunk_count)} />
+            <InfoRow label="Version" value={benchmark.version} />
+          </div>
+        </div>
+        <div className="min-w-48">
+          <Label htmlFor="corpus-mode">Corpus mode</Label>
+          <Select
+            value={benchmark.corpus_mode}
+            onValueChange={(value) => {
+              if (value !== "EXTERNAL") mode.mutate(value as CorpusMode);
+            }}
+            disabled={mode.isPending}
+          >
+            <SelectTrigger id="corpus-mode">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DOCUMENTS">DOCUMENTS</SelectItem>
+              <SelectItem value="CHUNKS">CHUNKS</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </Surface>
+  );
+}
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -253,22 +392,58 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+function SectionHeader({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 p-4">
+      <h3 className="text-base font-medium text-text-primary">{title}</h3>
+      <div className="flex gap-2">{children}</div>
+    </div>
+  );
+}
 
-function CaseTable({ cases, onAdd }: { cases: BenchmarkCase[]; onAdd: () => void }) {
+function CaseSection({
+  id,
+  cases,
+  inputRef,
+  onCreate,
+  onView,
+  onEdit,
+}: {
+  id: string;
+  cases: BenchmarkCase[];
+  inputRef: React.RefObject<HTMLInputElement>;
+  onCreate: () => void;
+  onView: (item: BenchmarkCase) => void;
+  onEdit: (item: BenchmarkCase) => void;
+}) {
+  const deleteCase = useDeleteBenchmarkCase(id, {
+    onSuccess: () => {
+      toast.success("Case deleted");
+    },
+    onError: notifyError,
+  });
   return (
     <Surface>
-      <div className="flex items-center justify-between p-4">
-        <h3 className="text-base font-medium text-text-primary">Benchmark Cases</h3>
-        <Button variant="secondary" size="sm" onClick={onAdd}>
-          <Upload className="h-4 w-4" />
-          Add Cases
+      <SectionHeader title="Benchmark Cases">
+        <Button size="sm" onClick={onCreate}>
+          Add Case
         </Button>
-      </div>
+        <Button variant="secondary" size="sm" onClick={() => inputRef.current?.click()}>
+          <Upload className="h-4 w-4" />
+          Import Cases
+        </Button>
+      </SectionHeader>
       {cases.length === 0 ? (
         <EmptyState
           title="No cases yet"
-          description="Upload JSON or JSONL case files to this benchmark."
-          action={<Button onClick={onAdd}>Add Cases</Button>}
+          description="Add a case manually or import JSON/JSONL files."
+          action={<Button onClick={onCreate}>Add Case</Button>}
         />
       ) : (
         <Table>
@@ -278,11 +453,69 @@ function CaseTable({ cases, onAdd }: { cases: BenchmarkCase[]; onAdd: () => void
               <TableHead>Query</TableHead>
               <TableHead>Answerability</TableHead>
               <TableHead>Tags</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {cases.map((item) => (
-              <CaseRow key={item.case_id} item={item} />
+              <TableRow key={item.case_id}>
+                <TableCell>
+                  <code className="text-xs">{item.case_id}</code>
+                </TableCell>
+                <TableCell>
+                  <div className="max-w-xl truncate" title={item.query}>
+                    {truncateQuery(item.query)}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <StatusBadge
+                    status={getAnswerabilityVariant(item.answerability)}
+                    showDot
+                  >
+                    {formatAnswerability(item.answerability)}
+                  </StatusBadge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex gap-1">
+                    {item.tags.slice(0, 2).map((tag) => (
+                      <Badge key={tag}>{tag}</Badge>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onView(item);
+                    }}
+                  >
+                    <Eye className="h-4 w-4" />
+                    View
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      onEdit(item);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-error"
+                    onClick={() => {
+                      deleteCase.mutate(item.case_id);
+                    }}
+                    disabled={deleteCase.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
@@ -291,148 +524,526 @@ function CaseTable({ cases, onAdd }: { cases: BenchmarkCase[]; onAdd: () => void
   );
 }
 
-function CaseRow({ item }: { item: BenchmarkCase }) {
-  return (
-    <TableRow>
-      <TableCell>
-        <code className="text-xs text-text-secondary">{item.case_id}</code>
-      </TableCell>
-      <TableCell>
-        <div className="max-w-xl truncate text-sm text-text-primary" title={item.query}>
-          {truncateQuery(item.query)}
-        </div>
-      </TableCell>
-      <TableCell>
-        <StatusBadge status={getAnswerabilityVariant(item.answerability)} showDot>
-          {formatAnswerability(item.answerability)}
-        </StatusBadge>
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
-          {item.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag} variant="default" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function DocumentTable({
+function DocumentSection({
+  id,
   documents,
-  onAdd,
+  inputRef,
 }: {
+  id: string;
   documents: BenchmarkDocument[];
-  onAdd: () => void;
+  inputRef: React.RefObject<HTMLInputElement>;
 }) {
-  return (
-    <CorpusTable
-      title="Documents"
-      emptyDescription="Upload source documents for this DOCUMENTS benchmark."
-      onAdd={onAdd}
-    >
-      {documents.map((document) => (
-        <TableRow key={document.document_id}>
-          <TableCell>
-            <code className="text-xs text-text-secondary">{document.document_id}</code>
-          </TableCell>
-          <TableCell className="font-medium">
-            {document.filename ?? "Unnamed document"}
-          </TableCell>
-          <TableCell>{document.mime_type ?? "—"}</TableCell>
-          <TableCell>
-            {document.size_bytes == null ? "—" : `${String(document.size_bytes)} bytes`}
-          </TableCell>
-        </TableRow>
-      ))}
-    </CorpusTable>
-  );
-}
-
-function ChunkTable({
-  chunks,
-  onAdd,
-}: {
-  chunks: BenchmarkChunk[];
-  onAdd: () => void;
-}) {
-  return (
-    <CorpusTable
-      title="Chunks"
-      emptyDescription="Upload JSON or JSONL chunks for this CHUNKS benchmark."
-      onAdd={onAdd}
-    >
-      {chunks.map((chunk) => (
-        <TableRow key={chunk.chunk_id}>
-          <TableCell>
-            <code className="text-xs text-text-secondary">{chunk.chunk_id}</code>
-          </TableCell>
-          <TableCell>
-            <code className="text-xs text-text-secondary">{chunk.document_id}</code>
-          </TableCell>
-          <TableCell>
-            <div className="max-w-2xl truncate" title={chunk.text}>
-              {chunk.text}
-            </div>
-          </TableCell>
-        </TableRow>
-      ))}
-    </CorpusTable>
-  );
-}
-
-function CorpusTable({
-  title,
-  emptyDescription,
-  onAdd,
-  children,
-}: {
-  title: string;
-  emptyDescription: string;
-  onAdd: () => void;
-  children: ReactNode;
-}) {
-  const hasRows = Children.count(children) > 0;
+  const deleteDocument = useDeleteBenchmarkDocument(id, {
+    onSuccess: () => {
+      toast.success("Document deleted");
+    },
+    onError: notifyError,
+  });
   return (
     <Surface>
-      <div className="flex items-center justify-between p-4">
-        <h3 className="text-base font-medium text-text-primary">{title}</h3>
-        <Button variant="secondary" size="sm" onClick={onAdd}>
+      <SectionHeader title="Documents">
+        <Button size="sm" onClick={() => inputRef.current?.click()}>
           <Upload className="h-4 w-4" />
-          Add {title}
+          Upload Documents
         </Button>
-      </div>
-      {hasRows ? (
+      </SectionHeader>
+      {documents.length === 0 ? (
+        <EmptyState
+          title="No documents yet"
+          description="Upload source documents for this benchmark."
+          action={
+            <Button onClick={() => inputRef.current?.click()}>Upload Documents</Button>
+          }
+        />
+      ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              {title === "Chunks" ? (
-                <>
-                  <TableHead>Chunk ID</TableHead>
-                  <TableHead>Document ID</TableHead>
-                  <TableHead>Text</TableHead>
-                </>
-              ) : (
-                <>
-                  <TableHead>Document ID</TableHead>
-                  <TableHead>Filename</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Size</TableHead>
-                </>
-              )}
+              <TableHead>ID</TableHead>
+              <TableHead>Filename</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Size</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>{children}</TableBody>
+          <TableBody>
+            {documents.map((item) => (
+              <TableRow key={item.document_id}>
+                <TableCell>
+                  <code className="text-xs">{item.document_id}</code>
+                </TableCell>
+                <TableCell>{item.filename ?? "Unnamed document"}</TableCell>
+                <TableCell>{item.mime_type ?? "—"}</TableCell>
+                <TableCell>
+                  {item.size_bytes == null ? "—" : String(item.size_bytes) + " bytes"}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-error"
+                    onClick={() => {
+                      deleteDocument.mutate(item.document_id);
+                    }}
+                    disabled={deleteDocument.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
         </Table>
-      ) : (
-        <EmptyState
-          title={`No ${title.toLowerCase()} yet`}
-          description={emptyDescription}
-          action={<Button onClick={onAdd}>Add {title}</Button>}
-        />
       )}
     </Surface>
+  );
+}
+
+function ChunkSection({
+  id,
+  chunks,
+  inputRef,
+  onView,
+}: {
+  id: string;
+  chunks: BenchmarkChunk[];
+  inputRef: React.RefObject<HTMLInputElement>;
+  onView: (item: BenchmarkChunk) => void;
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const deleteChunk = useDeleteBenchmarkChunk(id, {
+    onSuccess: () => {
+      toast.success("Chunk deleted");
+    },
+    onError: notifyError,
+  });
+  return (
+    <>
+      <Surface>
+        <SectionHeader title="Chunks">
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowCreate(true);
+            }}
+          >
+            Add Chunk
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+          >
+            <Upload className="h-4 w-4" />
+            Import Chunks
+          </Button>
+        </SectionHeader>
+        {chunks.length === 0 ? (
+          <EmptyState
+            title="No chunks yet"
+            description="Add a chunk manually or import JSON/JSONL files."
+            action={
+              <Button
+                onClick={() => {
+                  setShowCreate(true);
+                }}
+              >
+                Add Chunk
+              </Button>
+            }
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Document</TableHead>
+                <TableHead>Text</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {chunks.map((item) => (
+                <TableRow key={item.chunk_id}>
+                  <TableCell>
+                    <code className="text-xs">{item.chunk_id}</code>
+                  </TableCell>
+                  <TableCell>
+                    <code className="text-xs">{item.document_id}</code>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-2xl truncate" title={item.text}>
+                      {item.text}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        onView(item);
+                      }}
+                    >
+                      <Eye className="h-4 w-4" />
+                      View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-error"
+                      onClick={() => {
+                        deleteChunk.mutate(item.chunk_id);
+                      }}
+                      disabled={deleteChunk.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </Surface>
+      <ChunkFormDialog
+        key={showCreate ? "open" : "closed"}
+        id={id}
+        open={showCreate}
+        onClose={() => {
+          setShowCreate(false);
+        }}
+      />
+    </>
+  );
+}
+
+function CaseDialog({
+  id,
+  mode,
+  item,
+  onClose,
+}: {
+  id: string;
+  mode: "create" | "edit" | null;
+  item: BenchmarkCase | null;
+  onClose: () => void;
+}) {
+  const create = useCreateBenchmarkCase(id, {
+    onSuccess: () => {
+      toast.success("Case created");
+      onClose();
+    },
+    onError: notifyError,
+  });
+  const update = useUpdateBenchmarkCase(id, item?.case_id ?? "", {
+    onSuccess: () => {
+      toast.success("Case updated");
+      onClose();
+    },
+    onError: notifyError,
+  });
+  return (
+    <Dialog
+      open={mode !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{mode === "edit" ? "Edit Case" : "Add Case"}</DialogTitle>
+          <DialogDescription>
+            {mode === "edit"
+              ? "The API client is ready for case updates when backend support is enabled."
+              : "Create one benchmark case."}
+          </DialogDescription>
+        </DialogHeader>
+        <CaseForm
+          key={`${String(mode)}-${item?.case_id ?? "new"}`}
+          item={mode === "edit" ? item : null}
+          pending={create.isPending || update.isPending}
+          onSubmit={(data) => {
+            if (mode === "edit") update.mutate(data);
+            else
+              create.mutate({
+                ...data,
+                case_id: data.case_id || "case-" + crypto.randomUUID(),
+              } as BenchmarkCase);
+          }}
+        />
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function CaseForm({
+  item,
+  pending,
+  onSubmit,
+}: {
+  item: BenchmarkCase | null;
+  pending: boolean;
+  onSubmit: (data: Partial<BenchmarkCase>) => void;
+}) {
+  const [caseId, setCaseId] = useState(item?.case_id ?? "");
+  const [query, setQuery] = useState(item?.query ?? "");
+  const [answer, setAnswer] = useState(item?.reference_answer ?? "");
+  const [tags, setTags] = useState(item?.tags.join(", ") ?? "");
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="case-id">Case ID</Label>
+        <Input
+          id="case-id"
+          value={caseId}
+          onChange={(event) => {
+            setCaseId(event.target.value);
+          }}
+          disabled={Boolean(item)}
+        />
+      </div>
+      <Textarea
+        label="Query"
+        value={query}
+        onChange={(event) => {
+          setQuery(event.target.value);
+        }}
+        rows={3}
+      />
+      <Textarea
+        label="Reference answer"
+        value={answer}
+        onChange={(event) => {
+          setAnswer(event.target.value);
+        }}
+        rows={3}
+      />
+      <Input
+        label="Tags"
+        value={tags}
+        onChange={(event) => {
+          setTags(event.target.value);
+        }}
+        placeholder="comma-separated"
+      />
+      <Button
+        onClick={() => {
+          onSubmit({
+            case_id: caseId,
+            query,
+            reference_answer: answer || null,
+            tags: tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
+            history: [],
+            gold_evidence: [],
+            metadata: {},
+          });
+        }}
+        disabled={pending || !query.trim()}
+      >
+        {pending ? "Saving..." : item ? "Save Changes" : "Add Case"}
+      </Button>
+    </div>
+  );
+}
+function ChunkFormDialog({
+  id,
+  open,
+  onClose,
+}: {
+  id: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const create = useCreateBenchmarkChunk(id, {
+    onSuccess: () => {
+      toast.success("Chunk created");
+      onClose();
+    },
+    onError: notifyError,
+  });
+  const [chunkId, setChunkId] = useState("");
+  const [documentId, setDocumentId] = useState("");
+  const [text, setText] = useState("");
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Chunk</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <Input
+            label="Chunk ID"
+            value={chunkId}
+            onChange={(event) => {
+              setChunkId(event.target.value);
+            }}
+          />
+          <Input
+            label="Document ID"
+            value={documentId}
+            onChange={(event) => {
+              setDocumentId(event.target.value);
+            }}
+          />
+          <Textarea
+            label="Text"
+            value={text}
+            onChange={(event) => {
+              setText(event.target.value);
+            }}
+            rows={6}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              create.mutate({
+                chunk_id: chunkId || "chunk-" + crypto.randomUUID(),
+                document_id: documentId,
+                text,
+                metadata: {},
+              });
+            }}
+            disabled={create.isPending || !documentId.trim() || !text.trim()}
+          >
+            Add Chunk
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function CaseViewDialog({
+  id,
+  item,
+  open,
+  onClose,
+}: {
+  id: string;
+  item: BenchmarkCase | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const query = useBenchmarkCase(id, item?.case_id ?? "", {
+    enabled: open && Boolean(item),
+  });
+  const value = query.data ?? item;
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(valueOpen) => {
+        if (!valueOpen) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Case {value?.case_id}</DialogTitle>
+        </DialogHeader>
+        {query.isLoading ? (
+          <Spinner />
+        ) : (
+          <pre className="max-h-96 overflow-auto rounded-md bg-surface p-3 text-xs text-text-secondary">
+            {value ? JSON.stringify(value, null, 2) : ""}
+          </pre>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+function ChunkViewDialog({
+  id,
+  item,
+  onClose,
+}: {
+  id: string;
+  item: BenchmarkChunk | null;
+  onClose: () => void;
+}) {
+  const query = useBenchmarkChunk(id, item?.chunk_id ?? "", { enabled: Boolean(item) });
+  const value = query.data ?? item;
+  return (
+    <Dialog
+      open={item !== null}
+      onOpenChange={(valueOpen) => {
+        if (!valueOpen) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Chunk {value?.chunk_id}</DialogTitle>
+        </DialogHeader>
+        {query.isLoading ? (
+          <Spinner />
+        ) : (
+          <pre className="max-h-96 overflow-auto rounded-md bg-surface p-3 text-xs text-text-secondary">
+            {value ? JSON.stringify(value, null, 2) : ""}
+          </pre>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+function DeleteBenchmarkDialog({
+  id,
+  open,
+  onClose,
+}: {
+  id: string;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const remove = useDeleteBenchmark({
+    onSuccess: () => {
+      toast.success("Benchmark deleted");
+      window.location.href = "/benchmarks";
+    },
+    onError: notifyError,
+  });
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete benchmark?</DialogTitle>
+          <DialogDescription>
+            This permanently removes the benchmark and its normalized records.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              remove.mutate(id);
+            }}
+            disabled={remove.isPending}
+          >
+            {remove.isPending ? "Deleting..." : "Delete Benchmark"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

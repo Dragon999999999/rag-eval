@@ -46,6 +46,7 @@ export interface BenchmarkDocument {
   sha256?: string | null;
   size_bytes?: number | null;
   metadata?: Record<string, unknown>;
+  artifact?: Record<string, unknown> | null;
 }
 
 export interface BenchmarkChunk {
@@ -100,6 +101,10 @@ export interface BenchmarkFileCreate {
   cases?: File[];
   documents?: File[];
   chunks?: File[];
+}
+
+export interface CorpusModeUpdate {
+  corpus_mode: CorpusMode;
 }
 
 export interface CaseSummary {
