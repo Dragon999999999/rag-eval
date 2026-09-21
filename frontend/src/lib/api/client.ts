@@ -13,15 +13,22 @@ export async function apiRequest<T>(
   const { method = "GET", body, headers = {} } = options;
 
   const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+  const isTextBody = typeof body === "string";
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
     headers: isFormData
       ? headers
       : {
-          "Content-Type": "application/json",
+          "Content-Type": isTextBody ? "text/plain" : "application/json",
           ...headers,
         },
-    body: body ? (isFormData ? body : JSON.stringify(body)) : undefined,
+    body: body
+      ? isFormData
+        ? body
+        : isTextBody
+          ? body
+          : JSON.stringify(body)
+      : undefined,
   });
 
   if (!response.ok) {

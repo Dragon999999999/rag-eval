@@ -1,154 +1,116 @@
-/**
- * Target domain types and data contracts.
- *
- * These types represent the frontend's view of target data,
- * based on the backend Target Protocol v1 specification.
- */
+/** API response and request types for evaluator-managed targets. */
 
-/** Target adapter type - must match backend support */
-export type TargetAdapterType = "http" | "python";
-
-/** Corpus mode for target configuration */
-export type CorpusMode = "DOCUMENTS" | "CHUNKS" | "EXTERNAL";
-
-/** Target connection status derived from backend state */
+export type TargetConfigurationStatus =
+  "empty" | "configured" | "invalid" | (string & {});
 export type TargetConnectionStatus =
-  "connected" | "disconnected" | "unknown" | "testing" | "configuration-error";
+  "not_tested" | "connected" | "unverified" | "disconnected" | (string & {});
 
-/** Target identity information */
-export interface Target {
-  targetId: string;
+/** The backend's evaluator-owned target summary. */
+export interface TargetSummary {
+  target_id: string;
   name: string;
-  version: string | null;
-  implementation: string | null;
-  adapter: TargetAdapterType;
-  base_url: string | null;
-  python_target: string | null;
-  authentication_env: string | null;
-  corpus_mode: CorpusMode;
-  parameters: Record<string, unknown>;
-  metadata: Record<string, unknown>;
-  created_at: string; // ISO timestamp
-  updated_at: string; // ISO timestamp
+  adapter_type: string | null;
+  configuration_status: TargetConfigurationStatus;
+  connection_status: TargetConnectionStatus;
+  current_config_version: number | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
-/** Target creation payload */
+/** Full target state returned by the backend. */
+export interface Target extends Omit<TargetSummary, "connection_status"> {
+  /** Detail responses embed connection state rather than repeating its status. */
+  connection_status?: TargetConnectionStatus;
+  connection: TargetConnection | null;
+  capabilities: TargetCapabilitiesPayload | null;
+  metadata: Record<string, unknown>;
+}
+
 export interface TargetCreate {
   name: string;
-  version?: string | null;
-  implementation?: string | null;
-  adapter: TargetAdapterType;
-  base_url?: string | null;
-  python_target?: string | null;
-  authentication_env?: string | null;
-  corpus_mode: CorpusMode;
-  parameters?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }
 
-/** Target update payload */
 export interface TargetUpdate {
-  name?: string | null;
-  version?: string | null;
-  implementation?: string | null;
-  parameters?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-}
-
-/** Target capabilities as advertised by the backend */
-export interface TargetCapabilities {
-  target_id: string;
-  capabilities: {
-    protocol_version?: string;
-    query?: boolean;
-    streaming?: boolean;
-    conversation_history?: boolean;
-    retrieval?: boolean;
-    retrieval_stages?: boolean;
-    document_ingestion?: boolean;
-    chunk_ingestion?: boolean;
-    context_injection?: boolean;
-    citations?: boolean;
-    confidence?: boolean;
-    target_trace?: boolean;
-    effective_configuration?: boolean;
-    idempotency?: boolean;
-    request_recovery?: boolean;
-    usage?: {
-      tokens?: boolean;
-      cost?: boolean;
-      cpu?: boolean;
-      ram?: boolean;
-      gpu?: boolean;
-      vram?: boolean;
-    };
-    retrieval_metadata?: {
-      rank?: boolean;
-      score?: boolean;
-      document_id?: boolean;
-      chunk_id?: boolean;
-      page?: boolean;
-      character_span?: boolean;
-    };
-    limits?: Record<string, number>;
-    idempotency_retention_seconds?: number | null;
-    metadata?: Record<string, unknown>;
-  };
-  discovered_at: string; // ISO timestamp
-}
-
-/** Connection test result from backend */
-export interface TargetConnectionTestResult {
-  success: boolean;
-  target_id: string;
-  response_time_ms?: number;
-  error?: string;
-  error_category?: string;
-  error_code?: string;
-  http_status?: number;
-  details?: Record<string, unknown>;
-  tested_at: string; // ISO timestamp
-}
-
-/** Authentication configuration for targets */
-export interface TargetAuthConfig {
-  type: "none" | "bearer" | "api-key";
-  bearer_token?: string;
-  api_key?: string;
-  api_key_header?: string;
-  authentication_env?: string | null;
-}
-
-/** Adapter-specific configuration */
-export interface HttpAdapterConfig {
-  base_url: string;
-  authentication: TargetAuthConfig;
-}
-
-export interface PythonAdapterConfig {
-  python_target: string; // module:Symbol format
-}
-
-/** Form state for target creation/editing */
-export interface TargetFormState {
-  name: string;
-  description?: string;
-  adapter: TargetAdapterType;
-
-  // HTTP adapter fields
-  base_url?: string;
-  auth_type?: "none" | "bearer" | "api-key";
-  bearer_token?: string;
-  api_key?: string;
-  api_key_header?: string;
-
-  // Python adapter fields
-  python_target?: string;
-
-  // Common fields
-  corpus_mode: CorpusMode;
-  version?: string;
-  implementation?: string;
-  parameters?: Record<string, unknown>;
+  name?: string;
   metadata?: Record<string, unknown>;
+  enabled?: boolean;
+}
+
+export interface TargetAdapterInfo {
+  type: string;
+  version: string | null;
+  description: string | null;
+  supports_overrides: boolean;
+  supports_full_protocol: boolean;
+  defaults: Record<string, unknown>;
+}
+
+export interface TargetConnection {
+  status: TargetConnectionStatus;
+  checked_at: string | null;
+  last_successful_at: string | null;
+  health: Record<string, unknown> | null;
+  error: Record<string, unknown> | null;
+}
+
+export interface TargetCapabilitiesPayload {
+  target_id?: string;
+  capabilities: Record<string, unknown>;
+}
+
+export type TargetConnectionInfo = TargetConnection;
+
+export interface TargetConfigVersionInfo {
+  config_version_id: string;
+  version: number;
+  schema_version: string;
+  source_artifact_id: string;
+  config_hash: string;
+  created_at: string;
+}
+
+export interface TargetConfigVersionDetail extends TargetConfigVersionInfo {
+  target_id: string;
+  yaml: string;
+}
+
+export interface TargetConfigurationResponse {
+  target_id: string;
+  version: number;
+  yaml: string;
+}
+
+export interface TargetAdapterSourceInfo {
+  target_id: string;
+  filename: string;
+  artifact_id: string;
+  content_hash: string | null;
+  created_at: string | null;
+}
+
+export interface TargetCapabilitiesInfo {
+  target_id: string;
+  capabilities: Record<string, unknown>;
+}
+
+/** Values used by the structured editor before serialization to target.yaml. */
+export interface TargetConfigurationDraft {
+  adapter: string;
+  base_url: string;
+  timeout_seconds: string;
+  verify_tls: boolean;
+  auth_type: string;
+  bearer_token: string;
+  api_key: string;
+  api_key_header: string;
+  model: string;
+  endpoint: string;
+  protocol_json: string;
+  overrides_json: string;
+  parameters_json: string;
+  metadata_json: string;
+  /** SecretRef values from the sanitized configuration, never rendered as plaintext. */
+  existing_auth: Record<string, unknown>;
 }

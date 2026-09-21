@@ -16,11 +16,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useTargetList } from "@/features/targets/use-targets";
-import {
-  formatAdapterType,
-  getCapabilityBadges,
-} from "@/features/targets/target-formatters";
-import type { Target } from "@/features/targets/target-types";
+import { formatAdapterType } from "@/features/targets/target-formatters";
+import type { TargetSummary } from "@/features/targets/target-types";
 import type { UseFormReturn } from "react-hook-form";
 import type { TestBuilderValues } from "../test-builder-form";
 
@@ -111,13 +108,13 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {targets.map((target: Target) => (
+            {targets.map((target: TargetSummary) => (
               <TargetRow
-                key={target.targetId}
+                key={target.target_id}
                 target={target}
-                isSelected={selectedTargetId === target.targetId}
+                isSelected={selectedTargetId === target.target_id}
                 onSelect={() => {
-                  setSelectedTargetId(target.targetId);
+                  setSelectedTargetId(target.target_id);
                 }}
               />
             ))}
@@ -135,23 +132,12 @@ export function TargetStep({ form, onNext }: TargetStepProps) {
 }
 
 interface TargetRowProps {
-  target: Target;
+  target: TargetSummary;
   isSelected: boolean;
   onSelect: () => void;
 }
 
 function TargetRow({ target, isSelected, onSelect }: TargetRowProps) {
-  const capabilities = getCapabilityBadges({
-    query: true,
-    retrieval: true,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
-    citations: (target.metadata?.capabilities as any)?.citations ?? false,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
-    usage: (target.metadata?.capabilities as any)?.usage ? { tokens: true } : undefined,
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unsafe-member-access
-    target_trace: (target.metadata?.capabilities as any)?.trace ?? false,
-  });
-
   return (
     <TableRow
       className="cursor-pointer transition-colors hover:bg-surface-hover"
@@ -170,30 +156,28 @@ function TargetRow({ target, isSelected, onSelect }: TargetRowProps) {
       <TableCell>
         <div>
           <div className="font-medium text-text-primary">{target.name}</div>
-          {target.version && (
-            <div className="text-xs text-text-tertiary">v{target.version}</div>
+          {target.current_config_version && (
+            <div className="text-xs text-text-tertiary">
+              v{target.current_config_version}
+            </div>
           )}
         </div>
       </TableCell>
       <TableCell>
         <span className="text-sm text-text-secondary">
-          {formatAdapterType(target.adapter)}
+          {formatAdapterType(target.adapter_type)}
         </span>
       </TableCell>
       <TableCell>
-        <div className="flex flex-wrap gap-1">
-          {capabilities.slice(0, 5).map((cap: string) => (
-            <span
-              key={cap}
-              className="rounded bg-surface-hover px-1.5 py-0.5 text-xs text-text-tertiary"
-            >
-              {cap}
-            </span>
-          ))}
-          {capabilities.length > 5 && (
-            <span className="text-xs text-text-tertiary">
-              +{capabilities.length - 5}
-            </span>
+        <div className="flex flex-wrap gap-1 text-xs text-text-tertiary">
+          <span>{target.configuration_status.replaceAll("_", " ")}</span>
+          <span>·</span>
+          <span>{target.connection_status.replaceAll("_", " ")}</span>
+          {!target.enabled && (
+            <>
+              <span>·</span>
+              <span>disabled</span>
+            </>
           )}
         </div>
       </TableCell>

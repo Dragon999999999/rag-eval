@@ -15,12 +15,19 @@ export { TargetStatus } from "./components/target-status";
 export {
   useTargetList,
   useTarget,
+  useTargetAdapters,
+  useTargetConfiguration,
+  useTargetConfigurationVersions,
+  useTargetAdapterSource,
+  useTargetConnection,
+  useTargetCapabilities,
   useCreateTarget,
   useUpdateTarget,
   useDeleteTarget,
-  useTargetCapabilities,
-  useRefreshCapabilities,
+  useSaveTargetConfiguration,
+  useUploadPythonAdapter,
   useTestConnection,
+  useDiscoverCapabilities,
   targetQueryKeys,
 } from "./use-targets";
 
@@ -28,24 +35,26 @@ export { TargetService } from "./target-service";
 
 export type {
   Target,
+  TargetSummary,
   TargetCreate,
   TargetUpdate,
-  TargetCapabilities,
-  TargetConnectionTestResult,
-  TargetAdapterType,
-  CorpusMode,
+  TargetAdapterInfo,
+  TargetAdapterSourceInfo,
+  TargetCapabilitiesInfo,
+  TargetConfigVersionDetail,
+  TargetConfigVersionInfo,
+  TargetConfigurationDraft,
+  TargetConfigurationResponse,
+  TargetConnection,
+  TargetConnectionInfo,
   TargetConnectionStatus,
-  TargetAuthConfig,
-  TargetFormState,
 } from "./target-types";
 
 export {
   formatAdapterType,
-  formatCorpusMode,
+  formatTargetStatus,
   formatTargetEndpoint,
   formatRelativeTime,
   getConnectionStatus,
-  getCapabilityBadges,
-  isValidPythonTarget,
-  isValidUrl,
+  statusVariant,
 } from "./target-formatters";

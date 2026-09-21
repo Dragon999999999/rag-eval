@@ -1,8 +1,3 @@
-/**
- * Target list component for /targets page.
- *
- * Displays targets in a dense table format with status, capabilities, and actions.
- */
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Table,
@@ -14,89 +9,32 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/layout/surface";
-import { StatusBadge } from "@/components/ui/status-badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SearchInput } from "@/components/ui/search-input";
-import {
-  formatAdapterType,
-  formatTargetEndpoint,
-  formatRelativeTime,
-  getCapabilityBadges,
-} from "../target-formatters";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TargetStatus } from "./target-status";
+import { formatAdapterType, formatRelativeTime } from "../target-formatters";
 import { useTargetList } from "../use-targets";
-import type { Target } from "../target-types";
+import type { TargetSummary } from "../target-types";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface TargetListProps {}
-
-// eslint-disable-next-line no-empty-pattern
-export function TargetList({}: TargetListProps) {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const search = searchParams.get("search") ?? "";
-  const typeFilter = searchParams.get("type") ?? "";
-  const statusFilter = searchParams.get("status") ?? "";
-
+export function TargetList() {
+  const [params, setParams] = useSearchParams();
+  const search = params.get("search") ?? "";
   const { data: targets, isLoading, error, refetch } = useTargetList();
 
-  // Client-side filtering (backend doesn't support server-side search yet)
-  const filteredTargets = targets?.filter((target: Target) => {
-    // Search filter
-    if (search && !target.name.toLowerCase().includes(search.toLowerCase())) {
-      return false;
-    }
-
-    // Type filter
-    if (typeFilter && target.adapter !== typeFilter) {
-      return false;
-    }
-
-    // Status filter - for now all targets are considered "active"
-    if (statusFilter && statusFilter !== "all") {
-      // Could implement more sophisticated status filtering
-      return false;
-    }
-
-    return true;
-  });
-
-  // Handle search input
-  const handleSearchChange = (value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value) {
-      newParams.set("search", value);
-    } else {
-      newParams.delete("search");
-    }
-    setSearchParams(newParams);
-  };
-
-  // Handle type filter
-  const handleTypeChange = (value: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (value && value !== "all") {
-      newParams.set("type", value);
-    } else {
-      newParams.delete("type");
-    }
-    setSearchParams(newParams);
-  };
-
-  if (isLoading) {
-    return <TargetListSkeleton />;
-  }
-
+  if (isLoading) return <TargetListSkeleton />;
   if (error) {
     return (
       <Alert variant="error">
         <AlertDescription>
-          An error occurred while fetching targets.
+          Unable to load targets.{" "}
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => { void refetch(); }}
-            className="ml-4"
+            onClick={() => {
+              void refetch();
+            }}
           >
             Retry
           </Button>
@@ -104,12 +42,14 @@ export function TargetList({}: TargetListProps) {
       </Alert>
     );
   }
-
-  if (!targets || targets.length === 0) {
+  const filtered = (targets ?? []).filter((target) =>
+    target.name.toLowerCase().includes(search.toLowerCase())
+  );
+  if (!targets?.length) {
     return (
       <EmptyState
-        title="No targets configured"
-        description="Targets define the RAG or LLM systems that RAG-Eval sends benchmark queries to."
+        title="No targets registered"
+        description="Create a target to connect a RAG system or LLM endpoint."
         action={
           <Button asChild>
             <Link to="/targets/new">Add Target</Link>
@@ -118,139 +58,73 @@ export function TargetList({}: TargetListProps) {
       />
     );
   }
-
-  if (!filteredTargets || filteredTargets.length === 0) {
-    return (
-      <EmptyState
-        title="No matching targets"
-        description="Try adjusting your search or filters."
-        action={
-          <Button variant="secondary" size="sm" onClick={() => { setSearchParams({}); }}>
-            Clear filters
-          </Button>
-        }
-      />
-    );
-  }
-
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="w-64">
-          <SearchInput
-            value={search}
-            onChange={(e) => { handleSearchChange(e.target.value); }}
-            placeholder="Search targets..."
-          />
-        </div>
-
-        <select
-          value={typeFilter}
-          onChange={(e) => { handleTypeChange(e.target.value); }}
-          className="border-border focus:ring-ring h-9 rounded-md border bg-surface px-3 text-sm text-text-primary focus:outline-none focus:ring-2"
-        >
-          <option value="">All Types</option>
-          <option value="http">HTTP</option>
-          <option value="python">Python</option>
-        </select>
-      </div>
-
-      {/* Target table */}
-      <Surface>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Name</TableHead>
-              <TableHead className="w-[150px]">Type</TableHead>
-              <TableHead>Endpoint / Adapter</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[200px]">Capabilities</TableHead>
-              <TableHead className="w-[120px]">Last Checked</TableHead>
-              <TableHead className="w-[80px] text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredTargets.map((target: Target) => (
-              <TargetRow key={target.targetId} target={target} />
-            ))}
-          </TableBody>
-        </Table>
-      </Surface>
+      <SearchInput
+        value={search}
+        onChange={(event) => {
+          const next = new URLSearchParams(params);
+          if (event.target.value) next.set("search", event.target.value);
+          else next.delete("search");
+          setParams(next);
+        }}
+        placeholder="Search targets..."
+      />
+      {!filtered.length ? (
+        <EmptyState title="No matching targets" description="Try a different search." />
+      ) : (
+        <Surface>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Adapter</TableHead>
+                <TableHead>Configuration</TableHead>
+                <TableHead>Connection</TableHead>
+                <TableHead>Enabled</TableHead>
+                <TableHead>Version</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((target) => (
+                <TargetRow key={target.target_id} target={target} />
+              ))}
+            </TableBody>
+          </Table>
+        </Surface>
+      )}
     </div>
   );
 }
 
-interface TargetRowProps {
-  target: Target;
-}
-
-function TargetRow({ target }: TargetRowProps) {
-  // For mock data, assume connected if we have the target
-  // Real implementation would check capabilities cache
-
-  const capabilities = getCapabilityBadges({
-    query: true, // Mock - real impl would check capabilities
-    retrieval: true,
-    citations: true,
-    usage: { tokens: true },
-    streaming: target.adapter === "http",
-    target_trace: target.adapter === "http",
-  });
-
+function TargetRow({ target }: { target: TargetSummary }) {
   return (
     <TableRow>
       <TableCell>
-        <div>
-          <div className="font-medium text-text-primary">{target.name}</div>
-          {target.version && (
-            <div className="text-xs text-text-tertiary">{target.version}</div>
-          )}
-        </div>
+        <div className="font-medium text-text-primary">{target.name}</div>
+        <div className="text-xs text-text-tertiary">{target.target_id}</div>
+      </TableCell>
+      <TableCell>{formatAdapterType(target.adapter_type)}</TableCell>
+      <TableCell>
+        <TargetStatus status={target.configuration_status} />
       </TableCell>
       <TableCell>
-        <span className="text-sm text-text-secondary">
-          {formatAdapterType(target.adapter)}
-        </span>
+        <TargetStatus status={target.connection_status} />
       </TableCell>
+      <TableCell>{target.enabled ? "Enabled" : "Disabled"}</TableCell>
       <TableCell>
-        <div
-          className="truncate text-sm text-text-secondary"
-          title={formatTargetEndpoint(target)}
-        >
-          {formatTargetEndpoint(target)}
-        </div>
+        {target.current_config_version
+          ? `v${String(target.current_config_version)}`
+          : "—"}
       </TableCell>
-      <TableCell>
-        <StatusBadge status="success" showDot>
-          Connected
-        </StatusBadge>
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
-          {capabilities.slice(0, 4).map((cap: string) => (
-            <span
-              key={cap}
-              className="rounded bg-surface-hover px-1.5 py-0.5 text-xs text-text-tertiary"
-            >
-              {cap}
-            </span>
-          ))}
-          {capabilities.length > 4 && (
-            <span className="text-xs text-text-tertiary">
-              +{capabilities.length - 4}
-            </span>
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        <span className="text-sm text-text-tertiary">
-          {formatRelativeTime(target.updated_at)}
-        </span>
+      <TableCell className="text-text-tertiary">
+        {formatRelativeTime(target.updated_at)}
       </TableCell>
       <TableCell className="text-right">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={`/targets/${target.targetId}`}>Open</Link>
+          <Link to={`/targets/${encodeURIComponent(target.target_id)}`}>Open</Link>
         </Button>
       </TableCell>
     </TableRow>
@@ -259,52 +133,10 @@ function TargetRow({ target }: TargetRowProps) {
 
 function TargetListSkeleton() {
   return (
-    <Surface>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[200px]">Name</TableHead>
-            <TableHead className="w-[150px]">Type</TableHead>
-            <TableHead>Endpoint / Adapter</TableHead>
-            <TableHead className="w-[120px]">Status</TableHead>
-            <TableHead className="w-[200px]">Capabilities</TableHead>
-            <TableHead className="w-[120px]">Last Checked</TableHead>
-            <TableHead className="w-[80px] text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
-          {[...Array(5)].map((_, i) => (
-            <TableRow key={i}>
-              <TableCell>
-                <Skeleton className="h-4 w-32" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-24" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-48" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-5 w-20" />
-              </TableCell>
-              <TableCell>
-                <div className="flex gap-1">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-4 w-12" />
-                </div>
-              </TableCell>
-              <TableCell>
-                <Skeleton className="h-4 w-16" />
-              </TableCell>
-              <TableCell>
-                <Skeleton className="ml-auto h-7 w-14" />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <Surface className="space-y-3 p-6">
+      {[1, 2, 3].map((row) => (
+        <Skeleton key={row} className="h-10 w-full" />
+      ))}
     </Surface>
   );
 }
