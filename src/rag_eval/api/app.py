@@ -18,7 +18,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from rag_eval.api import benchmarks
+from rag_eval.api import benchmarks, targets
 from rag_eval.artifacts.local import LocalArtifactStore
 from rag_eval.config import get_settings
 from rag_eval.db.session import create_async_engine, create_session_factory
@@ -130,6 +130,12 @@ app.include_router(
     benchmarks.router,
     prefix="/api/v1",
     tags=["benchmarks"],
+)
+
+app.include_router(
+    targets.router,
+    prefix="/api/v1",
+    tags=["targets"],
 )
 
 

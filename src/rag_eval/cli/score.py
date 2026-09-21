@@ -15,13 +15,11 @@ from rag_eval.reporting import ExportService, ReportGenerator, RunComparator
 
 app = typer.Typer(help="Score runs and generate reports.")
 
-target_app = typer.Typer(help="Manage evaluation targets.")
 metrics_app = typer.Typer(help="Manage metrics and metric configurations.")
 test_app = typer.Typer(help="Manage test definitions.")
 run_app = typer.Typer(help="Manage evaluation runs.")
 report_app = typer.Typer(help="Generate reports and exports.")
 
-app.add_typer(target_app, name="target")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(metrics_app, name="metrics")
 app.add_typer(test_app, name="test")

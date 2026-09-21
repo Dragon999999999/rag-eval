@@ -8,8 +8,8 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from rag_eval.artifacts import ArtifactService
+from rag_eval.db.benchmark_models import BenchmarkRecord
 from rag_eval.db.benchmark_repository import BenchmarkRepository
-from rag_eval.db.models import BenchmarkRecord
 from rag_eval.models import (
     ArtifactType,
     Benchmark,

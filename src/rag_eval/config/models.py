@@ -48,7 +48,7 @@ class CorpusConfig(ExperimentModel):
     parameters: JsonDict = Field(default_factory=dict)
 
 
-class TargetConfig(ExperimentModel):
+class ExperimentTargetConfig(ExperimentModel):
     """Transport-independent target selection and target-specific parameters."""
 
     adapter: Literal["http", "python"]
@@ -59,7 +59,7 @@ class TargetConfig(ExperimentModel):
     parameters: JsonDict = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_adapter_target(self) -> "TargetConfig":
+    def validate_adapter_target(self) -> "ExperimentTargetConfig":
         """Require exactly the location mechanism appropriate to the adapter."""
         if self.adapter == "http":
             if self.base_url is None or self.python_target is not None:
@@ -170,7 +170,7 @@ class ExperimentConfig(ExperimentModel):
     version: str
     run: RunConfig
     dataset: DatasetConfig
-    target: TargetConfig
+    target: ExperimentTargetConfig
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     storage: StorageConfig = Field(default_factory=StorageConfig)

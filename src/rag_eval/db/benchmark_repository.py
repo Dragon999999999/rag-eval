@@ -5,13 +5,13 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rag_eval.db.models import (
-    ArtifactRecord,
+from rag_eval.db.benchmark_models import (
     BenchmarkCaseRecord,
     BenchmarkChunkRecord,
     BenchmarkDocumentRecord,
     BenchmarkRecord,
 )
+from rag_eval.db.models import ArtifactRecord
 from rag_eval.models import (
     ArtifactRef,
     Benchmark,

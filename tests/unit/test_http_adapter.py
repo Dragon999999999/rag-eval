@@ -14,7 +14,7 @@ from rag_eval.adapters import (
     TargetProtocolError,
     create_target_adapter,
 )
-from rag_eval.config.models import CorpusConfig, TargetConfig
+from rag_eval.config.models import CorpusConfig, ExperimentTargetConfig
 from rag_eval.models import (
     Chunk,
     CorpusMode,
@@ -339,7 +339,7 @@ def test_http_factory_uses_bearer_token_from_config_environment(
 ) -> None:
     """The common factory constructs HTTP adapters without execution branching."""
     monkeypatch.setenv("TARGET_TOKEN", "token-value")
-    config = TargetConfig(
+    config = ExperimentTargetConfig(
         adapter="http",
         base_url=HttpUrl("https://target.test"),
         authentication_env="TARGET_TOKEN",

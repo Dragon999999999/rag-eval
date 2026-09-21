@@ -103,7 +103,10 @@ class HttpTargetAdapter:
         bearer_token: str | None = None,
         api_key: str | None = None,
         api_key_header: str = "X-API-Key",
+        headers: Mapping[str, str] | None = None,
+        verify_tls: bool = True,
         client: httpx.AsyncClient | None = None,
+        health_endpoint: str | None = "health",
     ) -> None:
         """Create a reusable HTTP adapter.
 
@@ -123,14 +126,18 @@ class HttpTargetAdapter:
         if bearer_token is not None and api_key is not None:
             raise ValueError("Configure either bearer_token or api_key, not both.")
         protocol_root = f"{base_url.rstrip('/')}/eval/v1/"
-        headers = {"X-Rag-Eval-Protocol": "1"}
+        request_headers = {
+            "X-Rag-Eval-Protocol": "1",
+            **(dict(headers) if headers is not None else {}),
+        }
         if bearer_token is not None:
-            headers["Authorization"] = f"Bearer {bearer_token}"
+            request_headers["Authorization"] = f"Bearer {bearer_token}"
         elif api_key is not None:
-            headers[api_key_header] = api_key
+            request_headers[api_key_header] = api_key
         self._client = client or httpx.AsyncClient(
             base_url=protocol_root,
-            headers=headers,
+            headers=request_headers,
+            verify=verify_tls,
             timeout=httpx.Timeout(
                 timeout=total_timeout,
                 connect=connect_timeout,
@@ -140,11 +147,12 @@ class HttpTargetAdapter:
             ),
         )
         if client is not None:
-            self._client.headers.update(headers)
+            self._client.headers.update(request_headers)
             self._client.base_url = httpx.URL(protocol_root)
         self._owns_client = client is None
         self._capabilities: TargetCapabilities | None = None
         self.last_transport: TransportMetadata | None = None
+        self._health_endpoint = health_endpoint
 
     async def __aenter__(self) -> "HttpTargetAdapter":
         """Return this adapter for async-context-manager use."""
@@ -166,9 +174,18 @@ class HttpTargetAdapter:
             self._capabilities = self._normalize_capabilities(payload)
         return self._capabilities
 
-    async def health(self) -> HealthStatus:
-        """Return the target's canonical operational health status."""
-        return await self._model_request("health", HealthStatus, "GET", "health")
+    async def health(self) -> HealthStatus | None:
+        """Return target health when a health endpoint is configured."""
+
+        if self._health_endpoint is None:
+            return None
+
+        return await self._model_request(
+            "health",
+            HealthStatus,
+            "GET",
+            self._health_endpoint,
+        )
 
     async def config_schema(self) -> dict[str, Any]:
         """Return target-provided generic JSON Schema without model generation."""

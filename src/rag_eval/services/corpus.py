@@ -12,7 +12,7 @@ from rag_eval.adapters.errors import TargetAdapterError
 from rag_eval.artifacts import ArtifactService
 from rag_eval.config.models import CorpusConfig
 from rag_eval.db.models import CorpusRecord
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.models import (
     Benchmark,
     CorpusMode,
@@ -45,14 +45,17 @@ class CorpusPreparationService:
 
     def __init__(
         self,
+        target_id: str,
         adapter: TargetAdapter,
-        repository: PersistenceRepository,
+        repository: TargetRepository,
         *,
         artifact_service: ArtifactService | None = None,
         poll_interval_seconds: float = 0.1,
         poll_timeout_seconds: float = 120.0,
     ) -> None:
-        """Bind target, persistence, and artifact access."""
+        """Bind one registered target, its adapter, and persistence."""
+
+        self._target_id = target_id
         self._adapter = adapter
         self._repository = repository
         self._artifact_service = artifact_service
@@ -84,16 +87,6 @@ class CorpusPreparationService:
             )
 
         capabilities = await self._adapter.capabilities()
-        target_id = self._target_id(capabilities.target)
-
-        await self._repository.persist_target(
-            target_id,
-            capabilities.target,
-        )
-        await self._repository.persist_capabilities(
-            target_id,
-            capabilities,
-        )
 
         content_hash = self._content_hash(
             benchmark,
@@ -108,7 +101,6 @@ class CorpusPreparationService:
 
             await self._persist_corpus(
                 corpus_config.corpus_id,
-                target_id,
                 CorpusMode.EXTERNAL,
                 "READY",
                 content_hash,
@@ -162,7 +154,6 @@ class CorpusPreparationService:
 
         await self._persist_corpus(
             created.corpus_id,
-            target_id,
             corpus_config.mode,
             created.status,
             content_hash,
@@ -193,7 +184,6 @@ class CorpusPreparationService:
         except Exception:
             await self._persist_corpus(
                 created.corpus_id,
-                target_id,
                 corpus_config.mode,
                 "FAILED",
                 content_hash,
@@ -205,7 +195,6 @@ class CorpusPreparationService:
 
         await self._persist_corpus(
             created.corpus_id,
-            target_id,
             corpus_config.mode,
             "READY",
             content_hash,
@@ -328,7 +317,6 @@ class CorpusPreparationService:
     async def _persist_corpus(
         self,
         corpus_id: str,
-        target_id: str,
         mode: CorpusMode,
         status: str,
         content_hash: str,
@@ -338,7 +326,7 @@ class CorpusPreparationService:
         await self._repository.persist_corpus(
             CorpusRecord(
                 corpus_id=corpus_id,
-                target_id=target_id,
+                target_id=self._target_id,
                 mode=mode.value,
                 status=status,
                 content_hash=content_hash,
@@ -382,20 +370,3 @@ class CorpusPreparationService:
                 )
 
         return digest.hexdigest()
-
-    @staticmethod
-    def _target_id(target: object) -> str:
-        """Derive a stable persistence key if target_id is absent."""
-        target_id = getattr(target, "target_id", None)
-
-        if target_id is not None:
-            return target_id
-
-        return ":".join(
-            str(value or "unknown")
-            for value in (
-                getattr(target, "name", None),
-                getattr(target, "version", None),
-                getattr(target, "implementation", None),
-            )
-        )

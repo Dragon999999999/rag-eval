@@ -17,12 +17,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from rag_eval.artifacts import ArtifactService
 from rag_eval.artifacts.base import ArtifactStore
+from rag_eval.config import (
+    TargetConfigResolver,
+    get_settings,
+)
 from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.repositories import PersistenceRepository
-from rag_eval.db.session import create_async_engine, create_session_factory
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.metrics.registry import MetricRegistry
 from rag_eval.services.benchmark_service import BenchmarkService
 from rag_eval.services.metric_configs import MetricConfigService
+from rag_eval.services.secret_service import SecretService
+from rag_eval.services.target_service import TargetService
 from rag_eval.services.test_definitions import TestDefinitionService
 
 # ============================================================================
@@ -154,6 +160,22 @@ BenchmarkRepositoryDep = Annotated[
 ]
 
 
+def get_target_repository(
+    session: DbSession,
+) -> TargetRepository:
+    """Provide target-specific persistence."""
+
+    return TargetRepository(
+        session
+    )
+
+
+TargetRepositoryDep = Annotated[
+    TargetRepository,
+    Depends(get_target_repository),
+]
+
+
 # ============================================================================
 # Artifact services
 # ============================================================================
@@ -209,6 +231,67 @@ BenchmarkServiceDep = Annotated[
     BenchmarkService,
     Depends(get_benchmark_service),
 ]
+
+
+# ============================================================================
+# Target services
+# ============================================================================
+
+
+def get_secret_service(
+    repository: TargetRepositoryDep,
+) -> SecretService:
+    """Provide target secret encryption/decryption."""
+
+    settings = get_settings()
+
+    return SecretService(
+        repository=repository,
+        encryption_key=settings.secret_key,
+    )
+
+
+SecretServiceDep = Annotated[
+    SecretService,
+    Depends(get_secret_service),
+]
+
+
+def get_target_config_resolver() -> TargetConfigResolver:
+    """Provide target adapter-default configuration resolution."""
+
+    return TargetConfigResolver()
+
+
+TargetConfigResolverDep = Annotated[
+    TargetConfigResolver,
+    Depends(get_target_config_resolver),
+]
+
+
+def get_target_service(
+    target_repository: TargetRepositoryDep,
+    persistence_repository: RepositoryDep,
+    artifact_service: ArtifactServiceDep,
+    secret_service: SecretServiceDep,
+    config_resolver: TargetConfigResolverDep,
+) -> TargetService:
+    """Provide target lifecycle management."""
+
+    return TargetService(
+        repository=target_repository,
+        persistence_repository=persistence_repository,
+        artifact_service=artifact_service,
+        secret_service=secret_service,
+        config_resolver=config_resolver,
+    )
+
+
+TargetServiceDep = Annotated[
+    TargetService,
+    Depends(get_target_service),
+]
+
 
 # ============================================================================
 # Services

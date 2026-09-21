@@ -14,7 +14,7 @@ from rag_eval.adapters import (
     create_target_adapter,
     load_python_target,
 )
-from rag_eval.config.models import CorpusConfig, TargetConfig
+from rag_eval.config.models import CorpusConfig, ExperimentTargetConfig
 from rag_eval.models import (
     Chunk,
     CorpusMode,
@@ -35,7 +35,7 @@ def _adapter(target_name: str) -> PythonTargetAdapter:
 async def test_loader_factory_health_and_query_normalization() -> None:
     """An explicit import path constructs the Python adapter and normalizes I/O."""
     target = load_python_target("tests.unit.adapter_targets:RetrievalTarget")
-    config = TargetConfig(
+    config = ExperimentTargetConfig(
         adapter="python",
         python_target="tests.unit.adapter_targets:RetrievalTarget",
         corpus=CorpusConfig(mode=CorpusMode.EXTERNAL),

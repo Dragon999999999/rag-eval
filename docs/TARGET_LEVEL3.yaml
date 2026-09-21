@@ -1,0 +1,27 @@
+adapter:
+  type: generic_http
+
+connection:
+  base_url: https://rag.example.com
+
+protocol:
+  health:
+    method: GET
+    endpoint: /health
+    response:
+      status_path: status
+      healthy_values:
+        - ok
+        - healthy
+
+  query:
+    method: POST
+    endpoint: /ask
+
+    request:
+      body:
+        question: "$request.query"
+        history: "$request.history"
+
+    response:
+      answer_path: "$.result.answer"

@@ -135,6 +135,8 @@ class ArtifactType(StrEnum):
     """Purpose of externally stored immutable artifact bytes."""
 
     SOURCE_DOCUMENT = "SOURCE_DOCUMENT"
+    TARGET_CONFIG = "TARGET_CONFIG"
+    TARGET_ADAPTER_SOURCE = "TARGET_ADAPTER_SOURCE"
     RAW_TARGET_REQUEST = "RAW_TARGET_REQUEST"
     RAW_TARGET_RESPONSE = "RAW_TARGET_RESPONSE"
     STREAM_EVENTS = "STREAM_EVENTS"
@@ -188,3 +190,20 @@ class QueryExecutionMode(StrEnum):
 
     QUERY = "QUERY"
     RETRIEVAL = "RETRIEVAL"
+
+
+class TargetConfigurationStatus(StrEnum):
+    """State of evaluator-managed target configuration."""
+
+    EMPTY = "empty"
+    CONFIGURED = "configured"
+    INVALID = "invalid"
+
+
+class TargetConnectionStatus(StrEnum):
+    """Evaluator-observed connectivity state for a configured target."""
+
+    NOT_TESTED = "not_tested"
+    CONNECTED = "connected"
+    UNVERIFIED = "unverified"
+    DISCONNECTED = "disconnected"

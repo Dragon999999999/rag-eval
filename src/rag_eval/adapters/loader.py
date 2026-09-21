@@ -55,7 +55,7 @@ def _validate_core_operations(target: object) -> None:
     """Validate the smallest callable Python-target contract at load time."""
     missing = [
         operation
-        for operation in ("capabilities", "health", "query")
+        for operation in ("capabilities", "query")
         if not callable(getattr(target, operation, None))
     ]
     if missing:

@@ -3,6 +3,7 @@
 from functools import lru_cache
 from urllib.parse import quote_plus
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from rag_eval.config.hashing import canonicalize_config, configuration_hash
@@ -12,7 +13,8 @@ from rag_eval.config.loader import (
     resolve_environment_reference,
 )
 from rag_eval.config.matrix import PlannedExperiment, expand_matrix
-from rag_eval.config.models import ExecutionConfig, ExperimentConfig, RetryConfig, TargetConfig
+from rag_eval.config.models import ExecutionConfig, ExperimentConfig, RetryConfig, ExperimentTargetConfig
+from rag_eval.config.target_resolver import TargetConfigResolver
 
 
 class Settings(BaseSettings):
@@ -50,6 +52,10 @@ class Settings(BaseSettings):
     api_key: str | None = None
     api_key_required: bool = False
 
+    # Encryption key for target secrets stored in PostgreSQL.
+    # Must be a Fernet-compatible key supplied through RAG_EVAL_SECRET_KEY.
+    secret_key: str = ""
+
     @property
     def async_database_url(self) -> str:
         """Return the async PostgreSQL URL, honoring an explicit override."""
@@ -72,6 +78,16 @@ def get_settings() -> Settings:
     return Settings()
 
 
+@model_validator(mode="after")
+def validate_secret_key(self) -> "Settings":
+    """Require the target-secret encryption key at application startup."""
+    if not self.secret_key:
+        raise ValueError(
+            "RAG_EVAL_SECRET_KEY must be configured."
+        )
+    return self
+
+
 __all__ = [
     "ConfigurationError",
     "ExecutionConfig",
@@ -79,7 +95,8 @@ __all__ = [
     "PlannedExperiment",
     "RetryConfig",
     "Settings",
-    "TargetConfig",
+    "ExperimentTargetConfig",
+    "TargetConfigResolver",
     "canonicalize_config",
     "configuration_hash",
     "expand_matrix",

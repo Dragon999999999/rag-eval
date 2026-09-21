@@ -1,0 +1,12 @@
+adapter:
+  type: openai_compatible
+
+connection:
+  base_url: https://api.example.com/v1
+
+parameters:
+  model: llama-3
+
+overrides:
+  query:
+    endpoint: /generate

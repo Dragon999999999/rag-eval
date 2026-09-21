@@ -2,14 +2,16 @@
 
 Implements the recovery precedence order:
 
-1. Durable TargetObservation exists → reuse
-2. Durable raw response exists → renormalize
-3. Unknown outcome → request recovery
+1. Durable TargetObservation exists -> reuse
+2. Durable raw response exists -> renormalize
+3. Unknown outcome -> request recovery
 4. Idempotent replay fallback
 5. New execution only if policy permits
 
 Never regenerate expensive target output if durable state can be reused.
 """
+
+from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
@@ -18,8 +20,12 @@ from enum import Enum, auto
 
 from rag_eval.adapters import TargetAdapter
 from rag_eval.artifacts import ArtifactService
-from rag_eval.db.models import AttemptRecord, CaseExecutionRecord
+from rag_eval.db.models import (
+    AttemptRecord,
+    CaseExecutionRecord,
+)
 from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.models import (
     QueryRequest,
     QueryResponse,
@@ -29,11 +35,11 @@ from rag_eval.models import (
     RetrieveResponse,
     TargetObservation,
 )
-from rag_eval.models.common import ArtifactRef
 from rag_eval.models.enums import CaseExecutionStatus
 
 from .observation import ObservationNormalizer
 from .timing import ClientTiming
+
 
 logger = logging.getLogger(__name__)
 
@@ -63,8 +69,11 @@ class RecoveryDecision:
 class CaseRecoveryService:
     """Recover case executions from durable state.
 
-    This service implements the recovery precedence order to minimize
-    duplicate expensive target execution after interruptions.
+    Recovery is intentionally based on persisted evaluator state before any
+    attempt is made to contact or re-execute the target.
+
+    General run/attempt/artifact persistence remains in PersistenceRepository.
+    TargetObservation persistence belongs to TargetRepository.
     """
 
     def __init__(
@@ -72,23 +81,20 @@ class CaseRecoveryService:
         adapter: TargetAdapter,
         artifact_service: ArtifactService,
         repository: PersistenceRepository,
+        target_repository: TargetRepository,
         normalizer: ObservationNormalizer,
-        staleness_threshold_seconds: float = 300.0,  # 5 minutes
+        staleness_threshold_seconds: float = 300.0,
     ) -> None:
-        """Initialize recovery service.
+        """Initialize the recovery service."""
 
-        Args:
-            adapter: Target adapter for recovery operations.
-            artifact_service: Service for loading raw artifacts.
-            repository: Repository for accessing persisted state.
-            normalizer: Normalizer for raw response renormalization.
-            staleness_threshold_seconds: Age after which RUNNING is considered stale.
-        """
         self._adapter = adapter
         self._artifact_service = artifact_service
         self._repository = repository
+        self._target_repository = target_repository
         self._normalizer = normalizer
-        self._staleness_threshold = timedelta(seconds=staleness_threshold_seconds)
+        self._staleness_threshold = timedelta(
+            seconds=staleness_threshold_seconds
+        )
 
     async def decide_recovery(
         self,
@@ -96,20 +102,17 @@ class CaseRecoveryService:
         latest_attempt: AttemptRecord | None,
         run_id: str,
     ) -> RecoveryDecision:
-        """Determine recovery action for one case execution.
+        """Determine the safest recovery action for one case execution."""
 
-        Args:
-            case_execution: Persisted case execution record.
-            latest_attempt: Most recent attempt if any exist.
-            run_id: Run identifier for error context.
+        del run_id
 
-        Returns:
-            Recovery decision with action and reason.
-        """
         case_id = case_execution.case_id
         status = case_execution.status
 
-        # Case already complete - skip
+        # ------------------------------------------------------------------
+        # Already complete
+        # ------------------------------------------------------------------
+
         if status in (
             CaseExecutionStatus.COMPLETE.value,
             CaseExecutionStatus.TARGET_COMPLETE.value,
@@ -119,121 +122,166 @@ class CaseRecoveryService:
                 reason=f"Case already {status}",
             )
 
-        # Check if TargetObservation already exists
-        if latest_attempt:
-            observation = await self._repository.get_observation(
-                latest_attempt.attempt_id
+        # ------------------------------------------------------------------
+        # 1. Durable normalized observation
+        # ------------------------------------------------------------------
+
+        if latest_attempt is not None:
+            observation = (
+                await self._target_repository.get_observation(
+                    latest_attempt.attempt_id
+                )
             )
-            if observation:
+
+            if observation is not None:
                 return RecoveryDecision(
                     action=RecoveryAction.REUSE_OBSERVATION,
                     reason="TargetObservation already exists",
                     observation=observation,
                 )
 
-        # Check if raw response artifact exists
-        if latest_attempt and latest_attempt.raw_response_artifact_id is not None:
+        # ------------------------------------------------------------------
+        # 2. Durable raw response
+        # ------------------------------------------------------------------
+
+        if (
+            latest_attempt is not None
+            and latest_attempt.raw_response_artifact_id is not None
+        ):
             renormalized = await self._try_renormalize(
-                latest_attempt.raw_response_artifact_id,
-                case_id,
-                latest_attempt.request_id,
-                latest_attempt.attempt_id,
+                artifact_id=latest_attempt.raw_response_artifact_id,
+                case_id=case_id,
+                request_id=latest_attempt.request_id,
             )
-            if renormalized:
+
+            if renormalized is not None:
                 return RecoveryDecision(
                     action=RecoveryAction.RENORMALIZE_RAW,
-                    reason="Raw response artifact exists, renormalized",
+                    reason=(
+                        "Raw response artifact exists and "
+                        "was successfully renormalized"
+                    ),
                     observation=renormalized,
                 )
 
-        # Unknown outcome recovery
-        if status == CaseExecutionStatus.UNKNOWN.value or (
-            status == CaseExecutionStatus.RUNNING.value
-            and self._is_attempt_stale(latest_attempt)
-        ):
-            if latest_attempt:
-                # Try request recovery if supported
-                capabilities = await self._adapter.capabilities()
-                if capabilities.request_recovery:
-                    return RecoveryDecision(
-                        action=RecoveryAction.RECOVER_REQUEST,
-                        reason="Unknown/stale outcome, request recovery supported",
-                    )
+        # ------------------------------------------------------------------
+        # 3 / 4. Unknown or stale execution outcome
+        # ------------------------------------------------------------------
 
-                # Check idempotency support
-                if capabilities.idempotency:
-                    return RecoveryDecision(
-                        action=RecoveryAction.IDEMPOTENT_REPLAY,
-                        reason="Unknown/stale outcome, idempotency supported",
-                    )
+        unknown_or_stale = (
+            status == CaseExecutionStatus.UNKNOWN.value
+            or (
+                status == CaseExecutionStatus.RUNNING.value
+                and self._is_attempt_stale(latest_attempt)
+            )
+        )
 
-                # No recovery mechanism available
+        if unknown_or_stale:
+            if latest_attempt is None:
                 return RecoveryDecision(
                     action=RecoveryAction.MARK_UNKNOWN,
-                    reason="Unknown outcome, no recovery mechanism available",
+                    reason=(
+                        "Execution outcome is unknown and no "
+                        "attempt record exists"
+                    ),
                 )
 
-        # Retry pending - continue retry flow
+            capabilities = await self._adapter.capabilities()
+
+            if capabilities.request_recovery:
+                return RecoveryDecision(
+                    action=RecoveryAction.RECOVER_REQUEST,
+                    reason=(
+                        "Unknown/stale outcome and target supports "
+                        "request recovery"
+                    ),
+                )
+
+            if capabilities.idempotency:
+                return RecoveryDecision(
+                    action=RecoveryAction.IDEMPOTENT_REPLAY,
+                    reason=(
+                        "Unknown/stale outcome and target supports "
+                        "idempotent replay"
+                    ),
+                )
+
+            return RecoveryDecision(
+                action=RecoveryAction.MARK_UNKNOWN,
+                reason=(
+                    "Unknown outcome and target exposes no safe "
+                    "recovery mechanism"
+                ),
+            )
+
+        # ------------------------------------------------------------------
+        # Explicit retry
+        # ------------------------------------------------------------------
+
         if status == CaseExecutionStatus.RETRY_PENDING.value:
             return RecoveryDecision(
                 action=RecoveryAction.EXECUTE_NEW,
-                reason="Retry pending, continue retry flow",
+                reason="Retry pending",
             )
 
-        # Pending case - execute normally
+        # ------------------------------------------------------------------
+        # Fresh execution
+        # ------------------------------------------------------------------
+
         if status == CaseExecutionStatus.PENDING.value:
             return RecoveryDecision(
                 action=RecoveryAction.EXECUTE_NEW,
-                reason="Case pending, execute normally",
+                reason="Case pending",
             )
 
-        # Stale RUNNING attempt
-        if status == CaseExecutionStatus.RUNNING.value:
-            if self._is_attempt_stale(latest_attempt):
-                return RecoveryDecision(
-                    action=RecoveryAction.RECOVER_REQUEST,
-                    reason="Stale RUNNING attempt, attempting recovery",
-                )
-            else:
-                # Still within threshold, wait
-                return RecoveryDecision(
-                    action=RecoveryAction.SKIP,
-                    reason="RUNNING attempt not yet stale",
-                )
+        # ------------------------------------------------------------------
+        # RUNNING but not stale
+        # ------------------------------------------------------------------
 
-        # Failed cases - skip by default
+        if status == CaseExecutionStatus.RUNNING.value:
+            return RecoveryDecision(
+                action=RecoveryAction.SKIP,
+                reason="RUNNING attempt is not yet stale",
+            )
+
+        # ------------------------------------------------------------------
+        # Permanently failed
+        # ------------------------------------------------------------------
+
         if status == CaseExecutionStatus.FAILED.value:
             return RecoveryDecision(
                 action=RecoveryAction.SKIP,
-                reason="Case failed, skip by default",
+                reason="Case failed and no retry is scheduled",
             )
 
-        # Default: mark unknown
         return RecoveryDecision(
             action=RecoveryAction.MARK_UNKNOWN,
             reason=f"Unrecognized case state: {status}",
         )
 
-    async def _verify_observation_exists(
-        self, case_execution_id: str
-    ) -> TargetObservation | None:
-        """Verify a valid observation exists for case execution."""
-        # This would need a repository method to query by case_execution_id
-        # For now, return None to indicate verification not implemented
-        return None
-
     async def _try_renormalize(
         self,
+        *,
         artifact_id: str,
         case_id: str,
         request_id: str,
-        attempt_id: str,
     ) -> TargetObservation | None:
-        """Attempt to renormalize a raw response artifact."""
+        """Renormalize one durably persisted canonical raw response."""
+
         try:
-            # Load raw response
+            artifact = await self._repository.get_artifact(
+                artifact_id
+            )
+
+            if artifact is None:
+                logger.warning(
+                    "Raw response artifact metadata not found: %s",
+                    artifact_id,
+                )
+                return None
+
             raw_data = await self._artifact_service.get_json(
-                ArtifactRef(artifact_id=artifact_id, uri="")
+                artifact
             )
 
             if not isinstance(raw_data, dict):
@@ -243,106 +291,156 @@ class CaseRecoveryService:
                 )
                 return None
 
-            # Validate as QueryResponse or RetrieveResponse
+            response: QueryResponse | RetrieveResponse
+
             if "answer" in raw_data:
-                response = QueryResponse.model_validate(raw_data)
+                response = QueryResponse.model_validate(
+                    raw_data
+                )
+
             elif "retrieval" in raw_data:
-                response = RetrieveResponse.model_validate(raw_data)
+                response = RetrieveResponse.model_validate(
+                    raw_data
+                )
+
             else:
-                logger.warning("Unknown response format for artifact %s", artifact_id)
+                logger.warning(
+                    "Unknown canonical response format for artifact %s",
+                    artifact_id,
+                )
                 return None
 
-            # Renormalize
-            timing = ClientTiming()  # No timing available for renormalization
-            dummy_artifact = ArtifactRef(artifact_id=artifact_id, uri="")
+            # The original client timing cannot be reconstructed from the raw
+            # canonical response alone. The normalizer therefore receives an
+            # empty timing object for this recovery path.
+            timing = ClientTiming()
 
             observation = self._normalizer.normalize(
                 response,
                 case_id=case_id,
                 request_id=request_id,
                 timing=timing,
-                raw_response_artifact=dummy_artifact,
+                raw_response_artifact=artifact,
             )
 
-            logger.info("Successfully renormalized artifact %s", artifact_id)
+            logger.info(
+                "Successfully renormalized response artifact %s",
+                artifact_id,
+            )
+
             return observation
 
         except Exception as exc:
             logger.warning(
-                "Renormalization failed for artifact %s: %s", artifact_id, exc
+                "Renormalization failed for artifact %s: %s",
+                artifact_id,
+                exc,
             )
+
             return None
 
-    def _is_attempt_stale(self, attempt: AttemptRecord | None) -> bool:
-        """Check if an attempt is stale based on timing."""
-        if attempt is None or attempt.started_at is None:
+    def _is_attempt_stale(
+        self,
+        attempt: AttemptRecord | None,
+    ) -> bool:
+        """Return whether the latest attempt can no longer be trusted active."""
+
+        if (
+            attempt is None
+            or attempt.started_at is None
+        ):
             return True
 
-        elapsed = datetime.now(UTC) - attempt.started_at
-        return elapsed > self._staleness_threshold
+        elapsed = (
+            datetime.now(UTC)
+            - attempt.started_at
+        )
+
+        return (
+            elapsed
+            > self._staleness_threshold
+        )
 
     async def execute_recovery(
-        self, decision: RecoveryDecision, attempt: AttemptRecord | None
+        self,
+        decision: RecoveryDecision,
+        attempt: AttemptRecord | None,
     ) -> TargetObservation | None:
-        """Execute the recovery action.
+        """Execute recovery actions that can directly produce an observation.
 
-        Args:
-            decision: Recovery decision from decide_recovery().
-            attempt: Latest attempt record if available.
-
-        Returns:
-            TargetObservation if recovery succeeded, None otherwise.
+        IDempotent replay and fresh execution remain responsibilities of the
+        benchmark execution/retry coordinator because they create new target
+        attempts.
         """
-        if decision.action == RecoveryAction.REUSE_OBSERVATION:
-            return decision.observation
 
-        if decision.action == RecoveryAction.RENORMALIZE_RAW:
+        if decision.action in (
+            RecoveryAction.REUSE_OBSERVATION,
+            RecoveryAction.RENORMALIZE_RAW,
+        ):
             return decision.observation
 
         if decision.action == RecoveryAction.RECOVER_REQUEST:
             if attempt is None:
-                logger.error("Cannot recover request without attempt record")
+                logger.error(
+                    "Cannot recover request without an attempt record"
+                )
                 return None
 
-            return await self._recover_via_request_id(attempt.request_id)
+            await self._recover_via_request_id(
+                attempt.request_id
+            )
 
-        if decision.action == RecoveryAction.IDEMPOTENT_REPLAY:
-            # Replay would be handled by execution engine
+            # Request recovery may return a canonical response, but creating
+            # and persisting the resulting observation requires case/attempt
+            # context and remains the caller's responsibility.
             return None
 
-        if decision.action == RecoveryAction.MARK_UNKNOWN:
-            # Marking handled by execution engine
-            return None
-
+        # IDEMPOTENT_REPLAY, EXECUTE_NEW, MARK_UNKNOWN and SKIP are acted upon
+        # by the execution/retry coordinator.
         return None
 
     async def _recover_via_request_id(
-        self, request_id: str
-    ) -> TargetObservation | None:
-        """Recover a completed request via request_id."""
+        self,
+        request_id: str,
+    ) -> RequestRecoveryResult | None:
+        """Ask the target for the durable outcome of a prior request."""
+
         try:
-            result: RequestRecoveryResult = await self._adapter.recover_request(
+            result = await self._adapter.recover_request(
                 request_id
             )
 
-            if result.status == RequestStatus.COMPLETED and result.response:
-                # Persist recovered response
-                # This would be called by the execution engine
-                logger.info("Successfully recovered request %s", request_id)
-                return None  # Observation persistence handled by caller
-
-            elif result.status == RequestStatus.RUNNING:
-                logger.info("Request %s still running", request_id)
-                return None
-
-            elif result.status == RequestStatus.FAILED:
-                logger.info("Request %s failed", request_id)
-                return None
-
-            else:
-                logger.info("Request %s not found or cancelled", request_id)
-                return None
-
         except Exception as exc:
-            logger.warning("Request recovery failed for %s: %s", request_id, exc)
+            logger.warning(
+                "Request recovery failed for %s: %s",
+                request_id,
+                exc,
+            )
             return None
+
+        if result.status == RequestStatus.COMPLETED:
+            logger.info(
+                "Recovered completed request %s",
+                request_id,
+            )
+
+        elif result.status == RequestStatus.RUNNING:
+            logger.info(
+                "Recovered request %s is still running",
+                request_id,
+            )
+
+        elif result.status == RequestStatus.FAILED:
+            logger.info(
+                "Recovered request %s failed",
+                request_id,
+            )
+
+        else:
+            logger.info(
+                "Recovered request %s has status %s",
+                request_id,
+                result.status,
+            )
+
+        return result

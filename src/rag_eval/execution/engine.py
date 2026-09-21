@@ -24,9 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from rag_eval.adapters import TargetAdapter
 from rag_eval.artifacts import ArtifactService
 from rag_eval.artifacts.base import ArtifactStore
-from rag_eval.config import ExperimentConfig, TargetConfig
+from rag_eval.config import ExperimentConfig, ExperimentTargetConfig
 from rag_eval.db.models import AttemptRecord, CaseExecutionRecord
 from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.models import (
     ArtifactType,
     Benchmark,
@@ -122,7 +123,7 @@ class BenchmarkExecutor:
 
     @staticmethod
     def _resolve_execution_mode(
-        target_config: TargetConfig,
+        target_config: ExperimentTargetConfig,
     ) -> QueryExecutionMode:
         """Resolve how benchmark cases should be sent to the target.
 
@@ -480,8 +481,9 @@ class BenchmarkExecutor:
         async with self._session_factory() as session:
             async with session.begin():
                 repository = PersistenceRepository(session)
+                target_repository = TargetRepository(session)
 
-                await repository.persist_observation(
+                await target_repository.persist_observation(
                     observation,
                     case_execution_id,
                     attempt_id,

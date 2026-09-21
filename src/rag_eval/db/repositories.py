@@ -1,7 +1,5 @@
 """Focused async repositories for durable application persistence."""
 
-import hashlib
-import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -13,37 +11,17 @@ from rag_eval.db.models import (
     ArtifactRecord,
     AttemptRecord,
     CaseExecutionRecord,
-    CorpusRecord,
-    DocumentRecord,
     ErrorRecordDB,
     MetricResultRecord,
     RunConfigRecord,
     RunRecord,
-    TargetCapabilityRecord,
-    TargetObservationRecord,
-    TargetRecord,
 )
 from rag_eval.models import (
     ArtifactRef,
-    Document,
     ErrorRecord,
     MetricResult,
-    TargetCapabilities,
-    TargetInfo,
-    TargetObservation,
 )
 from rag_eval.models.metrics import AggregateMetricResult
-
-
-def _payload_hash(payload: Mapping[str, Any]) -> str:
-    """Hash canonical JSON payload content for durable integrity checks."""
-    encoded = json.dumps(
-        payload,
-        sort_keys=True,
-        separators=(",", ":"),
-        default=str,
-    )
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 class PersistenceRepository:
@@ -53,132 +31,6 @@ class PersistenceRepository:
         """Bind this repository to one caller-managed async session."""
         self._session = session
 
-
-    # -------------------------------------------------------------------------
-    # Targets
-    # -------------------------------------------------------------------------
-
-    async def persist_target(
-        self,
-        target_id: str,
-        target: TargetInfo,
-    ) -> TargetRecord:
-        """Create or update stable target identity metadata."""
-        record = await self._session.get(
-            TargetRecord,
-            target_id,
-        )
-
-        if record is None:
-            record = TargetRecord(
-                target_id=target_id,
-                name=target.name,
-                version=target.version,
-                implementation=target.implementation,
-                metadata_json=target.metadata,
-            )
-            self._session.add(record)
-        else:
-            record.name = target.name
-            record.version = target.version
-            record.implementation = target.implementation
-            record.metadata_json = target.metadata
-
-        await self._session.flush()
-        return record
-
-    async def persist_capabilities(
-        self,
-        target_id: str,
-        capabilities: TargetCapabilities,
-    ) -> TargetCapabilityRecord:
-        """Persist latest canonical target capabilities."""
-        record = await self._session.get(
-            TargetCapabilityRecord,
-            target_id,
-        )
-
-        payload = capabilities.model_dump(mode="json")
-
-        if record is None:
-            record = TargetCapabilityRecord(
-                target_id=target_id,
-                payload=payload,
-            )
-            self._session.add(record)
-        else:
-            record.payload = payload
-
-        await self._session.flush()
-        return record
-
-    # -------------------------------------------------------------------------
-    # Prepared target corpora
-    # -------------------------------------------------------------------------
-
-    async def persist_corpus(
-        self,
-        record: CorpusRecord,
-    ) -> CorpusRecord:
-        """Persist target corpus identity and current preparation state."""
-        existing = await self._session.get(
-            CorpusRecord,
-            record.corpus_id,
-        )
-
-        if existing is None:
-            self._session.add(record)
-        else:
-            existing.target_id = record.target_id
-            existing.mode = record.mode
-            existing.status = record.status
-            existing.content_hash = record.content_hash
-            existing.metadata_json = record.metadata_json
-            record = existing
-
-        await self._session.flush()
-        return record
-
-    async def persist_document(
-        self,
-        corpus_id: str,
-        document: Document,
-    ) -> DocumentRecord:
-        """Persist a document uploaded into a target corpus.
-
-        This is deliberately separate from persist_benchmark_document().
-        """
-        record = await self._session.get(
-            DocumentRecord,
-            document.document_id,
-        )
-
-        values = {
-            "corpus_id": corpus_id,
-            "filename": document.filename,
-            "mime_type": document.mime_type,
-            "sha256": document.sha256,
-            "size_bytes": document.size_bytes,
-            "artifact_id": (
-                document.artifact.artifact_id
-                if document.artifact is not None
-                else None
-            ),
-            "metadata_json": document.metadata,
-        }
-
-        if record is None:
-            record = DocumentRecord(
-                document_id=document.document_id,
-                **values,
-            )
-            self._session.add(record)
-        else:
-            for name, value in values.items():
-                setattr(record, name, value)
-
-        await self._session.flush()
-        return record
 
     # -------------------------------------------------------------------------
     # Runs
@@ -331,50 +183,6 @@ class PersistenceRepository:
 
         return result.all()
 
-    # -------------------------------------------------------------------------
-    # Target observations
-    # -------------------------------------------------------------------------
-
-    async def persist_observation(
-        self,
-        observation: TargetObservation,
-        case_execution_id: str,
-        attempt_id: str,
-    ) -> TargetObservationRecord:
-        """Persist a normalized target observation."""
-        payload = observation.model_dump(mode="json")
-
-        record = TargetObservationRecord(
-            observation_id=observation.observation_id,
-            request_id=observation.request_id,
-            case_execution_id=case_execution_id,
-            attempt_id=attempt_id,
-            normalization_version=observation.normalization_version,
-            payload=payload,
-            payload_hash=_payload_hash(payload),
-        )
-
-        self._session.add(record)
-        await self._session.flush()
-
-        return record
-
-    async def get_observation(
-        self,
-        observation_id: str,
-    ) -> TargetObservation | None:
-        """Reload one observation through canonical validation."""
-        record = await self._session.get(
-            TargetObservationRecord,
-            observation_id,
-        )
-
-        if record is None:
-            return None
-
-        return TargetObservation.model_validate(
-            record.payload
-        )
 
     # -------------------------------------------------------------------------
     # Artifacts

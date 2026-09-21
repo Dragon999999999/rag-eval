@@ -2,7 +2,6 @@
 
 import asyncio
 from pathlib import Path
-from typing import Any
 
 import typer
 
@@ -11,6 +10,7 @@ from rag_eval.adapters import TargetAdapterError, create_target_adapter
 from rag_eval.artifacts import ArtifactService, create_artifact_store
 from rag_eval.cli import benchmark as benchmark_commands
 from rag_eval.cli import score as score_commands
+from rag_eval.cli import target as target_commands
 from rag_eval.config import (
     ConfigurationError,
     configuration_hash,
@@ -49,12 +49,8 @@ app.add_typer(
     name="score",
 )
 
-target_app = typer.Typer(
-    help="Target adapter operations.",
-)
-
 app.add_typer(
-    target_app,
+    target_commands.app,
     name="target",
 )
 
@@ -156,31 +152,6 @@ def status(
     except (KeyError, ConfigurationError, ValueError) as exc:
         typer.echo(f"status lookup failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
-
-
-@target_app.command("capabilities")
-def target_capabilities(
-    config: Path = CONFIG_ARGUMENT,
-    as_json: bool = typer.Option(False, "--json", help="Output as JSON"),
-) -> None:
-    """Query and display target adapter capabilities."""
-    try:
-        experiment = load_experiment_config(config)
-        capabilities = asyncio.run(_get_target_capabilities(experiment))
-    except (
-        ConfigurationError,
-        TargetAdapterError,
-        TimeoutError,
-        ValueError,
-    ) as exc:
-        typer.echo(f"capabilities query failed: {exc}", err=True)
-        raise typer.Exit(code=1) from exc
-
-    if as_json:
-        import json
-        typer.echo(json.dumps(capabilities.model_dump(mode="json"), indent=2))
-    else:
-        _display_capabilities(capabilities)
 
 
 async def _execute_run(config_path: Path) -> str:
@@ -315,55 +286,6 @@ async def _show_run_status(run_id: str) -> None:
 
     finally:
         await engine.dispose()
-
-
-async def _get_target_capabilities(experiment: Any):
-    """Get target capabilities."""
-    adapter = create_target_adapter(experiment.target)
-    try:
-        # Discover capabilities
-        from rag_eval.models import TargetCapabilities, TargetInfo
-        
-        target_info = TargetInfo(
-            name=f"{experiment.target.adapter}-target",
-            version="1.0",
-            implementation=experiment.target.adapter,
-        )
-        
-        # Build capabilities from adapter
-        capabilities = TargetCapabilities(
-            target=target_info,
-            query=hasattr(adapter, "query"),
-            retrieval=hasattr(adapter, "retrieve"),
-            streaming=getattr(adapter, "supports_streaming", False),
-            citations=getattr(adapter, "supports_citations", False),
-            confidence=getattr(adapter, "supports_confidence", False),
-            target_trace=getattr(adapter, "supports_trace", False),
-            usage=getattr(adapter, "supports_usage", False),
-        )
-        
-        return capabilities
-    finally:
-        close = getattr(adapter, "aclose", None)
-        if close is not None:
-            await close()
-
-
-def _display_capabilities(capabilities: Any) -> None:
-    """Display capabilities in human-readable format."""
-    typer.echo("Target Capabilities:")
-    typer.echo(f"  Target: {capabilities.target.name}")
-    typer.echo(f"  Version: {capabilities.target.version or 'N/A'}")
-    typer.echo(f"  Implementation: {capabilities.target.implementation or 'N/A'}")
-    typer.echo()
-    typer.echo("Features:")
-    typer.echo(f"  Query:               {'✓' if capabilities.query else '✗'}")
-    typer.echo(f"  Retrieval:           {'✓' if capabilities.retrieval else '✗'}")
-    typer.echo(f"  Streaming:           {'✓' if capabilities.streaming else '✗'}")
-    typer.echo(f"  Citations:           {'✓' if capabilities.citations else '✗'}")
-    typer.echo(f"  Confidence:          {'✓' if capabilities.confidence else '✗'}")
-    typer.echo(f"  Trace:               {'✓' if capabilities.target_trace else '✗'}")
-    typer.echo(f"  Usage:               {'✓' if capabilities.usage else '✗'}")
 
 
 async def _resume_run(run_id: str) -> str:

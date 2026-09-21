@@ -53,9 +53,18 @@ class PythonTargetAdapter:
             )
         return self._capabilities
 
-    async def health(self) -> HealthStatus:
-        """Return normalized operational health from the Python target."""
-        return await self._invoke_and_normalize("health", HealthStatus)
+    async def health(self) -> HealthStatus | None:
+        """Return health when the local target implements a health operation."""
+
+        method = getattr(self._target, "health", None)
+
+        if not callable(method):
+            return None
+
+        return await self._invoke_and_normalize(
+            "health",
+            HealthStatus,
+        )
 
     async def create_corpus(self, request: CreateCorpusRequest) -> CreateCorpusResponse:
         """Create a corpus when target ingestion is advertised."""
@@ -207,6 +216,11 @@ class PythonTargetAdapter:
                 code="TARGET_OPERATION_ERROR",
                 stage="stream_query",
             ) from exc
+
+    async def aclose(self) -> None:
+        """Release adapter resources."""
+
+        return None
 
     @staticmethod
     def _normalize(value: Any, model_type: type[ModelT], operation: str) -> ModelT:

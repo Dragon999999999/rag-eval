@@ -44,54 +44,105 @@ class PaginatedResponse(BaseModel, Generic[DataT]):
 
 
 class TargetCreate(BaseModel):
-    """Request to create a target."""
+    """Create an evaluator-managed target."""
 
-    name: str = Field(..., min_length=1, max_length=255)
-    version: str | None = None
-    implementation: str | None = None
-    adapter: str = Field(..., pattern="^(http|python)$")
-    base_url: str | None = None
-    python_target: str | None = None
-    authentication_env: str | None = None
-    corpus_mode: str = Field(..., pattern="^(DOCUMENTS|CHUNKS|EXTERNAL)$")
-    parameters: dict[str, Any] = Field(default_factory=dict)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict
+    )
 
 
 class TargetUpdate(BaseModel):
-    """Request to update a target."""
+    """Update mutable evaluator-owned target properties."""
 
-    name: str | None = Field(default=None, min_length=1, max_length=255)
-    version: str | None = None
-    implementation: str | None = None
-    parameters: dict[str, Any] | None = None
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+    )
     metadata: dict[str, Any] | None = None
+    enabled: bool | None = None
 
 
-class TargetInfo(BaseModel):
-    """Target identity information."""
+class TargetSummary(BaseModel):
+    """Target summary for listings."""
 
     target_id: str
     name: str
-    version: str | None
-    implementation: str | None
-    adapter: str
-    base_url: str | None
-    python_target: str | None
-    authentication_env: str | None
-    corpus_mode: str
-    parameters: dict[str, Any]
+    adapter_type: str | None
+    configuration_status: str
+    connection_status: str
+    current_config_version: int | None
+    enabled: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class TargetDetail(BaseModel):
+    """Complete evaluator-owned target state."""
+
+    target_id: str
+    name: str
+    adapter_type: str | None
+    configuration_status: str
+    connection: dict[str, Any] | None
+    current_config_version: int | None
+    capabilities: dict[str, Any] | None
+    enabled: bool
     metadata: dict[str, Any]
     created_at: datetime
     updated_at: datetime
 
 
-class TargetCapabilities(BaseModel):
-    """Target capability information."""
+class TargetConfigVersionInfo(BaseModel):
+    """One immutable target configuration version."""
+
+    config_version_id: str
+    version: int
+    schema_version: str
+    source_artifact_id: str
+    config_hash: str
+    created_at: datetime
+
+
+class TargetConfigurationResponse(BaseModel):
+    """Current editable secret-safe target YAML."""
+
+    target_id: str
+    version: int
+    yaml: str
+
+
+class TargetConnectionInfo(BaseModel):
+    """Latest evaluator-observed target connection state."""
+
+    status: str
+    checked_at: datetime | None
+    last_successful_at: datetime | None
+    health: dict[str, Any] | None
+    error: dict[str, Any] | None
+
+
+class TargetCapabilitiesInfo(BaseModel):
+    """Latest normalized target capabilities."""
 
     target_id: str
     capabilities: dict[str, Any]
-    discovered_at: datetime
+
+
+class TargetAdapterInfo(BaseModel):
+    """Available target adapter type."""
+
+    type: str
+    version: str | None
+    description: str | None
+    supports_overrides: bool
+    supports_full_protocol: bool
+    defaults: dict[str, Any]
 
 
 # ============================================================================
