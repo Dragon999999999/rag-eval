@@ -9,6 +9,8 @@ import typer
 from rag_eval import __version__
 from rag_eval.adapters import TargetAdapterError, create_target_adapter
 from rag_eval.artifacts import ArtifactService, create_artifact_store
+from rag_eval.cli import benchmark as benchmark_commands
+from rag_eval.cli import score as score_commands
 from rag_eval.config import (
     ConfigurationError,
     configuration_hash,
@@ -16,7 +18,6 @@ from rag_eval.config import (
     get_settings,
     load_experiment_config,
 )
-from rag_eval.datasets import DatasetValidationError, NativeBenchmarkDataset
 from rag_eval.db import (
     PersistenceRepository,
     create_async_engine,
@@ -25,23 +26,37 @@ from rag_eval.db import (
 from rag_eval.db.models import RunRecord
 from rag_eval.execution import BenchmarkExecutor
 from rag_eval.models.enums import RunStatus
-from rag_eval.services import BenchmarkRegistrationService, CorpusPreparationService
 
 app = typer.Typer(
     name="rag-eval",
     help="Infrastructure foundation for reproducible RAG evaluation.",
     no_args_is_help=True,
 )
+
 CONFIG_ARGUMENT = typer.Argument(..., exists=True, readable=True)
-corpus_app = typer.Typer(help="Prepare and register benchmark corpora.")
-app.add_typer(corpus_app, name="corpus")
 
-target_app = typer.Typer(help="Target adapter operations.")
-app.add_typer(target_app, name="target")
+# ---------------------------------------------------------------------------
+# Command groups
+# ---------------------------------------------------------------------------
 
-# Import score commands
-from rag_eval.cli import score as score_commands
-app.add_typer(score_commands.app, name="score")
+app.add_typer(
+    benchmark_commands.app,
+    name="benchmark",
+)
+
+app.add_typer(
+    score_commands.app,
+    name="score",
+)
+
+target_app = typer.Typer(
+    help="Target adapter operations.",
+)
+
+app.add_typer(
+    target_app,
+    name="target",
+)
 
 
 @app.callback()
@@ -97,7 +112,6 @@ def run(
         run_id = asyncio.run(_execute_run(config))
     except (
         ConfigurationError,
-        DatasetValidationError,
         TargetAdapterError,
         TimeoutError,
         ValueError,
@@ -142,29 +156,6 @@ def status(
     except (KeyError, ConfigurationError, ValueError) as exc:
         typer.echo(f"status lookup failed: {exc}", err=True)
         raise typer.Exit(code=1) from exc
-
-
-@corpus_app.command("prepare")
-def corpus_prepare(config: Path = CONFIG_ARGUMENT) -> None:
-    """Validate, register, and prepare a corpus without executing benchmark queries."""
-    try:
-        experiment = load_experiment_config(config)
-        if experiment.dataset.manifest is None:
-            raise ConfigurationError("corpus preparation requires dataset.manifest")
-        dataset = NativeBenchmarkDataset(Path(experiment.dataset.manifest))
-        dataset.validate()
-        prepared, case_count = asyncio.run(_prepare_corpus(experiment, dataset))
-    except (
-        ConfigurationError,
-        DatasetValidationError,
-        TargetAdapterError,
-        TimeoutError,
-        ValueError,
-    ) as exc:
-        typer.echo(f"corpus preparation failed: {exc}", err=True)
-        raise typer.Exit(code=1) from exc
-    typer.echo(f"corpus {prepared.corpus_id}: {prepared.status}")
-    typer.echo(f"registered cases: {case_count}")
 
 
 @target_app.command("capabilities")
@@ -260,30 +251,6 @@ async def _execute_run(config_path: Path) -> str:
         
         return run_id
         
-    finally:
-        close = getattr(adapter, "aclose", None)
-        if close is not None:
-            await close()
-        await engine.dispose()
-
-
-async def _prepare_corpus(experiment: object, dataset: NativeBenchmarkDataset):
-    """Wire configuration-owned resources for the CLI corpus preparation command."""
-    adapter = create_target_adapter(experiment.target)
-    engine = create_async_engine(get_settings())
-    try:
-        session_factory = create_session_factory(engine)
-        async with session_factory() as session, session.begin():
-            repository = PersistenceRepository(session)
-            case_count = await BenchmarkRegistrationService(repository).register(
-                dataset
-            )
-            prepared = await CorpusPreparationService(
-                adapter,
-                repository,
-                poll_timeout_seconds=experiment.execution.total_timeout,
-            ).prepare(dataset, experiment.target.corpus)
-        return prepared, case_count
     finally:
         close = getattr(adapter, "aclose", None)
         if close is not None:
