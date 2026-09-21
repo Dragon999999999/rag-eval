@@ -1,6 +1,5 @@
-"""Native dataset and corpus-preparation service behavior."""
+"""Tests for canonical benchmark loading and corpus preparation."""
 
-import hashlib
 from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import cast
@@ -9,12 +8,16 @@ import pytest
 
 from rag_eval.adapters import DocumentUpload, TargetAdapter
 from rag_eval.adapters.errors import TargetAdapterError
+from rag_eval.artifacts import ArtifactService
 from rag_eval.config.models import CorpusConfig
-from rag_eval.datasets import DatasetValidationError, NativeBenchmarkDataset
-from rag_eval.db.models import CorpusRecord
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.datasets import DatasetValidationError
+from rag_eval.datasets.manifest import load_benchmark_file, validate_benchmark
+from rag_eval.datasets.native import load_cases, load_chunks, load_documents
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.models import (
-    BenchmarkCase,
+    ArtifactRef,
+    Benchmark,
+    BenchmarkManifest,
     Chunk,
     CorpusMode,
     CreateCorpusRequest,
@@ -25,80 +28,63 @@ from rag_eval.models import (
     TargetCapabilities,
     TargetInfo,
 )
-from rag_eval.services import BenchmarkRegistrationService, CorpusPreparationService
+from rag_eval.services.corpus import CorpusPreparationService
 
 
-class RecordingRepository:
-    """In-memory persistence substitute that records canonical registration calls."""
+class RecordingTargetRepository:
+    """In-memory target repository boundary for corpus tests."""
 
     def __init__(self) -> None:
-        """Initialize deterministic recorded state."""
-        self.targets: list[str] = []
-        self.capabilities: list[str] = []
         self.corpora: list[object] = []
         self.documents: list[str] = []
-        self.cases: list[str] = []
 
-    async def persist_target(self, target_id: str, target: TargetInfo) -> None:
-        """Record target persistence."""
-        self.targets.append(target_id)
-
-    async def persist_capabilities(
-        self, target_id: str, capabilities: TargetCapabilities
-    ) -> None:
-        """Record capability persistence."""
-        self.capabilities.append(target_id)
-
-    async def persist_corpus(self, record: CorpusRecord) -> None:
-        """Record corpus lifecycle state."""
+    async def persist_corpus(self, record: object) -> None:
         self.corpora.append(record)
 
     async def persist_document(self, corpus_id: str, document: Document) -> None:
-        """Record document identity persistence."""
+        del corpus_id
         self.documents.append(document.document_id)
 
-    async def persist_benchmark_case(
-        self, dataset_id: str, case: BenchmarkCase
-    ) -> None:
-        """Record benchmark truth persistence."""
-        self.cases.append(case.case_id)
+
+class RecordingArtifactService:
+    """Artifact service substitute returning deterministic document bytes."""
+
+    async def get(self, artifact: ArtifactRef) -> bytes:
+        return f"content:{artifact.artifact_id}".encode()
 
 
 class IngestionTarget:
-    """Deterministic target adapter substitute for corpus-service tests."""
+    """Target adapter substitute for corpus preparation tests."""
 
     def __init__(self, *, documents: bool = True, chunks: bool = True) -> None:
-        """Configure supported ingestion capabilities."""
         self._capabilities = TargetCapabilities(
-            target=TargetInfo(
-                target_id="target-1",
-                name="ingestion-target",
-            ),
+            target=TargetInfo(name="ingestion-target"),
             query=True,
             document_ingestion=documents,
             chunk_ingestion=chunks,
         )
         self.uploaded_documents: list[str] = []
         self.uploaded_chunks: list[list[Chunk]] = []
-        self.operation_states: list[OperationStatus] = [OperationStatus.SUCCEEDED]
+        self.operation_states: list[OperationStatus] = [
+            OperationStatus.SUCCEEDED,
+            OperationStatus.SUCCEEDED,
+            OperationStatus.SUCCEEDED,
+        ]
 
     async def capabilities(self) -> TargetCapabilities:
-        """Return configured target capabilities."""
         return self._capabilities
 
-    async def create_corpus(
-        self, request: CreateCorpusRequest
-    ) -> CreateCorpusResponse:
-        """Return a new corpus identity."""
+    async def create_corpus(self, request: CreateCorpusRequest) -> CreateCorpusResponse:
+        del request
         return CreateCorpusResponse(corpus_id="target-corpus", status="EMPTY")
 
     async def upload_document(
         self, corpus_id: str, document: DocumentUpload
     ) -> Operation:
-        """Record an uploaded document and return an asynchronous operation."""
+        del corpus_id
         self.uploaded_documents.append(document.document.document_id)
         return Operation(
-            operation_id=f"document-{len(self.uploaded_documents)}",
+            operation_id="document-operation",
             kind="DOCUMENT_INGESTION",
             status=self.operation_states.pop(0),
         )
@@ -106,16 +92,15 @@ class IngestionTarget:
     async def upload_chunks(
         self, corpus_id: str, chunks: AsyncIterator[Chunk]
     ) -> Operation:
-        """Consume only the target-facing chunk iterator."""
+        del corpus_id
         self.uploaded_chunks.append([chunk async for chunk in chunks])
         return Operation(
-            operation_id="chunks-1",
+            operation_id="chunk-operation",
             kind="CHUNK_INGESTION",
             status=self.operation_states.pop(0),
         )
 
     async def get_operation(self, operation_id: str) -> Operation:
-        """Return the next deterministic operation state."""
         return Operation(
             operation_id=operation_id,
             kind="INGESTION",
@@ -123,167 +108,200 @@ class IngestionTarget:
         )
 
 
-def _write_dataset(
-    tmp_path: Path, *, cases: str | None = None
-) -> NativeBenchmarkDataset:
-    """Create a native benchmark with one document and configurable JSONL cases."""
-    document = tmp_path / "source.txt"
-    document.write_text("source content", encoding="utf-8")
-    digest = hashlib.sha256(document.read_bytes()).hexdigest()
-    case_file = tmp_path / "cases.jsonl"
-    case_file.write_text(
-        cases or '{"case_id":"case-1","query":"Question"}\n', encoding="utf-8"
+def _benchmark_payload() -> dict[str, object]:
+    """Return a complete canonical benchmark payload."""
+    return {
+        "benchmark_id": "benchmark-1",
+        "name": "fixture",
+        "version": "1",
+        "corpus_mode": "DOCUMENTS",
+        "documents": [
+            {
+                "document_id": "document-1",
+                "filename": "source.txt",
+                "artifact": {
+                    "artifact_id": "artifact-1",
+                    "uri": "file:///source.txt",
+                },
+            }
+        ],
+        "chunks": [
+            {
+                "chunk_id": "chunk-1",
+                "document_id": "document-1",
+                "text": "source content",
+            }
+        ],
+        "cases": [
+            {
+                "case_id": "case-1",
+                "query": "Question",
+                "gold_evidence": [
+                    {"evidence_id": "evidence-1", "document_id": "document-1"}
+                ],
+            }
+        ],
+    }
+
+
+def _benchmark() -> Benchmark:
+    """Build a canonical benchmark with all supported corpus records."""
+    payload = _benchmark_payload()
+    return Benchmark.model_validate(
+        {
+            "manifest": {
+                key: value
+                for key, value in payload.items()
+                if key not in {"documents", "chunks", "cases"}
+            },
+            "documents": payload["documents"],
+            "chunks": payload["chunks"],
+            "cases": payload["cases"],
+        }
     )
-    manifest = tmp_path / "manifest.yaml"
-    manifest.write_text(
-        "\n".join(
-            [
-                "benchmark_id: benchmark-1",
-                "name: fixture",
-                "version: '1'",
-                "case_count: 1",
-                "documents:",
-                "  - document_id: document-1",
-                "    filename: source.txt",
-                "    path: source.txt",
-                f"    sha256: {digest}",
-                "chunks:",
-                "  - chunk_id: chunk-1",
-                "    document_id: document-1",
-                "    text: source content",
-                "cases: cases.jsonl",
-            ]
-        ),
-        encoding="utf-8",
-    )
-    return NativeBenchmarkDataset(manifest)
 
 
 def _corpus_service(
-    target: IngestionTarget, repository: RecordingRepository
+    target: IngestionTarget,
+    repository: RecordingTargetRepository,
 ) -> CorpusPreparationService:
-    """Adapt the focused fakes to the production service boundary."""
+    """Adapt deterministic fakes to the production service boundary."""
     return CorpusPreparationService(
+        "target-1",
         cast(TargetAdapter, target),
-        cast(PersistenceRepository, repository),
+        cast(TargetRepository, repository),
+        artifact_service=cast(ArtifactService, RecordingArtifactService()),
+        poll_interval_seconds=0,
     )
 
 
-def test_native_dataset_streams_jsonl_and_validates_manifest(tmp_path: Path) -> None:
-    """Native records become canonical models while JSONL cases remain iterable."""
-    dataset = _write_dataset(tmp_path)
-    dataset.validate()
+def test_canonical_benchmark_file_loads_and_validates(tmp_path: Path) -> None:
+    """Portable benchmark files become canonical Benchmark models."""
+    import json
 
-    assert [case.case_id for case in dataset.iter_cases()] == ["case-1"]
-    assert [chunk.chunk_id for chunk in dataset.iter_chunks()] == ["chunk-1"]
-    assert dataset.manifest_sha256
+    path = tmp_path / "benchmark.json"
+    path.write_text(json.dumps(_benchmark_payload()), encoding="utf-8")
+
+    benchmark = load_benchmark_file(path)
+
+    assert benchmark.manifest.benchmark_id == "benchmark-1"
+    assert [case.case_id for case in benchmark.cases] == ["case-1"]
+    assert [document.document_id for document in benchmark.documents] == [
+        "document-1"
+    ]
+    assert [chunk.chunk_id for chunk in benchmark.chunks] == ["chunk-1"]
+
+
+def test_canonical_record_loaders_support_jsonl(tmp_path: Path) -> None:
+    """Cases, documents, and chunks use the same validated loaders."""
+    case_path = tmp_path / "cases.jsonl"
+    case_path.write_text('{"case_id":"case-1","query":"Q"}\n', encoding="utf-8")
+    document_path = tmp_path / "documents.jsonl"
+    document_path.write_text('{"document_id":"document-1"}\n', encoding="utf-8")
+    chunk_path = tmp_path / "chunks.jsonl"
+    chunk_path.write_text(
+        '{"chunk_id":"chunk-1","document_id":"document-1","text":"T"}\n',
+        encoding="utf-8",
+    )
+
+    assert load_cases(case_path)[0].case_id == "case-1"
+    assert load_documents(document_path)[0].document_id == "document-1"
+    assert load_chunks(chunk_path)[0].chunk_id == "chunk-1"
 
 
 @pytest.mark.parametrize(
-    "cases, message",
+    ("record_type", "message"),
     [
-        (
-            '{"case_id":"case-1","query":"Q"}\n{"case_id":"case-1","query":"Q"}\n',
-            "duplicate case_id",
-        ),
-        (
-            '{"case_id":"case-1","query":"Q","gold_evidence":[{"evidence_id":"e","document_id":"missing"}]}\n',
-            "unknown document",
-        ),
-        ("not-json\n", "invalid JSONL"),
+        ("cases", "duplicate case_id"),
+        ("documents", "duplicate document_id"),
+        ("chunks", "duplicate chunk_id"),
     ],
 )
-def test_dataset_validation_rejects_invalid_lazy_records(
-    tmp_path: Path, cases: str, message: str
+def test_benchmark_validation_rejects_duplicate_owned_records(
+    record_type: str, message: str
 ) -> None:
-    """Duplicate identities, bad references, and bad JSONL fail before ingestion."""
-    dataset = _write_dataset(tmp_path, cases=cases)
+    """Benchmark-owned identities are unique within their resource type."""
+    benchmark = _benchmark()
+    records = getattr(benchmark, record_type)
+    records.append(records[0])
+
     with pytest.raises(DatasetValidationError, match=message):
-        dataset.validate()
+        validate_benchmark(benchmark)
 
 
-def test_dataset_validation_rejects_document_hash_mismatch(tmp_path: Path) -> None:
-    """A declared document digest is verified against the exact local bytes."""
-    dataset = _write_dataset(tmp_path)
-    dataset._payload["documents"][0]["sha256"] = "0" * 64
-    with pytest.raises(DatasetValidationError, match="SHA-256 mismatch"):
-        dataset.validate()
+def test_benchmark_validation_rejects_unknown_references() -> None:
+    """Chunks and gold evidence must reference benchmark-owned documents."""
+    benchmark = _benchmark()
+    benchmark.chunks[0].document_id = "missing-document"
 
-
-def test_dataset_validation_rejects_duplicate_document_ids(tmp_path: Path) -> None:
-    """Document identities are unique before corpus preparation begins."""
-    dataset = _write_dataset(tmp_path)
-    dataset._payload["documents"].append(dict(dataset._payload["documents"][0]))
-    with pytest.raises(DatasetValidationError, match="duplicate document_id"):
-        dataset.validate()
+    with pytest.raises(DatasetValidationError, match="unknown document"):
+        validate_benchmark(benchmark)
 
 
 @pytest.mark.anyio
-async def test_documents_chunks_external_and_case_registration(tmp_path: Path) -> None:
-    """All corpus modes persist canonical state without running target queries."""
-    dataset = _write_dataset(tmp_path)
-    repository = RecordingRepository()
-    registered = await BenchmarkRegistrationService(
-        cast(PersistenceRepository, repository)
-    ).register(dataset)
+async def test_corpus_preparation_uses_canonical_documents_and_chunks() -> None:
+    """Preparation persists target state while uploading canonical resources."""
+    benchmark = _benchmark()
+    repository = RecordingTargetRepository()
     target = IngestionTarget()
+
     documents = await _corpus_service(target, repository).prepare(
-        dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+        benchmark, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+    )
+    chunks = await _corpus_service(target, repository).prepare(
+        benchmark, CorpusConfig(mode=CorpusMode.CHUNKS)
+    )
+    external = await _corpus_service(target, repository).prepare(
+        benchmark,
+        CorpusConfig(mode=CorpusMode.EXTERNAL, corpus_id="external-1"),
     )
 
-    assert registered == 1
-    assert repository.cases == ["case-1"]
     assert documents.status == "READY"
-    assert target.uploaded_documents == ["document-1"]
-
-    chunk_target = IngestionTarget()
-    chunks = await _corpus_service(chunk_target, repository).prepare(
-        dataset, CorpusConfig(mode=CorpusMode.CHUNKS)
-    )
-    external = await _corpus_service(chunk_target, repository).prepare(
-        dataset, CorpusConfig(mode=CorpusMode.EXTERNAL, corpus_id="external-1")
-    )
     assert chunks.status == "READY"
-    assert [chunk.chunk_id for chunk in chunk_target.uploaded_chunks[0]] == ["chunk-1"]
     assert external.corpus_id == "external-1"
+    assert target.uploaded_documents == ["document-1"]
+    assert [chunk.chunk_id for chunk in target.uploaded_chunks[0]] == ["chunk-1"]
+    assert repository.documents == ["document-1"]
 
 
 @pytest.mark.anyio
-async def test_unsupported_and_asynchronous_ingestion_failures_are_normalized(
-    tmp_path: Path,
-) -> None:
-    """Capability gaps and terminal operation failures never become fake success."""
-    dataset = _write_dataset(tmp_path)
-    repository = RecordingRepository()
+async def test_corpus_preparation_rejects_unsupported_and_failed_ingestion() -> None:
+    """Capability gaps and terminal target failures are not reported as ready."""
+    benchmark = _benchmark()
+    repository = RecordingTargetRepository()
+
     with pytest.raises(TargetAdapterError) as unsupported:
         await _corpus_service(IngestionTarget(documents=False), repository).prepare(
-            dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+            benchmark, CorpusConfig(mode=CorpusMode.DOCUMENTS)
         )
     assert unsupported.value.to_error_record().category == "UNSUPPORTED_CAPABILITY"
 
     failed = IngestionTarget()
-    failed.operation_states = [OperationStatus.PENDING, OperationStatus.FAILED]
+    failed.operation_states = [OperationStatus.FAILED]
     with pytest.raises(TargetAdapterError, match="ended as"):
-        await CorpusPreparationService(
-            cast(TargetAdapter, failed),
-            cast(PersistenceRepository, repository),
-            poll_interval_seconds=0,
-        ).prepare(dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS))
+        await _corpus_service(failed, repository).prepare(
+            benchmark, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+        )
 
 
 @pytest.mark.anyio
-async def test_operation_poll_timeout_does_not_mark_ingestion_ready(
-    tmp_path: Path,
-) -> None:
-    """Bounded polling reports timeout instead of fabricating a ready corpus."""
-    dataset = _write_dataset(tmp_path)
-    repository = RecordingRepository()
-    pending = IngestionTarget()
-    pending.operation_states = [OperationStatus.PENDING]
-    with pytest.raises(TimeoutError, match="timed out"):
-        await CorpusPreparationService(
-            cast(TargetAdapter, pending),
-            cast(PersistenceRepository, repository),
-            poll_interval_seconds=0,
-            poll_timeout_seconds=0,
-        ).prepare(dataset, CorpusConfig(mode=CorpusMode.DOCUMENTS))
+async def test_corpus_preparation_requires_available_mode_and_artifact() -> None:
+    """Incomplete canonical benchmarks fail before target-side mutation."""
+    manifest = BenchmarkManifest(
+        benchmark_id="benchmark-empty",
+        name="empty",
+        version="1",
+        corpus_mode=CorpusMode.DOCUMENTS,
+    )
+    empty = Benchmark(manifest=manifest)
+    with pytest.raises(ValueError, match="has no cases"):
+        await _corpus_service(IngestionTarget(), RecordingTargetRepository()).prepare(
+            empty, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+        )
+
+    benchmark = _benchmark()
+    benchmark.documents[0].artifact = None
+    with pytest.raises(ValueError, match="no stored artifact"):
+        await _corpus_service(IngestionTarget(), RecordingTargetRepository()).prepare(
+            benchmark, CorpusConfig(mode=CorpusMode.DOCUMENTS)
+        )

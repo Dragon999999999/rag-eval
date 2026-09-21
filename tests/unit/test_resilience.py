@@ -306,6 +306,7 @@ class TestRecoveryDecision:
             MockAdapter(),  # type: ignore[arg-type]
             MockArtifactService(),  # type: ignore[arg-type]
             MockRepository(),  # type: ignore[arg-type]
+            MockRepository(),  # type: ignore[arg-type]
             ObservationNormalizer(),
         )
 
@@ -323,10 +324,78 @@ class TestRecoveryDecision:
     @pytest.mark.asyncio
     async def test_recovery_renormalizes_raw_response(self) -> None:
         """Recovery should renormalize if raw response artifact exists."""
+        from datetime import UTC, datetime
 
-        # This test would need proper mocking of artifact service
-        # For now, just verify the structure exists
-        pass
+        from rag_eval.db.models import AttemptRecord, CaseExecutionRecord
+        from rag_eval.execution import (
+            CaseRecoveryService,
+            ObservationNormalizer,
+            RecoveryAction,
+        )
+        from rag_eval.models import ArtifactRef
+        from rag_eval.models.enums import AttemptStatus, CaseExecutionStatus
+
+        artifact = ArtifactRef(
+            artifact_id="artifact-response",
+            uri="memory://artifact-response",
+            content_type="application/json",
+        )
+
+        class MockAdapter:
+            async def capabilities(self):
+                class Caps:
+                    request_recovery = False
+                    idempotency = False
+
+                return Caps()
+
+        class MockArtifactService:
+            async def get_json(self, requested: ArtifactRef) -> object:
+                assert requested is artifact
+                return {
+                    "request_id": "request-1",
+                    "status": "COMPLETED",
+                    "answer": {"text": "Recovered answer"},
+                }
+
+        class MockPersistenceRepository:
+            async def get_artifact(self, artifact_id: str) -> ArtifactRef | None:
+                assert artifact_id == artifact.artifact_id
+                return artifact
+
+        class MockTargetRepository:
+            async def get_observation(self, attempt_id: str):
+                assert attempt_id == "attempt-1"
+                return None
+
+        service = CaseRecoveryService(
+            MockAdapter(),  # type: ignore[arg-type]
+            MockArtifactService(),  # type: ignore[arg-type]
+            MockPersistenceRepository(),  # type: ignore[arg-type]
+            MockTargetRepository(),  # type: ignore[arg-type]
+            ObservationNormalizer(),
+        )
+        case_execution = CaseExecutionRecord(
+            case_execution_id="case-exec-1",
+            run_id="run-1",
+            case_id="case-1",
+            status=CaseExecutionStatus.RUNNING.value,
+        )
+        attempt = AttemptRecord(
+            attempt_id="attempt-1",
+            case_execution_id=case_execution.case_execution_id,
+            attempt_number=1,
+            request_id="request-1",
+            status=AttemptStatus.PERMANENT_FAILURE.value,
+            raw_response_artifact_id=artifact.artifact_id,
+            started_at=datetime.now(UTC),
+        )
+
+        decision = await service.decide_recovery(case_execution, attempt, "run-1")
+
+        assert decision.action == RecoveryAction.RENORMALIZE_RAW
+        assert decision.observation is not None
+        assert decision.observation.raw_response_artifact == artifact
 
 
 class TestRetryDecision:

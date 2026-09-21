@@ -4,17 +4,17 @@ import json
 from collections.abc import AsyncIterator
 
 import httpx
-from pydantic import HttpUrl
 import pytest
 
 from rag_eval.adapters import (
     DocumentUpload,
     HttpTargetAdapter,
+    ResolvedTargetCredentials,
     TargetAdapterError,
     TargetProtocolError,
     create_target_adapter,
 )
-from rag_eval.config.models import CorpusConfig, ExperimentTargetConfig
+from rag_eval.config.target_resolver import TargetConfigResolver
 from rag_eval.models import (
     Chunk,
     CorpusMode,
@@ -22,9 +22,13 @@ from rag_eval.models import (
     Document,
     QueryRequest,
     RetrieveRequest,
+    SecretRef,
     SuppliedContext,
+    TargetAdapterSelection,
+    TargetConfig,
 )
 from rag_eval.models.enums import ContextPolicy
+from rag_eval.models.target import TargetAuthConfig, TargetConnectionConfig
 
 
 def _capabilities() -> dict[str, object]:
@@ -337,14 +341,20 @@ async def test_sse_streaming_preserves_events_and_rejects_sequence_regression() 
 def test_http_factory_uses_bearer_token_from_config_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The common factory constructs HTTP adapters without execution branching."""
-    monkeypatch.setenv("TARGET_TOKEN", "token-value")
-    config = ExperimentTargetConfig(
-        adapter="http",
-        base_url=HttpUrl("https://target.test"),
-        authentication_env="TARGET_TOKEN",
-        corpus=CorpusConfig(mode=CorpusMode.EXTERNAL),
+    """The canonical factory builds protocol adapters from effective config."""
+    del monkeypatch
+    declared = TargetConfig(
+        adapter=TargetAdapterSelection(type="rag_eval_protocol"),
+        connection=TargetConnectionConfig(base_url="https://target.test"),
+        auth=TargetAuthConfig(
+            bearer_token=SecretRef(secret_id="secret-1", name="auth.bearer_token")
+        ),
     )
-    adapter = create_target_adapter(config)
+    effective = TargetConfigResolver().resolve(declared)
+    adapter = create_target_adapter(
+        effective,
+        ResolvedTargetCredentials(bearer_token="token-value"),
+    )
+
     assert isinstance(adapter, HttpTargetAdapter)
     assert adapter._client.headers["Authorization"] == "Bearer token-value"

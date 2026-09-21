@@ -8,18 +8,22 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from rag_eval.config import Settings
+from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.models import (
-    AggregateMetricResultRecord,
     AttemptRecord,
-    BenchmarkCaseRecord,
     CaseExecutionRecord,
     RunRecord,
 )
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.session import create_async_engine, create_session_factory
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.models import (
+    AggregateMetricResult,
     Answer,
     ArtifactRef,
+    BenchmarkCase,
+    BenchmarkManifest,
+    CorpusMode,
     ErrorCategory,
     ErrorRecord,
     FinishReason,
@@ -43,6 +47,8 @@ async def _exercise_persistence_flow() -> None:
 
     async with session_factory() as session:
         repository = PersistenceRepository(session)
+        benchmark_repository = BenchmarkRepository(session)
+        target_repository = TargetRepository(session)
         async with session.begin():
             run = RunRecord(
                 run_id=f"run-{suffix}",
@@ -53,13 +59,25 @@ async def _exercise_persistence_flow() -> None:
             await repository.create_run(
                 run, {"version": "1", "run": {"name": "integration"}}
             )
-            session.add(BenchmarkCaseRecord(case_id=f"case-{suffix}", query="Question"))
-            await session.flush()
+            benchmark_id = f"benchmark-{suffix}"
+            case_id = f"case-{suffix}"
+            await benchmark_repository.create_benchmark(
+                BenchmarkManifest(
+                    benchmark_id=benchmark_id,
+                    name="integration benchmark",
+                    version="1",
+                    corpus_mode=CorpusMode.DOCUMENTS,
+                )
+            )
+            await benchmark_repository.create_case(
+                benchmark_id,
+                BenchmarkCase(case_id=case_id, query="Question"),
+            )
             case_execution = await repository.create_case_execution(
                 CaseExecutionRecord(
                     case_execution_id=f"case-execution-{suffix}",
                     run_id=run.run_id,
-                    case_id=f"case-{suffix}",
+                    case_id=case_id,
                     status="PENDING",
                 )
             )
@@ -92,7 +110,7 @@ async def _exercise_persistence_flow() -> None:
                 answer=Answer(text="Answer", finish_reason=FinishReason.STOP),
                 created_at=datetime.now(UTC),
             )
-            await repository.persist_observation(
+            await target_repository.persist_observation(
                 observation, case_execution.case_execution_id, first.attempt_id
             )
             await repository.persist_metric(
@@ -119,19 +137,22 @@ async def _exercise_persistence_flow() -> None:
                 attempt_id=first.attempt_id,
             )
             await repository.persist_aggregate(
-                AggregateMetricResultRecord(
-                    aggregate_metric_result_id=f"aggregate-{suffix}",
+                AggregateMetricResult(
                     run_id=run.run_id,
                     metric_id="groundedness",
                     metric_version="1",
+                    aggregation="mean",
                     value=None,
-                    status="UNAVAILABLE_MISSING_INPUT",
+                    status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
                     reason="No cases had final context.",
+                    sample_count=0,
+                    available_count=0,
+                    failed_count=0,
                 )
             )
 
         attempts = await repository.list_attempts(case_execution.case_execution_id)
-        reloaded = await repository.get_observation(observation.observation_id)
+        reloaded = await target_repository.get_observation(observation.observation_id)
         assert [attempt.attempt_number for attempt in attempts] == [1, 2]
         assert reloaded == observation
 

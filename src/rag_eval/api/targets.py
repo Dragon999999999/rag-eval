@@ -16,7 +16,6 @@ from fastapi import (
 from rag_eval.adapters import target_adapter_descriptors
 from rag_eval.api.dependencies import (
     TargetServiceDep,
-    verify_api_key,
 )
 from rag_eval.api.schemas import (
     TargetAdapterInfo,
@@ -31,7 +30,6 @@ from rag_eval.api.schemas import (
 )
 from rag_eval.db.target_models import TargetRecord
 from rag_eval.models.enums import TargetConnectionStatus
-
 
 router = APIRouter(
     prefix="/targets",
@@ -53,9 +51,7 @@ async def _target_summary(
     # TargetRecord is deliberately not used as the API schema directly.
     target_id = target.target_id
 
-    connection = await service.get_connection_state(
-        target_id
-    )
+    connection = await service.get_connection_state(target_id)
 
     return TargetSummary(
         target_id=target_id,
@@ -80,13 +76,9 @@ async def _target_detail(
 ) -> TargetDetail:
     """Build frontend-facing target detail."""
 
-    connection = await service.get_connection_state(
-        target.target_id
-    )
+    connection = await service.get_connection_state(target.target_id)
 
-    capabilities = await service.get_capabilities(
-        target.target_id
-    )
+    capabilities = await service.get_capabilities(target.target_id)
 
     return TargetDetail(
         target_id=target.target_id,
@@ -111,9 +103,7 @@ async def _target_detail(
             else None
         ),
         enabled=target.enabled,
-        metadata=dict(
-            target.metadata_json or {}
-        ),
+        metadata=dict(target.metadata_json or {}),
         created_at=target.created_at,
         updated_at=target.updated_at,
     )
@@ -132,11 +122,7 @@ async def list_target_adapters() -> list[TargetAdapterInfo]:
     """List registered target integration adapters."""
 
     return [
-        TargetAdapterInfo.model_validate(
-            descriptor.model_dump(
-                mode="json"
-            )
-        )
+        TargetAdapterInfo.model_validate(descriptor.model_dump(mode="json"))
         for descriptor in target_adapter_descriptors()
     ]
 
@@ -177,10 +163,16 @@ async def create_target(
 ) -> TargetDetail:
     """Create an empty evaluator-managed target."""
 
-    target = await service.create_target(
-        payload.name,
-        metadata=payload.metadata,
-    )
+    try:
+        target = await service.create_target(
+            payload.name,
+            metadata=payload.metadata,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
     return await _target_detail(
         service,
@@ -198,9 +190,7 @@ async def get_target(
 ) -> TargetDetail:
     """Return one target."""
 
-    target = await service.get_target(
-        target_id
-    )
+    target = await service.get_target(target_id)
 
     if target is None:
         raise HTTPException(
@@ -256,9 +246,7 @@ async def delete_target(
     """Delete one evaluator-managed target."""
 
     try:
-        await service.delete_target(
-            target_id
-        )
+        await service.delete_target(target_id)
 
     except KeyError as exc:
         raise HTTPException(
@@ -302,7 +290,7 @@ async def save_target_configuration(
 
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -326,9 +314,7 @@ async def get_target_configuration(
 ) -> TargetConfigurationResponse:
     """Return current sanitized editable target.yaml."""
 
-    target = await service.get_target(
-        target_id
-    )
+    target = await service.get_target(target_id)
 
     if target is None:
         raise HTTPException(
@@ -336,14 +322,9 @@ async def get_target_configuration(
             detail=f"Target not found: {target_id}",
         )
 
-    yaml_content = await service.get_configuration_yaml(
-        target_id
-    )
+    yaml_content = await service.get_configuration_yaml(target_id)
 
-    if (
-        yaml_content is None
-        or target.current_config_version is None
-    ):
+    if yaml_content is None or target.current_config_version is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target has no YAML configuration.",
@@ -367,9 +348,7 @@ async def list_target_configuration_versions(
     """List target configuration history."""
 
     try:
-        records = await service.list_config_versions(
-            target_id
-        )
+        records = await service.list_config_versions(target_id)
 
     except KeyError as exc:
         raise HTTPException(
@@ -409,14 +388,11 @@ async def upload_target_adapter_source(
 ) -> None:
     """Configure a target from a trusted uploaded Python adapter."""
 
-    filename = (
-        file.filename
-        or "target_adapter.py"
-    )
+    filename = file.filename or "target_adapter.py"
 
     if not filename.lower().endswith(".py"):
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Uploaded adapter must be a .py file.",
         )
 
@@ -424,7 +400,7 @@ async def upload_target_adapter_source(
 
     if not content:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Uploaded adapter file is empty.",
         )
 
@@ -443,7 +419,7 @@ async def upload_target_adapter_source(
 
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -464,9 +440,7 @@ async def test_target_connection(
     """Test target connectivity and persist the result."""
 
     try:
-        connection = await service.test_connection(
-            target_id
-        )
+        connection = await service.test_connection(target_id)
 
     except KeyError as exc:
         raise HTTPException(
@@ -492,9 +466,7 @@ async def get_target_connection(
 ) -> TargetConnectionInfo:
     """Return latest persisted connection state."""
 
-    connection = await service.get_connection_state(
-        target_id
-    )
+    connection = await service.get_connection_state(target_id)
 
     if connection is None:
         raise HTTPException(
@@ -526,9 +498,7 @@ async def discover_target_capabilities(
     """Discover and persist normalized target capabilities."""
 
     try:
-        capabilities = await service.discover_capabilities(
-            target_id
-        )
+        capabilities = await service.discover_capabilities(target_id)
 
     except KeyError as exc:
         raise HTTPException(
@@ -555,9 +525,7 @@ async def get_target_capabilities(
 ) -> TargetCapabilitiesInfo:
     """Return latest persisted normalized capabilities."""
 
-    capabilities = await service.get_capabilities(
-        target_id
-    )
+    capabilities = await service.get_capabilities(target_id)
 
     if capabilities is None:
         raise HTTPException(

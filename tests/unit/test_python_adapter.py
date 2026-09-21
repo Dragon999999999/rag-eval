@@ -14,7 +14,7 @@ from rag_eval.adapters import (
     create_target_adapter,
     load_python_target,
 )
-from rag_eval.config.models import CorpusConfig, ExperimentTargetConfig
+from rag_eval.config.target_resolver import TargetConfigResolver
 from rag_eval.models import (
     Chunk,
     CorpusMode,
@@ -22,6 +22,8 @@ from rag_eval.models import (
     Document,
     QueryRequest,
     RetrieveRequest,
+    TargetAdapterSelection,
+    TargetConfig,
 )
 
 
@@ -35,12 +37,11 @@ def _adapter(target_name: str) -> PythonTargetAdapter:
 async def test_loader_factory_health_and_query_normalization() -> None:
     """An explicit import path constructs the Python adapter and normalizes I/O."""
     target = load_python_target("tests.unit.adapter_targets:RetrievalTarget")
-    config = ExperimentTargetConfig(
-        adapter="python",
-        python_target="tests.unit.adapter_targets:RetrievalTarget",
-        corpus=CorpusConfig(mode=CorpusMode.EXTERNAL),
+    config = TargetConfig(
+        adapter=TargetAdapterSelection(type="python"),
+        parameters={"python_target": "tests.unit.adapter_targets:RetrievalTarget"},
     )
-    adapter = create_target_adapter(config)
+    adapter = create_target_adapter(TargetConfigResolver().resolve(config))
 
     assert isinstance(adapter, PythonTargetAdapter)
     assert isinstance(adapter, TargetAdapter)
@@ -121,7 +122,11 @@ async def test_full_capability_target_supports_corpus_and_streamed_ingestion() -
     """Corpus operations pass canonical identities and chunk iterators through."""
     adapter = _adapter("FullCapabilityTarget")
     corpus = await adapter.create_corpus(
-        CreateCorpusRequest(request_id="corpus-request", name="corpus", mode=CorpusMode.CHUNKS)
+        CreateCorpusRequest(
+            request_id="corpus-request",
+            name="corpus",
+            mode=CorpusMode.CHUNKS,
+        )
     )
     assert corpus.corpus_id == "corpus-1"
     assert (await adapter.get_corpus("corpus-1")).status == "READY"

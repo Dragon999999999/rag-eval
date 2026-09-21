@@ -13,6 +13,9 @@ class RequestWithId(Protocol):
 class RetrievalTarget:
     """Target exposing query, retrieval, streaming, and recovery operations."""
 
+    async def aclose(self) -> None:
+        """Close the deterministic target without external resources."""
+
     async def capabilities(self) -> dict[str, object]:
         """Advertise the operations exercised by the adapter tests."""
         return {

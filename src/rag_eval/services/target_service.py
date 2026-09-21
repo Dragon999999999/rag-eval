@@ -152,9 +152,7 @@ class TargetService:
     ) -> TargetRecord | None:
         """Return one registered target."""
 
-        return await self._repository.get_target(
-            target_id
-        )
+        return await self._repository.get_target(target_id)
 
     # ---------------------------------------------------------------------
     # Configuration
@@ -191,29 +189,11 @@ class TargetService:
         configuration persistence.
         """
 
-        target = await self._require_target(
-            target_id
-        )
-
-        raw_mapping = self._parse_yaml(
-            yaml_content
-        )
-
-        # Must happen before TargetConfig validation because user-provided YAML
-        # may contain plaintext values where canonical config requires
-        # SecretRef objects.
-        sanitized_mapping = (
-            await self._secret_service.extract_and_store(
-                target_id,
-                raw_mapping,
-            )
-        )
+        target = await self._require_target(target_id)
 
         try:
-            declared = TargetConfig.model_validate(
-                sanitized_mapping
-            )
-        except ValidationError:
+            raw_mapping = self._parse_yaml(yaml_content)
+        except ValueError:
             if target.current_config_version is None:
                 await self._repository.set_configuration_status(
                     target_id,
@@ -221,9 +201,24 @@ class TargetService:
                 )
             raise
 
-        effective = self._config_resolver.resolve(
-            declared
+        # Must happen before TargetConfig validation because user-provided YAML
+        # may contain plaintext values where canonical config requires
+        # SecretRef objects.
+        sanitized_mapping = await self._secret_service.extract_and_store(
+            target_id,
+            raw_mapping,
         )
+
+        try:
+            declared = TargetConfig.model_validate(sanitized_mapping)
+            effective = self._config_resolver.resolve(declared)
+        except (ValidationError, ValueError):
+            if target.current_config_version is None:
+                await self._repository.set_configuration_status(
+                    target_id,
+                    TargetConfigurationStatus.INVALID,
+                )
+            raise
 
         sanitized_yaml = yaml.safe_dump(
             declared.model_dump(
@@ -244,9 +239,7 @@ class TargetService:
             },
         )
 
-        next_version = (
-            (target.current_config_version or 0) + 1
-        )
+        next_version = (target.current_config_version or 0) + 1
 
         record = await self._repository.persist_config_version(
             config_version_id=f"tcfg-{uuid4()}",
@@ -274,9 +267,7 @@ class TargetService:
     ) -> TargetConfig | None:
         """Return the current user-declared target configuration."""
 
-        return await self._repository.load_current_declared_config(
-            target_id
-        )
+        return await self._repository.load_current_declared_config(target_id)
 
     async def get_effective_config(
         self,
@@ -284,9 +275,7 @@ class TargetService:
     ) -> EffectiveTargetConfig | None:
         """Return the current fully resolved target configuration."""
 
-        return await self._repository.load_current_effective_config(
-            target_id
-        )
+        return await self._repository.load_current_effective_config(target_id)
 
     async def get_configuration_yaml(
         self,
@@ -294,9 +283,7 @@ class TargetService:
     ) -> str | None:
         """Return editable sanitized target.yaml for the current version."""
 
-        version = await self._repository.get_current_config_version(
-            target_id
-        )
+        version = await self._repository.get_current_config_version(target_id)
 
         if version is None:
             return None
@@ -307,16 +294,12 @@ class TargetService:
 
         if artifact is None:
             raise KeyError(
-                f"target configuration artifact not found: "
-                f"{version.source_artifact_id}"
+                f"target configuration artifact not found: {version.source_artifact_id}"
             )
 
-        content = await self._artifact_service.get(
-            artifact
-        )
+        content = await self._artifact_service.get(artifact)
 
         return content.decode("utf-8")
-
 
     async def upload_python_adapter(
         self,
@@ -332,16 +315,10 @@ class TargetService:
         versioning remain uniform.
         """
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
-        if not filename.lower().endswith(
-            ".py"
-        ):
-            raise ValueError(
-                "Uploaded target adapter must be a .py file."
-            )
+        if not filename.lower().endswith(".py"):
+            raise ValueError("Uploaded target adapter must be a .py file.")
 
         # Syntax validation only. Do not execute arbitrary code merely because it
         # has been uploaded.
@@ -375,15 +352,11 @@ class TargetService:
             schema_version=declared.schema_version,
             adapter_type="uploaded_python",
             protocol={},
-            parameters=dict(
-                declared.parameters
-            ),
+            parameters=dict(declared.parameters),
             metadata={},
         )
-        
-        next_version = (
-            (target.current_config_version or 0) + 1
-        )
+
+        next_version = (target.current_config_version or 0) + 1
 
         await self._repository.persist_config_version(
             config_version_id=f"tcfg-{uuid4()}",
@@ -411,8 +384,6 @@ class TargetService:
             ),
         )
 
-        
-
     # ---------------------------------------------------------------------
     # Runtime adapter construction
     # ---------------------------------------------------------------------
@@ -423,36 +394,22 @@ class TargetService:
     ) -> TargetAdapter:
         """Construct a runtime adapter for the current target configuration."""
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
         if not target.enabled:
-            raise ValueError(
-                f"target is disabled: {target_id}"
-            )
+            raise ValueError(f"target is disabled: {target_id}")
 
-        effective = (
-            await self._repository.load_current_effective_config(
-                target_id
-            )
-        )
+        effective = await self._repository.load_current_effective_config(target_id)
 
         if effective is None:
-            raise ValueError(
-                f"target has no active configuration: {target_id}"
-            )
+            raise ValueError(f"target has no active configuration: {target_id}")
 
         if effective.adapter_type == "uploaded_python":
-            return await self._load_uploaded_python_adapter(
-                effective
-            )
+            return await self._load_uploaded_python_adapter(effective)
 
-        credentials = (
-            await self._secret_service.resolve_credentials(
-                target_id,
-                effective,
-            )
+        credentials = await self._secret_service.resolve_credentials(
+            target_id,
+            effective,
         )
 
         return create_target_adapter(
@@ -483,9 +440,7 @@ class TargetService:
         adapter: TargetAdapter | None = None
 
         try:
-            adapter = await self.get_adapter(
-                target_id
-            )
+            adapter = await self.get_adapter(target_id)
 
             health = await adapter.health()
 
@@ -564,9 +519,7 @@ class TargetService:
 
         finally:
             if adapter is not None:
-                await self._close_adapter(
-                    adapter
-                )
+                await self._close_adapter(adapter)
 
     async def get_connection_state(
         self,
@@ -574,9 +527,7 @@ class TargetService:
     ) -> TargetConnectionState | None:
         """Return the most recently persisted connectivity state."""
 
-        return await self._repository.get_connection_state(
-            target_id
-        )
+        return await self._repository.get_connection_state(target_id)
 
     # ---------------------------------------------------------------------
     # Capabilities
@@ -588,9 +539,7 @@ class TargetService:
     ) -> TargetCapabilities:
         """Discover and persist current normalized target capabilities."""
 
-        adapter = await self.get_adapter(
-            target_id
-        )
+        adapter = await self.get_adapter(target_id)
 
         try:
             capabilities = await adapter.capabilities()
@@ -603,9 +552,7 @@ class TargetService:
             return capabilities
 
         finally:
-            await self._close_adapter(
-                adapter
-            )
+            await self._close_adapter(adapter)
 
     async def get_capabilities(
         self,
@@ -613,9 +560,7 @@ class TargetService:
     ) -> TargetCapabilities | None:
         """Return the latest persisted target capabilities."""
 
-        return await self._repository.get_capabilities(
-            target_id
-        )
+        return await self._repository.get_capabilities(target_id)
 
     # ---------------------------------------------------------------------
     # Target lifecycle
@@ -633,11 +578,9 @@ class TargetService:
             enabled,
         )
 
-
     # ---------------------------------------------------------------------
     # Basic CRUD
     # ---------------------------------------------------------------------
-
 
     async def list_targets(
         self,
@@ -646,21 +589,15 @@ class TargetService:
 
         return await self._repository.list_targets()
 
-
     async def list_config_versions(
         self,
         target_id: str,
     ) -> list[TargetConfigVersionRecord]:
         """Return immutable configuration history."""
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
-        return await self._repository.list_config_versions(
-            target_id
-        )
-
+        return await self._repository.list_config_versions(target_id)
 
     async def update_target(
         self,
@@ -686,20 +623,15 @@ class TargetService:
 
         return target
 
-
     async def delete_target(
         self,
         target_id: str,
     ) -> None:
         """Delete a target and target-owned database state."""
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
-        await self._repository.delete_target(
-            target_id
-        )
+        await self._repository.delete_target(target_id)
 
     # ---------------------------------------------------------------------
     # Internal helpers
@@ -711,14 +643,10 @@ class TargetService:
     ) -> TargetRecord:
         """Return an existing target or raise a useful lookup error."""
 
-        target = await self._repository.get_target(
-            target_id
-        )
+        target = await self._repository.get_target(target_id)
 
         if target is None:
-            raise KeyError(
-                f"target not found: {target_id}"
-            )
+            raise KeyError(f"target not found: {target_id}")
 
         return target
 
@@ -728,38 +656,24 @@ class TargetService:
     ) -> TargetAdapter:
         """Load a trusted Python adapter from its persisted source artifact."""
 
-        artifact_id = config.parameters.get(
-            "source_artifact_id"
-        )
+        artifact_id = config.parameters.get("source_artifact_id")
 
         if not isinstance(artifact_id, str) or not artifact_id:
             raise ValueError(
-                "uploaded_python configuration requires "
-                "parameters.source_artifact_id."
+                "uploaded_python configuration requires parameters.source_artifact_id."
             )
 
-        artifact = await self._persistence_repository.get_artifact(
-            artifact_id
-        )
+        artifact = await self._persistence_repository.get_artifact(artifact_id)
 
         if artifact is None:
-            raise KeyError(
-                f"uploaded Python adapter artifact not found: "
-                f"{artifact_id}"
-            )
+            raise KeyError(f"uploaded Python adapter artifact not found: {artifact_id}")
 
-        source = await self._artifact_service.get(
-            artifact
-        )
+        source = await self._artifact_service.get(artifact)
 
-        filename_value = config.parameters.get(
-            "filename"
-        )
+        filename_value = config.parameters.get("filename")
 
         filename = (
-            filename_value
-            if isinstance(filename_value, str)
-            else "target_adapter.py"
+            filename_value if isinstance(filename_value, str) else "target_adapter.py"
         )
 
         return load_uploaded_python_adapter(
@@ -776,19 +690,13 @@ class TargetService:
         try:
             parsed = yaml.safe_load(content)
         except yaml.YAMLError as exc:
-            raise ValueError(
-                "target.yaml contains invalid YAML."
-            ) from exc
+            raise ValueError("target.yaml contains invalid YAML.") from exc
 
         if parsed is None:
-            raise ValueError(
-                "target.yaml must not be empty."
-            )
+            raise ValueError("target.yaml must not be empty.")
 
         if not isinstance(parsed, dict):
-            raise ValueError(
-                "target.yaml root must be a mapping/object."
-            )
+            raise ValueError("target.yaml root must be a mapping/object.")
 
         return parsed
 
