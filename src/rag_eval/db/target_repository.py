@@ -710,8 +710,19 @@ class TargetRepository:
         if record is None:
             return None
 
+        payload = dict(record.payload)
+
+        # Backward compatibility for capability records persisted before
+        # evaluator-owned target_id/adapter_type were removed from TargetInfo.
+        target_payload = payload.get("target")
+        if isinstance(target_payload, dict):
+            target_payload = dict(target_payload)
+            target_payload.pop("target_id", None)
+            target_payload.pop("adapter_type", None)
+            payload["target"] = target_payload
+
         return TargetCapabilities.model_validate(
-            record.payload
+            payload
         )
 
     # -------------------------------------------------------------------------

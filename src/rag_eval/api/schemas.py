@@ -157,10 +157,10 @@ class TargetConnectionInfo(BaseModel):
     """Latest evaluator-observed target connection state."""
 
     status: str
-    checked_at: datetime | None
-    last_successful_at: datetime | None
-    health: dict[str, Any] | None
-    error: dict[str, Any] | None
+    checked_at: datetime | None = None
+    last_successful_at: datetime | None = None
+    health: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
 
 
 class TargetCapabilitiesInfo(BaseModel):
