@@ -49,7 +49,6 @@ from rag_eval.models import (
     TargetConfig,
     TargetConnectionState,
     TargetObservation,
-    target,
 )
 from rag_eval.models.enums import TargetConfigurationStatus
 
