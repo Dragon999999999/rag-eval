@@ -1,0 +1,20 @@
+schema_version: '1.0'
+adapter:
+  type: openai_compatible
+connection:
+  base_url: https://aqueduct.ai.datalab.tuwien.ac.at/v1
+  timeout_seconds: 60.0
+  verify_tls: true
+  headers: {}
+  metadata: {}
+auth:
+  type: bearer
+  bearer_token:
+    secret_id: sec-3e0ef085-79bb-4a3c-b632-6c8b3de396a0
+    name: auth.bearer_token
+  parameters: {}
+parameters:
+  model: qwen-3.5-397b
+overrides: {}
+metadata:
+  description: TU Wien Aqueduct Qwen target

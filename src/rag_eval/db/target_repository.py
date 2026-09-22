@@ -24,6 +24,7 @@ Those responsibilities belong to the configuration, secret, adapter, service,
 and artifact layers respectively.
 """
 
+from datetime import UTC, datetime
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
@@ -681,17 +682,21 @@ class TargetRepository:
             exclude_none=True,
         )
 
+        checked_at = datetime.now(UTC)
+
         if record is None:
             record = TargetCapabilityRecord(
                 target_id=target_id,
                 payload=payload,
+                checked_at=checked_at,
             )
 
             self._session.add(record)
 
         else:
             record.payload = payload
-
+            record.checked_at = checked_at
+            
         await self._session.flush()
 
         return record

@@ -11,6 +11,7 @@ adapter rather than leaking into evaluation execution.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+import logging
 from typing import Any
 
 import httpx
@@ -46,6 +47,8 @@ from rag_eval.models import (
     Usage,
     UsageCapabilities,
 )
+
+logger = logging.getLogger("uvicorn.error")
 
 
 class OpenAICompatibleAdapter:
@@ -186,11 +189,17 @@ class OpenAICompatibleAdapter:
         spec = self._protocol.get("health")
 
         if not isinstance(spec, dict):
+            logger.info(
+                "OpenAI-compatible health check skipped: no health specification configured."
+            )
             return None
 
         endpoint = spec.get("endpoint")
 
         if not isinstance(endpoint, str) or not endpoint:
+            logger.info(
+                "OpenAI-compatible health check skipped: no health endpoint configured."
+            )
             return None
 
         method = spec.get("method", "GET")
@@ -200,15 +209,54 @@ class OpenAICompatibleAdapter:
                 "protocol.health.method must be a string."
             )
 
-        await self._request_json(
+        logger.info(
+            "Running OpenAI-compatible health check using %s %s",
+            method.upper(),
+            endpoint,
+        )
+
+        payload = await self._request_json(
             "health",
             method,
             endpoint,
         )
 
+        models = payload.get("data")
+
+        model_ids = (
+            {
+                item.get("id")
+                for item in models
+                if isinstance(item, dict)
+                and isinstance(item.get("id"), str)
+            }
+            if isinstance(models, list)
+            else set()
+        )
+
+        if self._model not in model_ids:
+            raise TargetProtocolError(
+                f"Configured model '{self._model}' is not available.",
+                operation="health",
+            )
+
+        logger.info(
+            "OpenAI-compatible health check succeeded: "
+            "configured model '%s' is available among %d models.",
+            self._model,
+            len(model_ids),
+        )
+
         return HealthStatus(
             status=HealthState.READY,
             target=self._target_info(),
+            details={
+                "endpoint": endpoint,
+                "method": method.upper(),
+                "model": self._model,
+                "model_available": True,
+                "model_count": len(model_ids),
+            },
         )
 
     # ------------------------------------------------------------------
@@ -551,10 +599,50 @@ class OpenAICompatibleAdapter:
     ) -> dict[str, Any]:
         """Perform one provider request and normalize transport failures."""
 
+        request_method = method.upper()
+        request_path = path.lstrip("/")
+
+        request_url = self._client.base_url.join(
+            request_path
+        )
+
+        safe_headers = {
+            name: (
+                "<redacted>"
+                if name.lower() in {
+                    "authorization",
+                    "x-api-key",
+                    "api-key",
+                }
+                else value
+            )
+            for name, value in self._client.headers.items()
+        }
+
+        logger.info(
+            "Target request [%s]: %s %s",
+            operation,
+            request_method,
+            request_url,
+        )
+
+        logger.info(
+            "Target request headers [%s]: %s",
+            operation,
+            safe_headers,
+        )
+
+        if json_body is not None:
+            logger.debug(
+                "Target request body [%s]: %s",
+                operation,
+                json_body,
+            )
+
         try:
             response = await self._client.request(
-                method.upper(),
-                path.lstrip("/"),
+                request_method,
+                request_path,
                 json=json_body,
             )
 
@@ -583,6 +671,18 @@ class OpenAICompatibleAdapter:
                 code="OPENAI_COMPATIBLE_HTTP_ERROR",
                 stage=operation,
             ) from exc
+
+        logger.info(
+            "Target response [%s]: HTTP %s",
+            operation,
+            response.status_code,
+        )
+
+        logger.info(
+            "Target response body [%s]: %s",
+            operation,
+            response.text[:4000],
+        )
 
         if response.is_error:
             raise TargetAdapterError(

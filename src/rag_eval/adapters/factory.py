@@ -539,6 +539,10 @@ register_target_adapter(
             "metadata": {},
         },
         "protocol": {
+            "health": {
+                "method": "GET",
+                "endpoint": "models",
+            },
             "query": {
                 "method": "POST",
                 "endpoint": "chat/completions",
