@@ -1,6 +1,7 @@
 """Tests for Stage 11 metric framework - Part 2: Test functions."""
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -344,6 +345,25 @@ class TestMetricExecution:
 
         assert len(results) == 1
         assert results[0].status == MetricStatus.UNAVAILABLE_MISSING_INPUT
+
+    def test_all_available_selection_uses_registry_public_api(self) -> None:
+        """All-available mode resolves definitions through public registry methods."""
+        metric = AlwaysOneMetric()
+
+        class PublicRegistry:
+            def list_metrics(self):
+                return [metric.definition]
+
+            def get_required(self, metric_id: str, version: str):
+                assert (metric_id, version) == ("test.always_one", "1")
+                return metric
+
+        engine = MetricExecutionEngine(
+            PublicRegistry(),  # type: ignore[arg-type]
+            SimpleNamespace(),  # type: ignore[arg-type]
+        )
+
+        assert engine._select_metrics() == [metric]
 
 
 class TestNoTargetDependency:

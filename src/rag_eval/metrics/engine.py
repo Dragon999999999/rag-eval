@@ -143,7 +143,13 @@ class MetricExecutionEngine:
 
         else:  # all_available
             # Execute all registered metrics
-            return list(self._registry._metrics.values())
+            return [
+                self._registry.get_required(
+                    definition.metric_id,
+                    definition.version,
+                )
+                for definition in self._registry.list_metrics()
+            ]
 
     async def _execute_metric_safe(
         self, metric: Metric, context: MetricContext
