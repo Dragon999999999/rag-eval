@@ -101,6 +101,13 @@ describe("test configuration components", () => {
       screen.getByRole("checkbox", { name: "Select retrieval.recall" })
     ).toBeDisabled();
     expect(
+      screen.getByText("retrieval.recall").closest("[aria-disabled='true']")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Select quality.answer" })
+    ).toBeEnabled();
+    expect(screen.getByText("1 available · 1 unavailable")).toBeInTheDocument();
+    expect(
       screen.getByText("The benchmark does not provide gold evidence.")
     ).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Select all applicable" }));

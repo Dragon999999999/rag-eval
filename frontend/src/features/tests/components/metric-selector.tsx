@@ -17,13 +17,17 @@ interface MetricSelectorProps {
   importing?: boolean;
 }
 
-function readableRequirement(requirement: Record<string, unknown>): string {
+function readableRequirement(requirement: string | Record<string, unknown>): string {
+  if (typeof requirement === "string") {
+    return requirement.toLowerCase().replaceAll("_", " ");
+  }
+
   const candidate = requirement.name ?? requirement.requirement;
   const value = typeof candidate === "string" ? candidate : "requirement";
   return value.toLowerCase().replaceAll("_", " ");
 }
 
-/** Displays backend-resolved metric availability and explicit selection controls. */
+/** Display every registered metric with availability-aware selection controls. */
 export function MetricSelector({
   metrics,
   loading,
@@ -35,6 +39,9 @@ export function MetricSelector({
   importing = false,
 }: MetricSelectorProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const availableCount =
+    metrics?.metrics.filter((metric) => metric.applicable).length ?? 0;
+  const unavailableCount = (metrics?.metrics.length ?? 0) - availableCount;
   const grouped = useMemo(() => {
     const groups = new Map<string, TestMetricsInfo["metrics"]>();
     for (const metric of metrics?.metrics ?? []) {
@@ -50,9 +57,15 @@ export function MetricSelector({
         <div>
           <h2 className="text-sm font-semibold text-text-primary">Metrics</h2>
           <p className="mt-1 text-xs text-text-tertiary">
-            The backend determines which metrics are applicable for this target and
-            benchmark.
+            All registered metrics are shown. Only metrics applicable to this target and
+            benchmark can be selected.
           </p>
+          {metrics && metrics.metrics.length > 0 && (
+            <p className="mt-2 text-xs text-text-secondary">
+              {availableCount} available
+              {unavailableCount > 0 && <> · {unavailableCount} unavailable</>}
+            </p>
+          )}
         </div>
         <div className="flex gap-2">
           <Button
@@ -87,7 +100,7 @@ export function MetricSelector({
       {loading && <p className="mt-4 text-sm text-text-tertiary">Loading metrics...</p>}
       {!loading && metrics && metrics.metrics.length === 0 && (
         <p className="mt-4 text-sm text-text-tertiary">
-          No registered metrics are available.
+          No registered metrics were found.
         </p>
       )}
       <div className="mt-4 space-y-4">
@@ -103,7 +116,8 @@ export function MetricSelector({
                 return (
                   <div
                     key={`${metric.metric_id}:${metric.version}`}
-                    className={`rounded-md border p-3 ${isSelected ? "border-accent bg-accent-subtle" : "border-border-default"} ${unavailable ? "opacity-75" : ""}`}
+                    aria-disabled={unavailable}
+                    className={`rounded-md border p-3 transition-colors ${isSelected ? "border-accent bg-accent-subtle" : "border-border-default"} ${unavailable ? "bg-surface opacity-60" : "hover:border-border-strong"}`}
                   >
                     <div className="flex items-start gap-3">
                       <Checkbox

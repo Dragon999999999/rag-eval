@@ -21,7 +21,7 @@ export interface TestMetricInfo {
   version: string;
   scope: string;
   description: string;
-  requirements: Array<Record<string, unknown>>;
+  requirements: Array<string | Record<string, unknown>>;
   applicable: boolean;
   selected: boolean;
   unavailable_reason: string | null;
