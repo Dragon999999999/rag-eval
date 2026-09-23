@@ -645,7 +645,7 @@ class TestRepository:
         case_execution_id: str | None = None,
     ) -> MetricResultRecord:
         """Persist a canonical individual metric result."""
-        if metric.run_id is None:
+        if not metric.run_id:
             raise ValueError(
                 "metric.run_id is required for durable metric persistence"
             )

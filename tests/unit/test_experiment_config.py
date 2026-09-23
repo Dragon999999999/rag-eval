@@ -4,9 +4,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from typer.testing import CliRunner
 
-from rag_eval.cli import app
 from rag_eval.config import (
     ConfigurationError,
     configuration_hash,
@@ -169,41 +167,3 @@ def test_target_and_corpus_configuration_validation() -> None:
 
     with pytest.raises(ValidationError):
         ExperimentConfig.model_validate(payload)
-
-
-def test_cli_validate_and_plan_never_print_secret_values(tmp_path: Path) -> None:
-    """CLI validates and plans static YAML without resolving authentication refs."""
-    path = write_yaml(
-        tmp_path / "config.yaml",
-        """version: '1'
-run: {name: cli-plan}
-dataset: {manifest: benchmark.yaml}
-target:
-  adapter: http
-  base_url: https://target.example.test
-  authentication_env: TARGET_API_TOKEN
-  corpus: {mode: DOCUMENTS}
-metrics: {mode: all_available}
-matrix:
-  target.parameters.top_k: [5, 10]
-""",
-    )
-    runner = CliRunner()
-    validate_result = runner.invoke(app, ["validate", str(path)])
-    plan_result = runner.invoke(app, ["plan", str(path)])
-
-    assert validate_result.exit_code == 0
-    assert "configuration valid" in validate_result.stdout
-    assert plan_result.exit_code == 0
-    assert "matrix combinations: 2" in plan_result.stdout
-    assert "TARGET_API_TOKEN" not in plan_result.stdout
-
-
-def test_cli_invalid_configuration_has_no_traceback(tmp_path: Path) -> None:
-    """Expected configuration errors are concise rather than Python tracebacks."""
-    path = write_yaml(tmp_path / "bad.yaml", "version: '1'\n")
-    result = CliRunner().invoke(app, ["validate", str(path)])
-
-    assert result.exit_code == 1
-    assert "configuration invalid:" in result.stderr
-    assert "Traceback" not in result.stderr

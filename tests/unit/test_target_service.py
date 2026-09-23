@@ -376,6 +376,6 @@ async def test_uploaded_python_adapter_creates_internal_versioned_configuration(
     assert target.configuration_status == TargetConfigurationStatus.CONFIGURED.value
     version = await repository.get_current_config_version("target-upload")
     assert version is not None
-    assert artifacts.content[version.source_artifact_id].startswith(
-        b"def create_adapter"
-    )
+    source_artifact_id = version.declared_config["parameters"]["source_artifact_id"]
+    assert artifacts.content[source_artifact_id].startswith(b"def create_adapter")
+    assert source_artifact_id.encode() in artifacts.content[version.source_artifact_id]
