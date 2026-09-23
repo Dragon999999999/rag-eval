@@ -4,6 +4,7 @@ Metrics are registered by (metric_id, version) tuple.
 Duplicate registrations are rejected to prevent accidental overwrites.
 """
 
+from ensurepip import version
 import logging
 
 from .base import Metric, MetricDefinition
@@ -92,6 +93,30 @@ class MetricRegistry:
             List of metric definitions (identity and requirements only).
         """
         return [metric.definition for metric in self._metrics.values()]
+
+    def get_definition(
+        self,
+        metric_id: str,
+        version: str = "1",
+    ) -> MetricDefinition | None:
+        """Get one registered metric definition by ID and version.
+
+        Args:
+            metric_id: Metric identifier.
+            version: Metric version.
+
+        Returns:
+            Metric definition if registered, otherwise None.
+        """
+        metric = self.get(
+            metric_id,
+            version,
+        )
+
+        if metric is None:
+            return None
+
+        return metric.definition
 
     def list_metric_ids(self) -> list[str]:
         """List all unique metric IDs (all versions).

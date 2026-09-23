@@ -1,238 +1,26 @@
-"""Pydantic schemas for API request/response models.
+"""Pydantic schemas for test configuration and evaluation-run API contracts.
 
-These are API presentation contracts, separate from canonical domain models.
-They provide stable frontend-facing interfaces even as internal models evolve.
+These are presentation-layer schemas for:
+- editable test definitions
+- test-owned metric selection
+- metric YAML import/export
+- test validation
+- evaluation run lifecycle
+- case execution and retry attempts
+- metric results and aggregates
+- run lifecycle events
+
+They are intentionally separate from canonical domain models and ORM records.
 """
 
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-DataT = TypeVar("DataT")
-
-
-class APIResponse(BaseModel, Generic[DataT]):
-    """Standard API response wrapper."""
-
-    success: bool = True
-    data: DataT | None = None
-    error: str | None = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-
-class PaginationParams(BaseModel):
-    """Common pagination parameters."""
-
-    limit: int = Field(default=100, ge=1, le=1000)
-    offset: int = Field(default=0, ge=0)
-
-
-class PaginatedResponse(BaseModel, Generic[DataT]):
-    """Paginated list response."""
-
-    items: list[DataT]
-    total: int
-    limit: int
-    offset: int
-    has_more: bool
-
 
 # ============================================================================
-# Target Schemas
-# ============================================================================
-
-
-class TargetCreate(BaseModel):
-    """Create an evaluator-managed target."""
-
-    name: str = Field(
-        ...,
-        min_length=1,
-        max_length=255,
-    )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict
-    )
-
-
-class TargetUpdate(BaseModel):
-    """Update mutable evaluator-owned target properties."""
-
-    name: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=255,
-    )
-    metadata: dict[str, Any] | None = None
-    enabled: bool | None = None
-
-
-class TargetSummary(BaseModel):
-    """Target summary for listings."""
-
-    target_id: str
-    name: str
-    adapter_type: str | None
-    configuration_status: str
-    connection_status: str
-    current_config_version: int | None
-    enabled: bool
-    created_at: datetime
-    updated_at: datetime
-
-
-class TargetDetail(BaseModel):
-    """Complete evaluator-owned target state."""
-
-    target_id: str
-    name: str
-    adapter_type: str | None
-    configuration_status: str
-    connection: dict[str, Any] | None
-    current_config_version: int | None
-    capabilities: dict[str, Any] | None
-    enabled: bool
-    metadata: dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
-
-
-class TargetConfigVersionInfo(BaseModel):
-    """One immutable target configuration version."""
-
-    config_version_id: str
-    version: int
-    schema_version: str
-    source_artifact_id: str
-    config_hash: str
-    created_at: datetime
-
-
-class TargetConfigVersionDetail(BaseModel):
-    """One immutable target configuration version with secret-safe YAML."""
-
-    target_id: str
-    config_version_id: str
-    version: int
-    schema_version: str
-    source_artifact_id: str
-    config_hash: str
-    yaml: str
-    created_at: datetime
-
-
-class TargetConfigRestoreResponse(BaseModel):
-    """Result of restoring an earlier configuration as a new version."""
-
-    target_id: str
-    restored_from_version: int
-    config_version_id: str
-    version: int
-    schema_version: str
-    source_artifact_id: str
-    config_hash: str
-    created_at: datetime
-
-
-class TargetConfigurationResponse(BaseModel):
-    """Current editable secret-safe target YAML."""
-
-    target_id: str
-    version: int
-    yaml: str
-
-
-class TargetAdapterSourceInfo(BaseModel):
-    """Metadata for the currently configured uploaded Python adapter."""
-
-    target_id: str
-    filename: str
-    artifact_id: str
-    content_hash: str | None = None
-    created_at: datetime | None = None
-
-
-class TargetConnectionInfo(BaseModel):
-    """Latest evaluator-observed target connection state."""
-
-    status: str
-    checked_at: datetime | None = None
-    last_successful_at: datetime | None = None
-    health: dict[str, Any] | None = None
-    error: dict[str, Any] | None = None
-
-
-class TargetCapabilitiesInfo(BaseModel):
-    """Latest normalized target capabilities."""
-
-    target_id: str
-    capabilities: dict[str, Any]
-
-
-class TargetAdapterInfo(BaseModel):
-    """Available target adapter type."""
-
-    type: str
-    version: str | None
-    description: str | None
-    supports_overrides: bool
-    supports_full_protocol: bool
-    defaults: dict[str, Any]
-
-
-# ============================================================================
-# Benchmark Schemas
-# ============================================================================
-
-
-class BenchmarkCreate(BaseModel):
-    """Create an empty benchmark."""
-
-    name: str = Field(..., min_length=1, max_length=255)
-    version: str = Field(default="1", min_length=1, max_length=64)
-    corpus_mode: str = Field(
-        default="DOCUMENTS",
-        pattern="^(DOCUMENTS|CHUNKS|EXTERNAL)$",
-    )
-
-
-class BenchmarkInfo(BaseModel):
-    """Canonical benchmark information."""
-
-    benchmark_id: str
-    name: str
-    version: str
-    schema_version: str
-    corpus_mode: str
-    content_hash: str | None
-    corpus_id: str | None
-    source: str | None
-    tags: list[str]
-    metadata: dict[str, Any]
-
-    case_count: int
-    document_count: int
-    chunk_count: int
-
-    is_complete: bool
-    available_corpus_modes: list[str]
-
-    created_at: datetime | None
-
-
-class BenchmarkCaseSummary(BaseModel):
-    """Benchmark case summary."""
-
-    case_id: str
-    query: str
-    answerability: str | None
-    tags: list[str]
-    metadata: dict[str, Any]
-
-    
-# ============================================================================
-# MetricConfig Schemas
+# Metric registry
 # ============================================================================
 
 
@@ -247,77 +35,329 @@ class MetricDefinition(BaseModel):
 
 
 # ============================================================================
-# EvaluationRun Schemas
+# Test definitions
+# ============================================================================
+
+
+class TestCreate(BaseModel):
+    """Create an initially editable test."""
+
+    name: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+    )
+    description: str | None = None
+    metadata: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+class TestUpdate(BaseModel):
+    """Update mutable test configuration.
+
+    Fields omitted from a PATCH request remain unchanged.
+
+    Explicit null for target_id, benchmark_id, or seed may be interpreted by
+    the service layer as clearing that value.
+    """
+
+    name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+    )
+    description: str | None = None
+
+    target_id: str | None = None
+    benchmark_id: str | None = None
+
+    execution_config: dict[str, Any] | None = None
+    seed: int | None = None
+
+    tags: list[str] | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class TestSummary(BaseModel):
+    """Summary representation of one test."""
+
+    test_definition_id: str
+    name: str
+    configuration_status: str
+
+    target_id: str | None
+    benchmark_id: str | None
+
+    metric_selection_mode: str
+
+    created_at: datetime
+    updated_at: datetime
+
+
+class TestDetail(BaseModel):
+    """Complete editable test configuration."""
+
+    test_definition_id: str
+    name: str
+    description: str | None
+
+    configuration_status: str
+
+    target_id: str | None
+    benchmark_id: str | None
+
+    metric_selection_mode: str
+
+    judge_config: dict[str, Any]
+    retrieval_config: dict[str, Any]
+    execution_config: dict[str, Any]
+
+    seed: int | None
+    tags: list[str]
+    metadata: dict[str, Any]
+
+    definition_hash: str | None
+
+    created_at: datetime
+    updated_at: datetime
+
+
+# ============================================================================
+# Test metric selection
+# ============================================================================
+
+
+class TestMetricSelectionUpdate(BaseModel):
+    """Replace metric configuration belonging to a test."""
+
+    mode: str = Field(
+        default="EXPLICIT",
+        pattern="^(EXPLICIT|ALL_AVAILABLE)$",
+    )
+
+    selected_metrics: list[str] = Field(
+        default_factory=list
+    )
+
+    metric_parameters: dict[str, dict[str, Any]] = Field(
+        default_factory=dict
+    )
+
+    judge_config: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+    retrieval_config: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+class TestMetricInfo(BaseModel):
+    """One registered metric as seen from a particular test."""
+
+    metric_id: str
+    version: str
+    scope: str
+    description: str
+
+    requirements: list[dict[str, Any]]
+
+    applicable: bool
+    selected: bool
+
+    unavailable_reason: str | None = None
+
+    parameters: dict[str, Any] = Field(
+        default_factory=dict
+    )
+
+
+class TestMetricsInfo(BaseModel):
+    """Metric availability and selection for one test."""
+
+    test_definition_id: str
+
+    mode: str
+
+    metrics: list[TestMetricInfo]
+
+    selected_metric_ids: list[str]
+    applicable_metric_ids: list[str]
+
+    judge_config: dict[str, Any]
+    retrieval_config: dict[str, Any]
+
+    warnings: list[str] = Field(
+        default_factory=list
+    )
+
+
+class MetricImportResult(BaseModel):
+    """Result of importing portable YAML into a test configuration."""
+
+    applied: bool
+
+    mode: str
+
+    selected_metrics: list[str]
+    ignored_metrics: list[str]
+    unavailable_metrics: list[str]
+
+    detected_target_id: str | None = None
+    detected_benchmark_id: str | None = None
+
+    target_conflict: bool = False
+    benchmark_conflict: bool = False
+
+    warnings: list[str] = Field(
+        default_factory=list
+    )
+
+
+# ============================================================================
+# Test validation
+# ============================================================================
+
+
+class TestValidationResult(BaseModel):
+    """Result of checking whether a test can start a run."""
+
+    valid: bool
+    configuration_status: str
+
+    target_valid: bool
+    benchmark_valid: bool
+    metrics_valid: bool
+
+    resolved_metric_ids: list[str] = Field(
+        default_factory=list
+    )
+
+    errors: list[str] = Field(
+        default_factory=list
+    )
+
+    warnings: list[str] = Field(
+        default_factory=list
+    )
+
+
+# ============================================================================
+# Evaluation runs
 # ============================================================================
 
 
 class RunSummary(BaseModel):
-    """Run summary for listing."""
+    """Run summary for listings."""
 
     run_id: str
     name: str
+
     status: str
+    status_reason: str | None
+
     config_hash: str
+
     target_id: str | None
+    benchmark_id: str | None
     test_definition_id: str | None
+
     started_at: datetime | None
     finished_at: datetime | None
+    paused_at: datetime | None
+    interrupted_at: datetime | None
+
     created_at: datetime
+    updated_at: datetime
 
 
 class RunDetail(BaseModel):
-    """Detailed run information."""
+    """Detailed evaluation run information."""
 
     run_id: str
     name: str
+
     status: str
+    status_reason: str | None
+
     config_hash: str
+
     target_id: str | None
+    benchmark_id: str | None
     test_definition_id: str | None
+
     started_at: datetime | None
     finished_at: datetime | None
+    paused_at: datetime | None
+    interrupted_at: datetime | None
+
     seed: int | None
     rag_eval_version: str | None
+
     tags: list[str]
     metadata: dict[str, Any]
+
     created_at: datetime
     updated_at: datetime
-    # Computed fields
+
     total_cases: int | None = None
     complete_cases: int | None = None
     failed_cases: int | None = None
     pending_cases: int | None = None
+    running_cases: int | None = None
 
 
 class RunStatus(BaseModel):
-    """Run status information."""
+    """Lightweight run progress information."""
 
     run_id: str
     status: str
+    status_reason: str | None = None
+
     total_cases: int
     complete_cases: int
     failed_cases: int
     pending_cases: int
     running_cases: int
+
     progress_percent: float
+
     started_at: datetime | None
     finished_at: datetime | None
+    paused_at: datetime | None = None
+    interrupted_at: datetime | None = None
+
     elapsed_seconds: float | None
 
 
+class RunEventInfo(BaseModel):
+    """One append-only run lifecycle event."""
+
+    run_event_id: str
+    run_id: str
+
+    event_type: str
+    payload: dict[str, Any]
+
+    created_at: datetime
+
+
 # ============================================================================
-# CaseExecution Schemas
+# Case execution / attempts
 # ============================================================================
 
 
 class CaseExecutionSummary(BaseModel):
-    """Case execution summary for listing."""
+    """Case execution summary for listings."""
 
     case_execution_id: str
     case_id: str
     status: str
+
     started_at: datetime | None
     finished_at: datetime | None
+
     attempt_count: int | None
 
 
@@ -328,25 +368,32 @@ class CaseExecutionDetail(BaseModel):
     run_id: str
     case_id: str
     status: str
+
     started_at: datetime | None
     finished_at: datetime | None
+
     metadata: dict[str, Any]
-    # Related data
+
     query: str | None = None
     reference_answer: str | None = None
     answerability: str | None = None
-    tags: list[str] = Field(default_factory=list)
+
+    tags: list[str] = Field(
+        default_factory=list
+    )
 
 
 class AttemptSummary(BaseModel):
-    """Attempt summary for listing."""
+    """Attempt summary for listings."""
 
     attempt_id: str
     attempt_number: int
     status: str
     request_id: str
+
     started_at: datetime | None
     finished_at: datetime | None
+
     retryable: bool | None
     error_summary: str | None
 
@@ -356,18 +403,26 @@ class AttemptDetail(BaseModel):
 
     attempt_id: str
     case_execution_id: str
+
     attempt_number: int
     request_id: str
+
     idempotency_key: str | None
     canonical_request_hash: str | None
+
     status: str
+
     started_at: datetime | None
     finished_at: datetime | None
+
+    retryable: bool | None
+    error_summary: str | None
+
     metadata: dict[str, Any]
 
 
 # ============================================================================
-# Observation & Metrics Schemas
+# Target observations
 # ============================================================================
 
 
@@ -376,13 +431,18 @@ class TargetObservationSummary(BaseModel):
 
     observation_id: str
     request_id: str
+
     has_answer: bool
     answer_length: int | None
+
     retrieval_stage_count: int
     citation_count: int
+
     has_trace: bool
     has_usage: bool
+
     error_count: int
+
     created_at: datetime
 
 
@@ -391,18 +451,30 @@ class TargetObservationDetail(BaseModel):
 
     observation_id: str
     request_id: str
+
     case_execution_id: str
     attempt_id: str
+
     answer: dict[str, Any] | None
     retrieval: dict[str, Any] | None
+
     citations: list[dict[str, Any]]
     confidence: list[dict[str, Any]]
+
     trace: dict[str, Any] | None
     usage: dict[str, Any] | None
+
     errors: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
+
     normalization_version: str
+
     created_at: datetime
+
+
+# ============================================================================
+# Metric results
+# ============================================================================
 
 
 class MetricResultSummary(BaseModel):
@@ -411,24 +483,31 @@ class MetricResultSummary(BaseModel):
     metric_id: str
     metric_version: str
     status: str
+
     has_value: bool
     value_summary: str | None
 
 
 class MetricResultDetail(BaseModel):
-    """Detailed metric result."""
+    """Detailed individual metric result."""
 
     metric_result_id: str
+
     run_id: str
     case_execution_id: str | None
     case_id: str | None
+
     metric_id: str
     metric_version: str
+
     value: Any | None
+
     status: str
     reason: str | None
+
     details: dict[str, Any]
     payload: dict[str, Any]
+
     created_at: datetime
 
 
@@ -438,27 +517,44 @@ class AggregateResultSummary(BaseModel):
     metric_id: str
     metric_version: str
     aggregation: str
+
     status: str
+
     value_summary: str | None
 
 
 class AggregateResultDetail(BaseModel):
-    """Detailed aggregate metric result."""
+    """Detailed run-level aggregate metric result."""
 
     aggregate_metric_result_id: str
+
     run_id: str
+
     metric_id: str
     metric_version: str
     aggregation: str
+
     value: Any | None
+
     status: str
     reason: str | None
+
     details: dict[str, Any]
+
     created_at: datetime
 
 
+class RunResultsResponse(BaseModel):
+    """Individual and aggregate results belonging to one run."""
+
+    run_id: str
+
+    metrics: list[MetricResultDetail]
+    aggregates: list[AggregateResultDetail]
+
+
 # ============================================================================
-# Report & Comparison Schemas
+# Reports / comparison / export
 # ============================================================================
 
 
@@ -468,12 +564,15 @@ class RunReport(BaseModel):
     run_id: str
     run_name: str
     status: str
+
     target_id: str | None
     config_hash: str
+
     total_cases: int
     complete_cases: int
     failed_cases: int
     pending_cases: int
+
     answer_metrics: dict[str, Any]
     retrieval_metrics: dict[str, Any]
     citation_metrics: dict[str, Any]
@@ -481,8 +580,10 @@ class RunReport(BaseModel):
     usage_metrics: dict[str, Any]
     cost_metrics: dict[str, Any]
     reliability_metrics: dict[str, Any]
+
     started_at: datetime | None
     finished_at: datetime | None
+
     duration_seconds: float | None
 
 
@@ -491,16 +592,23 @@ class ComparisonResult(BaseModel):
 
     run_a_id: str
     run_b_id: str
+
     compatibility_warnings: list[str]
     metric_comparisons: list[dict[str, Any]]
     summary: dict[str, Any]
-    compared_at: datetime = Field(default_factory=datetime.utcnow)
+
+    compared_at: datetime = Field(
+        default_factory=datetime.utcnow
+    )
 
 
 class ExportRequest(BaseModel):
     """Request to export run results."""
 
-    formats: list[str] = Field(default=["parquet", "json"])
+    formats: list[str] = Field(
+        default_factory=lambda: ["parquet", "json"]
+    )
+
     include_raw_artifacts: bool = False
 
 
@@ -510,34 +618,32 @@ class ExportResult(BaseModel):
     run_id: str
     export_id: str
     status: str
+
     files: list[dict[str, Any]]
+
     download_url: str | None
+
     created_at: datetime
 
 
 # ============================================================================
-# Error Schemas
+# Test/run-scoped errors
 # ============================================================================
 
 
 class ErrorDetail(BaseModel):
-    """Structured error detail."""
+    """Structured evaluation error detail."""
 
     error_id: str
+
     category: str
     code: str
     message: str
+
     stage: str | None
+
     retryable: bool
     retry_after_ms: int | None
     http_status: int | None
+
     created_at: datetime
-
-
-class APIError(BaseModel):
-    """API error response."""
-
-    error: str
-    detail: str | None = None
-    code: str | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)

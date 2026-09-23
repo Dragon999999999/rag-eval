@@ -24,12 +24,12 @@ from rag_eval.config import (
 from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.target_repository import TargetRepository
+from rag_eval.db.test_repository import TestRepository
 from rag_eval.metrics.registry import MetricRegistry
 from rag_eval.services.benchmark_service import BenchmarkService
-from rag_eval.services.metric_configs import MetricConfigService
 from rag_eval.services.secret_service import SecretService
 from rag_eval.services.target_service import TargetService
-from rag_eval.services.test_definitions import TestDefinitionService
+from rag_eval.services.test_service import TestService
 
 # ============================================================================
 # Authentication
@@ -176,6 +176,19 @@ TargetRepositoryDep = Annotated[
 ]
 
 
+def get_test_repository(
+    session: DbSession,
+) -> TestRepository:
+    """Provide test/run-specific persistence."""
+    return TestRepository(session)
+
+
+TestRepositoryDep = Annotated[
+    TestRepository,
+    Depends(get_test_repository),
+]
+
+
 # ============================================================================
 # Artifact services
 # ============================================================================
@@ -294,7 +307,7 @@ TargetServiceDep = Annotated[
 
 
 # ============================================================================
-# Services
+# Test Services
 # ============================================================================
 
 
@@ -310,43 +323,24 @@ def get_metric_registry() -> MetricRegistry:
 MetricRegistryDep = Annotated[MetricRegistry, Depends(get_metric_registry)]
 
 
-async def get_metric_config_service(
-    session: DbSession,
-    registry: MetricRegistryDep,
-) -> MetricConfigService:
-    """Get metric configuration service.
-
-    Args:
-        session: Database session.
-        registry: Metric registry.
-
-    Returns:
-        MetricConfigService instance.
-    """
-    return MetricConfigService(session, metric_registry=registry)
-
-
-MetricConfigServiceDep = Annotated[
-    MetricConfigService, Depends(get_metric_config_service)
-]
+def get_test_service(
+    repository: TestRepositoryDep,
+    target_repository: TargetRepositoryDep,
+    benchmark_repository: BenchmarkRepositoryDep,
+    metric_registry: MetricRegistryDep,
+) -> TestService:
+    """Provide test configuration and run lifecycle service."""
+    return TestService(
+        repository=repository,
+        target_repository=target_repository,
+        benchmark_repository=benchmark_repository,
+        metric_registry=metric_registry,
+    )
 
 
-async def get_test_definition_service(
-    session: DbSession,
-) -> TestDefinitionService:
-    """Get test definition service.
-
-    Args:
-        session: Database session.
-
-    Returns:
-        TestDefinitionService instance.
-    """
-    return TestDefinitionService(session)
-
-
-TestDefinitionServiceDep = Annotated[
-    TestDefinitionService, Depends(get_test_definition_service)
+TestServiceDep = Annotated[
+    TestService,
+    Depends(get_test_service),
 ]
 
 
