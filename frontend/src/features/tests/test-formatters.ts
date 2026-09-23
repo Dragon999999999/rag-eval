@@ -45,20 +45,10 @@ export function formatMetricFullName(metric: MetricDefinition): string {
  * Format run status for display.
  */
 export function formatRunStatus(status: RunStatus): string {
-  switch (status) {
-    case "queued":
-      return "Queued";
-    case "running":
-      return "Running";
-    case "completed":
-      return "Completed";
-    case "failed":
-      return "Failed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return status;
-  }
+  return status
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/^./, (value) => value.toUpperCase());
 }
 
 /**
@@ -67,10 +57,13 @@ export function formatRunStatus(status: RunStatus): string {
 export function getRunStatusVariant(
   status: RunStatus
 ): "default" | "success" | "error" | "info" {
-  switch (status) {
+  switch (status.toLowerCase()) {
     case "completed":
       return "success";
     case "running":
+    case "pending":
+    case "queued":
+    case "pausing":
       return "info";
     case "failed":
       return "error";
@@ -135,13 +128,17 @@ export function getCompatibilitySeverityVariant(
 /**
  * Format requirements list for display.
  */
-export function formatRequirements(requirements: string[]): string {
+export function formatRequirements(
+  requirements: Array<string | Record<string, unknown>>
+): string {
   if (requirements.length === 0) return "No requirements";
 
   return requirements
     .map((req) => {
+      const candidate = typeof req === "string" ? req : (req.name ?? req.requirement);
+      const requirement = typeof candidate === "string" ? candidate : "requirement";
       // Convert REQUIREMENT_NAME to readable format
-      return req
+      return requirement
         .split("_")
         .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
         .join(" ");
@@ -168,7 +165,8 @@ export function formatExecutionConfig(config: Record<string, unknown>): string {
   }
 
   if (config.failure_policy) {
-    const policy = typeof config.failure_policy === 'string' ? config.failure_policy : 'unknown';
+    const policy =
+      typeof config.failure_policy === "string" ? config.failure_policy : "unknown";
     parts.push(`on failure: ${policy}`);
   }
 

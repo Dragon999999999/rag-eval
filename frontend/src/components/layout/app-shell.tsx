@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
+import { ActiveRunIndicator } from "@/features/tests/components/active-run-indicator";
 
 /**
  * Main application shell containing:
@@ -60,6 +61,7 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+      <ActiveRunIndicator />
     </div>
   );
 }

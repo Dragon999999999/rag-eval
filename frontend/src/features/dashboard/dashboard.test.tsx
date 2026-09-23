@@ -32,8 +32,8 @@ describe("DashboardPage", () => {
     );
 
     // Resource summary should appear
-    expect(screen.getByText("Targets")).toBeInTheDocument();
-    expect(screen.getByText("Datasets")).toBeInTheDocument();
-    expect(screen.getByText("Tests")).toBeInTheDocument();
+    expect(await screen.findByText("Targets")).toBeInTheDocument();
+    expect(await screen.findByText("Benchmarks")).toBeInTheDocument();
+    expect(await screen.findByText("Tests")).toBeInTheDocument();
   });
 });

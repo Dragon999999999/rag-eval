@@ -77,8 +77,8 @@ export function ReviewStep({
         metadata: formValues.metadata,
       });
       setPlan({
-        estimated_cases: planResult.estimated_cases ?? 0,
-        estimated_requests: planResult.estimated_requests ?? 0,
+        estimated_cases: planResult.estimated_cases,
+        estimated_requests: planResult.estimated_requests,
       });
 
       // Create test definition

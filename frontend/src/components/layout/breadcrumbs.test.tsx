@@ -34,13 +34,13 @@ describe("Breadcrumbs", () => {
 
   it("renders correct hierarchy for nested paths", () => {
     render(
-      <MemoryRouter initialEntries={["/datasets/dataset-123"]}>
+      <MemoryRouter initialEntries={["/benchmarks/benchmark-123"]}>
         <Breadcrumbs />
       </MemoryRouter>
     );
     expect(screen.getByRole("navigation")).toBeInTheDocument();
-    expect(screen.getByText("Datasets")).toBeInTheDocument();
-    expect(screen.getByText("dataset-123")).toBeInTheDocument();
+    expect(screen.getByText("Benchmarks")).toBeInTheDocument();
+    expect(screen.getByText("benchmark-123")).toBeInTheDocument();
   });
 
   it("marks current page with aria-current", () => {

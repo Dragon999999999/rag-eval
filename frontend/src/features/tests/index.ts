@@ -22,6 +22,10 @@ export type {
   RunStatus,
   EvaluationRunSummary,
   CreateRunRequest,
+  TestMetricInfo,
+  TestMetricsInfo,
+  MetricImportResult,
+  RunStatusResponse,
 } from "./test-types";
 
 // Services
@@ -33,6 +37,8 @@ export {
   metricKeys,
   useTests,
   useTest,
+  useTestMetrics,
+  useTestValidation,
   useCreateTest,
   useUpdateTest,
   useDeleteTest,
@@ -40,6 +46,15 @@ export {
   usePlanTest,
   useRunTest,
   useRun,
+  useRunStatus,
+  useStartTestRun,
+  usePauseRun,
+  useResumeRun,
+  useRecoverRun,
+  useCancelRun,
+  useSetTestMetrics,
+  useSelectAllMetrics,
+  useImportTestYaml,
   useTestRuns,
   useMetrics,
   useMetric,
@@ -91,6 +106,13 @@ export { DatasetStep } from "./builder/dataset-step";
 export { MetricsStep } from "./builder/metrics-step";
 export { ExecutionStep } from "./builder/execution-step";
 export { ReviewStep } from "./builder/review-step";
+
+export { TestEditor } from "./components/test-editor";
+export { ActiveRunIndicator } from "./components/active-run-indicator";
+export { MetricSelector } from "./components/metric-selector";
+export { RunProgress } from "./components/run-progress";
+export { SearchableResourceSelect } from "./components/searchable-resource-select";
+export { TestValidationStatus } from "./components/test-validation-status";
 
 // Pages
 export { TestsPage } from "./pages/tests-page";

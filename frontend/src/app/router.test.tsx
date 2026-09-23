@@ -30,25 +30,31 @@ describe("Page routing", () => {
   it("renders Targets page at /targets", () => {
     renderWithRouter(<TargetsPage />);
     expect(screen.getByText("Targets")).toBeInTheDocument();
-    expect(screen.getByText(/Connect RAG or LLM systems/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Connect RAG systems and LLM endpoints/i)
+    ).toBeInTheDocument();
   });
 
-  it("renders Datasets page at /datasets", () => {
+  it("renders Benchmarks page at /datasets", () => {
     renderWithRouter(<DatasetsPage />);
-    expect(screen.getByText("Datasets")).toBeInTheDocument();
-    expect(screen.getByText(/Manage benchmark datasets/i)).toBeInTheDocument();
+    expect(screen.getByText("Benchmarks")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Manage benchmark cases and evaluation corpora/i)
+    ).toBeInTheDocument();
   });
 
   it("renders Tests page at /tests", () => {
     renderWithRouter(<TestsPage />);
     expect(screen.getByText("Tests")).toBeInTheDocument();
-    expect(screen.getByText(/Define evaluations by combining/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Create saved evaluation configurations/i)
+    ).toBeInTheDocument();
   });
 
   it("renders Results page at /results", () => {
     renderWithRouter(<ResultsPage />);
     expect(screen.getByText("Results")).toBeInTheDocument();
-    expect(screen.getByText(/Review completed evaluations/i)).toBeInTheDocument();
+    expect(screen.getByText(/Inspect completed evaluations/i)).toBeInTheDocument();
   });
 
   it("renders Settings page at /settings", () => {

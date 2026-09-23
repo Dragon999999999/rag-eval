@@ -21,7 +21,7 @@ describe("Sidebar navigation", () => {
     renderSidebar();
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     expect(screen.getByText("Targets")).toBeInTheDocument();
-    expect(screen.getByText("Datasets")).toBeInTheDocument();
+    expect(screen.getByText("Benchmarks")).toBeInTheDocument();
     expect(screen.getByText("Tests")).toBeInTheDocument();
     expect(screen.getByText("Results")).toBeInTheDocument();
   });
@@ -49,9 +49,9 @@ describe("Sidebar navigation", () => {
     expect(navItem).toHaveClass("bg-accent-subtle");
   });
 
-  it("highlights active route for /datasets", () => {
-    renderSidebar("/datasets");
-    const navItem = screen.getByText("Datasets").closest("a");
+  it("highlights active route for /benchmarks", () => {
+    renderSidebar("/benchmarks");
+    const navItem = screen.getByText("Benchmarks").closest("a");
     expect(navItem).toHaveClass("bg-accent-subtle");
   });
 
