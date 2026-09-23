@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.test_repository import TestRepository
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,7 @@ _METRIC_DIRECTIONS = {
 class RunComparator:
     """Compare two benchmark runs."""
 
-    def __init__(self, repository: PersistenceRepository) -> None:
+    def __init__(self, repository: TestRepository) -> None:
         """Initialize comparator.
 
         Args:

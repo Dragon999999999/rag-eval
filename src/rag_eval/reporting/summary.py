@@ -14,8 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from rag_eval.db.repositories import PersistenceRepository
-from rag_eval.models.enums import MetricStatus
+from rag_eval.db.test_repository import TestRepository
 
 
 @dataclass(frozen=True)
@@ -53,7 +52,7 @@ class RunReport:
 class ReportGenerator:
     """Generate reports from persisted run data."""
 
-    def __init__(self, repository: PersistenceRepository) -> None:
+    def __init__(self, repository: TestRepository) -> None:
         """Initialize report generator.
 
         Args:

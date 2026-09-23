@@ -15,7 +15,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.test_repository import TestRepository
 from rag_eval.models import (
     BenchmarkCase,
     TargetObservation,
@@ -62,7 +62,7 @@ class MetricExecutionEngine:
     def __init__(
         self,
         registry: MetricRegistry,
-        repository: PersistenceRepository,
+        repository: TestRepository,
         config: ScoringConfig | None = None,
     ) -> None:
         """Initialize metric execution engine.

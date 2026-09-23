@@ -6,25 +6,14 @@ from typing import Any
 
 import typer
 
-from rag_eval.cli.benchmark import app as benchmark_app
 from rag_eval.db import create_async_engine, create_session_factory
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.target_repository import TargetRepository
+from rag_eval.db.test_repository import TestRepository
 from rag_eval.metrics import get_stage12_catalog
 from rag_eval.metrics.service import ScoringService
 from rag_eval.reporting import ExportService, ReportGenerator, RunComparator
 
 app = typer.Typer(help="Score runs and generate reports.")
-
-metrics_app = typer.Typer(help="Manage metrics and metric configurations.")
-test_app = typer.Typer(help="Manage test definitions.")
-run_app = typer.Typer(help="Manage evaluation runs.")
-report_app = typer.Typer(help="Generate reports and exports.")
-
-app.add_typer(benchmark_app, name="benchmark")
-app.add_typer(metrics_app, name="metrics")
-app.add_typer(test_app, name="test")
-app.add_typer(run_app, name="run")
-app.add_typer(report_app, name="report")
 
 
 @app.command()
@@ -124,20 +113,39 @@ async def _score_run(run_id: str):
     """Score a run."""
     from rag_eval.config import get_settings
 
-    engine = create_async_engine(get_settings())
-    try:
-        session_factory = create_session_factory(engine)
-        async with session_factory() as session, session.begin():
-            repository = PersistenceRepository(session)
+    engine = create_async_engine(
+        get_settings()
+    )
 
-            # Get Stage 12 catalog
+    try:
+        session_factory = create_session_factory(
+            engine
+        )
+
+        async with (
+            session_factory() as session,
+            session.begin(),
+        ):
+            test_repository = TestRepository(
+                session
+            )
+
+            target_repository = TargetRepository(
+                session
+            )
+
             registry = get_stage12_catalog()
 
-            # Score run
-            service = ScoringService(registry, repository)
-            result = await service.score_run(run_id)
+            service = ScoringService(
+                registry,
+                test_repository,
+                target_repository,
+            )
 
-            return result
+            return await service.score_run(
+                run_id
+            )
+
     finally:
         await engine.dispose()
 
@@ -150,7 +158,7 @@ async def _generate_report(run_id: str) -> str:
     try:
         session_factory = create_session_factory(engine)
         async with session_factory() as session:
-            repository = PersistenceRepository(session)
+            repository = TestRepository(session)
 
             generator = ReportGenerator(repository)
             report = await generator.generate_report(run_id)
@@ -168,7 +176,7 @@ async def _compare_runs(run_a: str, run_b: str) -> str:
     try:
         session_factory = create_session_factory(engine)
         async with session_factory() as session:
-            repository = PersistenceRepository(session)
+            repository = TestRepository(session)
 
             comparator = RunComparator(repository)
             result = await comparator.compare_runs(run_a, run_b)
@@ -186,7 +194,7 @@ async def _export_run(run_id: str, output_dir: Path):
     try:
         session_factory = create_session_factory(engine)
         async with session_factory() as session:
-            repository = PersistenceRepository(session)
+            repository = TestRepository(session)
 
             exporter = ExportService(repository, output_dir)
             exported = await exporter.export_run(run_id)

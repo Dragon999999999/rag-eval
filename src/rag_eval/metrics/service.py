@@ -13,7 +13,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.target_repository import TargetRepository
+from rag_eval.db.test_repository import TestRepository
 from rag_eval.models import BenchmarkCase, TargetObservation
 from rag_eval.models.enums import MetricStatus
 
@@ -47,20 +48,23 @@ class ScoringService:
     def __init__(
         self,
         registry: MetricRegistry,
-        repository: PersistenceRepository,
+        test_repository: TestRepository,
+        target_repository: TargetRepository,
         config: ScoringConfig | None = None,
     ) -> None:
         """Initialize scoring service.
 
         Args:
             registry: Metric registry with available implementations.
-            repository: Repository for data access and persistence.
+            test_repository: Repository for test data access and persistence.
+            target_repository: Repository for target observation data.
             config: Scoring configuration.
         """
         self._registry = registry
-        self._repository = repository
+        self._test_repository = test_repository
+        self._target_repository = target_repository
         self._config = config or ScoringConfig()
-        self._engine = MetricExecutionEngine(registry, repository, config)
+        self._engine = MetricExecutionEngine(registry, test_repository, config)
 
     async def score_run(
         self,
@@ -81,12 +85,12 @@ class ScoringService:
         logger.info("Starting scoring for run %s", run_id)
 
         # Load run to verify exists
-        run = await self._repository.get_run(run_id)
+        run = await self._test_repository.get_run(run_id)
         if run is None:
             raise KeyError(f"Run {run_id} not found")
 
         # Load case executions for this run
-        case_executions = await self._repository.list_case_executions(run_id)
+        case_executions = await self._test_repository.list_case_executions(run_id)
 
         total_cases = len(case_executions)
         scored_cases = 0
@@ -104,7 +108,7 @@ class ScoringService:
         for case_execution in case_executions:
             try:
                 # Load benchmark case
-                case_record = await self._repository._session.get(
+                case_record = await self._test_repository._session.get(
                     type("BenchmarkCaseRecord", (), {}),  # type: ignore[arg-type]
                     case_execution.case_id,
                 )
@@ -204,7 +208,7 @@ class ScoringService:
             Target observation if available, None otherwise.
         """
         # Get attempts for this case execution
-        attempts = await self._repository.list_attempts(case_execution_id)
+        attempts = await self._test_repository.list_attempts(case_execution_id)
 
         if not attempts:
             return None
@@ -213,7 +217,7 @@ class ScoringService:
         latest_attempt = attempts[-1]
 
         # Try to load observation
-        return await self._repository.get_observation(latest_attempt.attempt_id)
+        return await self._target_repository.get_observation(latest_attempt.attempt_id)
 
     def _convert_to_benchmark_case(self, record: Any) -> BenchmarkCase:
         """Convert ORM record to canonical BenchmarkCase model.
@@ -318,7 +322,7 @@ class ScoringService:
             for agg in aggregations:
                 try:
                     canonical = convert_to_canonical(agg, run_id)
-                    await self._repository.persist_aggregate(canonical)
+                    await self._test_repository.persist_aggregate(canonical)
                     persisted += 1
                 except Exception as exc:
                     logger.error(

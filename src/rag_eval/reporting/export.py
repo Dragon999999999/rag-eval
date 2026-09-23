@@ -26,13 +26,13 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import yaml
 
-from rag_eval.db.models import (
+from rag_eval.db.benchmark_models import BenchmarkCaseRecord
+from rag_eval.db.test_models import (
     AggregateMetricResultRecord,
-    BenchmarkCaseRecord,
     CaseExecutionRecord,
     ErrorRecordDB,
 )
-from rag_eval.db.repositories import PersistenceRepository
+from rag_eval.db.test_repository import TestRepository
 
 
 @dataclass
@@ -48,7 +48,7 @@ class ExportedRun:
 class ExportService:
     """Export runs to portable Parquet format."""
 
-    def __init__(self, repository: PersistenceRepository, output_dir: Path) -> None:
+    def __init__(self, repository: TestRepository, output_dir: Path) -> None:
         """Initialize export service.
 
         Args:
