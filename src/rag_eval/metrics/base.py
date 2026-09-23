@@ -50,6 +50,43 @@ class MetricRequirement(Enum):
     # Metadata requirements
     RUN_METADATA = auto()
 
+BENCHMARK_REQUIREMENTS = frozenset(
+    {
+        MetricRequirement.QUERY,
+        MetricRequirement.HISTORY,
+        MetricRequirement.REFERENCE_ANSWER,
+        MetricRequirement.GOLD_EVIDENCE,
+        MetricRequirement.ANSWERABILITY,
+    }
+)
+
+TARGET_REQUIREMENTS = frozenset(
+    {
+        MetricRequirement.ANSWER,
+        MetricRequirement.RETRIEVAL,
+        MetricRequirement.FINAL_CONTEXT,
+        MetricRequirement.CITATIONS,
+        MetricRequirement.CONFIDENCE,
+        MetricRequirement.TRACE,
+        MetricRequirement.USAGE,
+    }
+)
+
+EVALUATOR_REQUIREMENTS = frozenset(
+    {
+        MetricRequirement.JUDGE,
+        MetricRequirement.RUN_METADATA,
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class MetricApplicability:
+    """Configuration-time availability of one metric."""
+
+    applicable: bool
+    missing_requirements: frozenset[MetricRequirement] = frozenset()
+
 
 @dataclass(frozen=True, slots=True)
 class MetricRequirementCheck:

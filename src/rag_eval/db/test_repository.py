@@ -145,6 +145,7 @@ class TestRepository:
             record.definition_hash = definition_hash
 
         await self._session.flush()
+        await self._session.refresh(record)
         return record
 
     async def delete_test(
@@ -369,6 +370,7 @@ class TestRepository:
             run.interrupted_at = interrupted_at
 
         await self._session.flush()
+        await self._session.refresh(run)
         return run
 
     async def append_run_event(
@@ -466,6 +468,7 @@ class TestRepository:
             record.finished_at = finished_at
 
         await self._session.flush()
+        await self._session.refresh(record)
         return record
 
     async def get_run_case_counts(
@@ -575,6 +578,7 @@ class TestRepository:
             attempt.error_summary = error_summary
 
         await self._session.flush()
+        await self._session.refresh(attempt)
         return attempt
 
     # -------------------------------------------------------------------------
@@ -633,6 +637,7 @@ class TestRepository:
             record.finished_at = finished_at
 
         await self._session.flush()
+        await self._session.refresh(record)
         return record
 
     # -------------------------------------------------------------------------

@@ -25,6 +25,7 @@ from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_repository import TestRepository
+from rag_eval.metrics import get_stage12_catalog
 from rag_eval.metrics.registry import MetricRegistry
 from rag_eval.services.benchmark_service import BenchmarkService
 from rag_eval.services.secret_service import SecretService
@@ -310,6 +311,8 @@ TargetServiceDep = Annotated[
 # Test Services
 # ============================================================================
 
+_metric_registry = get_stage12_catalog()
+
 
 def get_metric_registry() -> MetricRegistry:
     """Get metric registry instance.
@@ -317,10 +320,13 @@ def get_metric_registry() -> MetricRegistry:
     Returns:
         Shared MetricRegistry instance.
     """
-    return MetricRegistry()
+    return _metric_registry
 
 
-MetricRegistryDep = Annotated[MetricRegistry, Depends(get_metric_registry)]
+MetricRegistryDep = Annotated[
+    MetricRegistry,
+    Depends(get_metric_registry)
+]
 
 
 def get_test_service(

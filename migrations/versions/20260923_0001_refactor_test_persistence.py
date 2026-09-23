@@ -18,10 +18,10 @@ This migration:
 Metric definitions remain registry-backed and are not persisted here.
 """
 
+from alembic import op
 from collections.abc import Sequence
 
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
 
@@ -75,16 +75,6 @@ def upgrade() -> None:
             postgresql.JSONB(astext_type=sa.Text()),
             nullable=False,
             server_default=sa.text("'{}'::jsonb"),
-        ),
-    )
-
-    op.add_column(
-        "test_definitions",
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            nullable=False,
-            server_default=sa.func.now(),
         ),
     )
 
@@ -826,11 +816,6 @@ def downgrade() -> None:
 
     op.drop_table(
         "test_metric_selections",
-    )
-
-    op.drop_column(
-        "test_definitions",
-        "updated_at",
     )
 
     op.drop_column(

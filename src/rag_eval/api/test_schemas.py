@@ -30,7 +30,7 @@ class MetricDefinition(BaseModel):
     metric_id: str
     version: str
     scope: str
-    requirements: list[dict[str, Any]]
+    requirements: list[str]
     description: str
 
 
@@ -161,7 +161,7 @@ class TestMetricInfo(BaseModel):
     scope: str
     description: str
 
-    requirements: list[dict[str, Any]]
+    requirements: list[str]
 
     applicable: bool
     selected: bool

@@ -37,6 +37,13 @@ from rag_eval.db.test_models import (
     TestMetricSelectionRecord,
 )
 from rag_eval.db.test_repository import TestRepository
+from rag_eval.metrics.base import (
+    BENCHMARK_REQUIREMENTS,
+    EVALUATOR_REQUIREMENTS,
+    TARGET_REQUIREMENTS,
+    MetricRequirement,
+    MetricScope,
+)
 from rag_eval.metrics.registry import MetricRegistry
 
 
@@ -1633,128 +1640,134 @@ class TestService:
         dict[str, dict[str, Any]],
         list[str],
     ]:
-        """Evaluate common metric requirements against current test state.
+        """Determine metric availability from benchmark, target, and evaluator inputs."""
 
-        Requirement payloads are intentionally interpreted conservatively.
-        Recognized forms include:
-
-        {"capability": "citations"}
-        {"target_capability": "retrieval"}
-        {"benchmark_field": "reference_answer"}
-
-        Unknown requirement shapes are not rejected; they generate a warning so
-        individual metric implementations can perform final availability checks
-        during execution.
-        """
         warnings: list[str] = []
 
-        capabilities: Any | None = None
-        if test.target_id is not None:
-            try:
-                capabilities = (
-                    await self._target_repository.get_capabilities(
-                        test.target_id
-                    )
-                )
-            except (KeyError, ValueError):
-                capabilities = None
+        benchmark_available = await self._benchmark_requirements_available(test)
+        target_available = await self._target_requirements_available(test)
+        evaluator_available = self._evaluator_requirements_available(test)
 
-        benchmark: Any | None = None
-        cases: Sequence[Any] = []
-        if test.benchmark_id is not None:
-            benchmark = (
-                await self._benchmark_repository.get_benchmark(
-                    test.benchmark_id
-                )
-            )
-            if benchmark is not None:
-                cases = (
-                    await self._benchmark_repository.list_cases(
-                        test.benchmark_id
-                    )
-                )
+        available = (
+            benchmark_available
+            | target_available
+            | evaluator_available
+        )
 
         results: dict[str, dict[str, Any]] = {}
 
         for definition in definitions:
             metric_id = self._metric_id(definition)
-            requirements = self._metric_requirements(
-                definition
-            )
+            requirements = self._metric_requirements(definition)
 
-            applicable = True
-            reasons: list[str] = []
-
-            for requirement in requirements:
-                if not isinstance(requirement, dict):
-                    warnings.append(
-                        f"Metric '{metric_id}' has an unsupported "
-                        "non-object requirement declaration."
-                    )
-                    continue
-
-                capability_name = requirement.get(
-                    "capability",
-                    requirement.get(
-                        "target_capability"
-                    ),
-                )
-                if isinstance(capability_name, str):
-                    if test.target_id is None:
-                        applicable = False
-                        reasons.append("no target selected")
-                    elif capabilities is None:
-                        applicable = False
-                        reasons.append(
-                            "target capabilities are unavailable"
-                        )
-                    elif not self._capability_enabled(
-                        capabilities,
-                        capability_name,
-                    ):
-                        applicable = False
-                        reasons.append(
-                            "target does not expose "
-                            f"{capability_name}"
-                        )
-                    continue
-
-                benchmark_field = requirement.get(
-                    "benchmark_field"
-                )
-                if isinstance(benchmark_field, str):
-                    if benchmark is None:
-                        applicable = False
-                        reasons.append(
-                            "no benchmark selected"
-                        )
-                    elif not self._benchmark_field_available(
-                        cases,
-                        benchmark_field,
-                    ):
-                        applicable = False
-                        reasons.append(
-                            "benchmark does not provide "
-                            f"{benchmark_field}"
-                        )
-                    continue
-
-                if requirement:
-                    warnings.append(
-                        f"Metric '{metric_id}' has a requirement "
-                        "that is deferred to runtime validation."
-                    )
+            missing = requirements - available
 
             results[metric_id] = {
-                "applicable": applicable,
+                "applicable": not missing,
                 "reason": (
-                    "; ".join(reasons)
-                    if reasons
+                    "missing requirements: "
+                    + ", ".join(
+                        sorted(requirement.name for requirement in missing)
+                    )
+                    if missing
                     else None
+                ),
+                "missing_requirements": sorted(
+                    requirement.name for requirement in missing
                 ),
             }
 
         return results, warnings
+
+    async def _benchmark_requirements_available(
+        self,
+        test: TestDefinitionRecord,
+    ) -> set[MetricRequirement]:
+        """Return inputs supplied by the configured benchmark."""
+
+        if test.benchmark_id is None:
+            return set()
+
+        benchmark = await self._benchmark_repository.get_benchmark(
+            test.benchmark_id
+        )
+        if benchmark is None:
+            return set()
+
+        cases = await self._benchmark_repository.list_cases(
+            test.benchmark_id
+        )
+
+        available: set[MetricRequirement] = set()
+
+        field_requirements = {
+            MetricRequirement.QUERY: "query",
+            MetricRequirement.HISTORY: "history",
+            MetricRequirement.REFERENCE_ANSWER: "reference_answer",
+            MetricRequirement.GOLD_EVIDENCE: "gold_evidence",
+            MetricRequirement.ANSWERABILITY: "answerability",
+        }
+
+        for requirement, field_name in field_requirements.items():
+            if self._benchmark_field_available(cases, field_name):
+                available.add(requirement)
+
+        return available
+
+    async def _target_requirements_available(
+        self,
+        test: TestDefinitionRecord,
+    ) -> set[MetricRequirement]:
+        """Return observation inputs the configured target can provide."""
+
+        if test.target_id is None:
+            return set()
+
+        try:
+            capabilities = await self._target_repository.get_capabilities(
+                test.target_id
+            )
+        except (KeyError, ValueError):
+            return set()
+
+        if capabilities is None:
+            return set()
+
+        available: set[MetricRequirement] = set()
+
+        capability_requirements = {
+            MetricRequirement.ANSWER: "answer",
+            MetricRequirement.RETRIEVAL: "retrieval",
+            MetricRequirement.FINAL_CONTEXT: "context_injection",
+            MetricRequirement.CITATIONS: "citations",
+            MetricRequirement.CONFIDENCE: "confidence",
+            MetricRequirement.TRACE: "trace",
+            MetricRequirement.USAGE: "usage",
+        }
+
+        for requirement, capability_name in capability_requirements.items():
+            if self._capability_enabled(
+                capabilities,
+                capability_name,
+            ):
+                available.add(requirement)
+
+        return available
+
+    def _evaluator_requirements_available(
+        self,
+        test: TestDefinitionRecord,
+    ) -> set[MetricRequirement]:
+        """Return evaluator-side facilities available to metrics."""
+
+        available: set[MetricRequirement] = {
+            MetricRequirement.RUN_METADATA,
+        }
+
+        if test.judge_config:
+            available.add(MetricRequirement.JUDGE)
+
+        return available
 
     @staticmethod
     def _capability_enabled(
@@ -2034,20 +2047,13 @@ class TestService:
     @staticmethod
     def _metric_requirements(
         definition: Any,
-    ) -> list[Any]:
+    ) -> frozenset[MetricRequirement]:
         if isinstance(definition, dict):
-            value = definition.get(
-                "requirements",
-                [],
-            )
+            raw = definition.get("requirements", ())
         else:
-            value = getattr(
-                definition,
-                "requirements",
-                [],
-            )
+            raw = getattr(definition, "requirements", ())
 
-        return list(value or [])
+        return frozenset(raw or ())
 
     @classmethod
     def _definition_dict(
@@ -2055,52 +2061,24 @@ class TestService:
         definition: Any,
     ) -> dict[str, Any]:
         if isinstance(definition, dict):
-            return {
-                "metric_id": cls._metric_id(
-                    definition
-                ),
-                "version": cls._metric_version(
-                    definition
-                ),
-                "scope": str(
-                    definition.get("scope", "case")
-                ),
-                "requirements": list(
-                    definition.get(
-                        "requirements",
-                        [],
-                    )
-                    or []
-                ),
-                "description": str(
-                    definition.get(
-                        "description",
-                        "",
-                    )
-                ),
-            }
+            scope = definition.get("scope", "case")
+            description = definition.get("description", "")
+        else:
+            scope = getattr(definition, "scope", "case")
+            description = getattr(definition, "description", "")
+
+        if isinstance(scope, MetricScope):
+            scope_value = scope.name.lower()
+        else:
+            scope_value = str(scope)
 
         return {
             "metric_id": cls._metric_id(definition),
-            "version": cls._metric_version(
-                definition
+            "version": cls._metric_version(definition),
+            "scope": scope_value,
+            "requirements": sorted(
+                requirement.name
+                for requirement in cls._metric_requirements(definition)
             ),
-            "scope": str(
-                getattr(definition, "scope", "case")
-            ),
-            "requirements": list(
-                getattr(
-                    definition,
-                    "requirements",
-                    [],
-                )
-                or []
-            ),
-            "description": str(
-                getattr(
-                    definition,
-                    "description",
-                    "",
-                )
-            ),
+            "description": str(description),
         }

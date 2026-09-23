@@ -4,7 +4,6 @@ Metrics are registered by (metric_id, version) tuple.
 Duplicate registrations are rejected to prevent accidental overwrites.
 """
 
-from ensurepip import version
 import logging
 
 from .base import Metric, MetricDefinition
