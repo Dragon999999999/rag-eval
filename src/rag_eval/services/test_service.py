@@ -26,7 +26,9 @@ from typing import Any
 from uuid import uuid4
 
 import yaml
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from rag_eval.artifacts.base import ArtifactStore
 from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_models import (
@@ -37,15 +39,13 @@ from rag_eval.db.test_models import (
     TestMetricSelectionRecord,
 )
 from rag_eval.db.test_repository import TestRepository
+from rag_eval.execution.engine import BenchmarkExecutor, ExecutionConfig
 from rag_eval.metrics.base import (
-    BENCHMARK_REQUIREMENTS,
-    EVALUATOR_REQUIREMENTS,
-    TARGET_REQUIREMENTS,
     MetricRequirement,
     MetricScope,
 )
 from rag_eval.metrics.registry import MetricRegistry
-
+from rag_eval.services.target_service import TargetService
 
 EXPLICIT = "EXPLICIT"
 ALL_AVAILABLE = "ALL_AVAILABLE"
@@ -59,7 +59,7 @@ RUN_RUNNING = "RUNNING"
 RUN_PAUSING = "PAUSING"
 RUN_PAUSED = "PAUSED"
 RUN_INTERRUPTED = "INTERRUPTED"
-RUN_COMPLETED = "COMPLETED"
+RUN_COMPLETED = "COMPLETE"
 RUN_FAILED = "FAILED"
 RUN_CANCELLED = "CANCELLED"
 
@@ -80,12 +80,19 @@ class TestService:
         target_repository: TargetRepository,
         benchmark_repository: BenchmarkRepository,
         metric_registry: MetricRegistry,
+        target_service: TargetService | None = None,
+        artifact_store: ArtifactStore | None = None,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
     ) -> None:
         """Bind persistence and registries required by the test domain."""
         self._repository = repository
         self._target_repository = target_repository
         self._benchmark_repository = benchmark_repository
         self._metric_registry = metric_registry
+
+        self._target_service = target_service
+        self._artifact_store = artifact_store
+        self._session_factory = session_factory
 
     # ------------------------------------------------------------------
     # Test CRUD
@@ -1027,6 +1034,203 @@ class TestService:
 
         return await self._run_detail(run_id)
 
+    async def execute_run(
+        self,
+        run_id: str,
+    ) -> dict[str, Any]:
+        """Execute a previously persisted PENDING run.
+
+        The run and its CaseExecutionRecords must already be committed before this
+        method is called, because BenchmarkExecutor uses independent database
+        sessions for concurrent execution.
+        """
+        if self._target_service is None:
+            raise RuntimeError(
+                "TestService requires target_service for run execution"
+            )
+
+        if self._artifact_store is None:
+            raise RuntimeError(
+                "TestService requires artifact_store for run execution"
+            )
+
+        if self._session_factory is None:
+            raise RuntimeError(
+                "TestService requires session_factory for run execution"
+            )
+
+        run = await self._require_run(run_id)
+
+        if run.status != RUN_PENDING:
+            raise RuntimeError(
+                f"run {run_id} cannot be executed from state {run.status}"
+            )
+
+        config_record = await self._repository.get_run_config(run_id)
+
+        if config_record is None:
+            raise KeyError(
+                f"run configuration not found: {run_id}"
+            )
+
+        snapshot = dict(config_record.canonical_config)
+
+        target_snapshot = snapshot.get("target")
+        benchmark_snapshot = snapshot.get("benchmark")
+        execution_snapshot = snapshot.get("execution_config", {})
+
+        if not isinstance(target_snapshot, Mapping):
+            raise ValueError(
+                f"run {run_id} has invalid target snapshot"
+            )
+
+        if not isinstance(benchmark_snapshot, Mapping):
+            raise ValueError(
+                f"run {run_id} has invalid benchmark snapshot"
+            )
+
+        if not isinstance(execution_snapshot, Mapping):
+            raise ValueError(
+                f"run {run_id} has invalid execution configuration"
+            )
+
+        target_id_raw = target_snapshot.get("target_id")
+        benchmark_id_raw = benchmark_snapshot.get("benchmark_id")
+
+        if target_id_raw is None:
+            raise ValueError(
+                f"run {run_id} snapshot has no target_id"
+            )
+
+        if benchmark_id_raw is None:
+            raise ValueError(
+                f"run {run_id} snapshot has no benchmark_id"
+            )
+
+        target_id = str(target_id_raw)
+        benchmark_id = str(benchmark_id_raw)
+
+        # ------------------------------------------------------------------
+        # Load and verify the frozen benchmark
+        # ------------------------------------------------------------------
+
+        benchmark = await self._benchmark_repository.get_benchmark(
+            benchmark_id
+        )
+
+        if benchmark is None:
+            raise KeyError(
+                f"benchmark not found: {benchmark_id}"
+            )
+
+        expected_benchmark_version = benchmark_snapshot.get("version")
+        expected_content_hash = benchmark_snapshot.get("content_hash")
+
+        if (
+            expected_benchmark_version is not None
+            and benchmark.manifest.version
+            != expected_benchmark_version
+        ):
+            raise RuntimeError(
+                "benchmark version changed after run creation: "
+                f"expected {expected_benchmark_version}, "
+                f"found {benchmark.manifest.version}"
+            )
+
+        if (
+            expected_content_hash is not None
+            and benchmark.manifest.content_hash
+            != expected_content_hash
+        ):
+            raise RuntimeError(
+                "benchmark content changed after run creation"
+            )
+
+        # ------------------------------------------------------------------
+        # Verify target configuration version
+        # ------------------------------------------------------------------
+
+        expected_target_version = target_snapshot.get(
+            "config_version"
+        )
+
+        current_target_config = (
+            await self._target_repository.get_current_config_version(
+                target_id
+            )
+        )
+
+        if current_target_config is None:
+            raise ValueError(
+                f"target {target_id} has no active configuration"
+            )
+
+        current_target_version = getattr(
+            current_target_config,
+            "version",
+            None,
+        )
+
+        if (
+            expected_target_version is not None
+            and current_target_version != expected_target_version
+        ):
+            raise RuntimeError(
+                "target configuration changed after run creation: "
+                f"run requires version {expected_target_version}, "
+                f"current version is {current_target_version}"
+            )
+
+        # ------------------------------------------------------------------
+        # Build runtime dependencies
+        # ------------------------------------------------------------------
+
+        adapter = await self._target_service.get_adapter(
+            target_id
+        )
+
+        parameters_raw = target_snapshot.get(
+            "parameters",
+            {},
+        )
+
+        if not isinstance(parameters_raw, Mapping):
+            raise ValueError(
+                "run target parameters must be a mapping"
+            )
+
+        execution_config = ExecutionConfig.from_mapping(
+            execution_snapshot
+        )
+
+        executor = BenchmarkExecutor(
+            execution_config=execution_config,
+            adapter=adapter,
+            artifact_store=self._artifact_store,
+            session_factory=self._session_factory,
+            corpus_id=benchmark_snapshot.get(
+                "corpus_id"
+            ),
+            target_parameters=dict(parameters_raw),
+        )
+
+        try:
+            await executor.execute(
+                run_id,
+                benchmark,
+            )
+        finally:
+            close = getattr(
+                adapter,
+                "aclose",
+                None,
+            )
+
+            if close is not None:
+                await close()
+
+        return await self._run_detail(run_id)
+
     async def list_test_runs(
         self,
         test_id: str,
@@ -1564,6 +1768,17 @@ class TestService:
             )
         )
 
+        effective_target_config = (
+            await self._target_repository.load_current_effective_config(
+                target_id
+            )
+        )
+
+        if effective_target_config is None:
+            raise ValueError(
+                f"target has no effective configuration: {target_id}"
+            )
+
         target_snapshot = {
             "target_id": target_id,
             "config_version": (
@@ -1584,20 +1799,16 @@ class TestService:
                 "adapter_type",
                 None,
             ),
+            "parameters": dict(
+                effective_target_config.parameters or {}
+            ),
         }
 
         benchmark_snapshot = {
             "benchmark_id": benchmark_id,
-            "version": getattr(
-                benchmark,
-                "version",
-                None,
-            ),
-            "content_hash": getattr(
-                benchmark,
-                "content_hash",
-                None,
-            ),
+            "version": benchmark.manifest.version,
+            "content_hash": benchmark.manifest.content_hash,
+            "corpus_id": benchmark.manifest.corpus_id,
         }
 
         return {
