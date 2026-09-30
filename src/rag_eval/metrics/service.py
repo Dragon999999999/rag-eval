@@ -13,6 +13,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_repository import TestRepository
 from rag_eval.models import BenchmarkCase, TargetObservation
@@ -51,6 +52,8 @@ class ScoringService:
         test_repository: TestRepository,
         target_repository: TargetRepository,
         config: ScoringConfig | None = None,
+        *,
+        benchmark_repository: BenchmarkRepository | None = None,
     ) -> None:
         """Initialize scoring service.
 
@@ -59,10 +62,16 @@ class ScoringService:
             test_repository: Repository for test data access and persistence.
             target_repository: Repository for target observation data.
             config: Scoring configuration.
+            benchmark_repository: Repository for benchmark case data. When
+                omitted, a repository sharing the test repository's session is
+                created for backwards compatibility.
         """
         self._registry = registry
         self._test_repository = test_repository
         self._target_repository = target_repository
+        self._benchmark_repository = benchmark_repository or BenchmarkRepository(
+            test_repository._session
+        )
         self._config = config or ScoringConfig()
         self._engine = MetricExecutionEngine(registry, test_repository, config)
 
@@ -108,19 +117,16 @@ class ScoringService:
         for case_execution in case_executions:
             try:
                 # Load benchmark case
-                case_record = await self._test_repository._session.get(
-                    type("BenchmarkCaseRecord", (), {}),  # type: ignore[arg-type]
+                case = await self._benchmark_repository.get_case(
+                    run.benchmark_id,
                     case_execution.case_id,
                 )
 
-                if case_record is None:
+                if case is None:
                     logger.warning(
                         "Case %s not found, skipping", case_execution.case_id
                     )
                     continue
-
-                # Convert to canonical model
-                case = self._convert_to_benchmark_case(case_record)
 
                 # Load target observation
                 observation = await self._load_observation(
@@ -217,7 +223,9 @@ class ScoringService:
         latest_attempt = attempts[-1]
 
         # Try to load observation
-        return await self._target_repository.get_observation(latest_attempt.attempt_id)
+        return await self._target_repository.get_observation_for_attempt(
+            latest_attempt.attempt_id
+        )
 
     def _convert_to_benchmark_case(self, record: Any) -> BenchmarkCase:
         """Convert ORM record to canonical BenchmarkCase model.

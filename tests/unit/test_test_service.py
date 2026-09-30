@@ -16,7 +16,7 @@ from rag_eval.db.test_models import (
 )
 from rag_eval.metrics.base import MetricDefinition, MetricScope
 from rag_eval.metrics.registry import MetricRegistry
-from rag_eval.models import BenchmarkCase
+from rag_eval.models import BenchmarkCase, EffectiveTargetConfig
 from rag_eval.services.test_service import (
     ALL_AVAILABLE,
     EXPLICIT,
@@ -271,6 +271,18 @@ class MemoryTargetRepository:
         if target is None:
             return None
         return SimpleNamespace(version=target.current_config_version)
+
+    async def load_current_effective_config(
+        self,
+        target_id: str,
+    ) -> EffectiveTargetConfig | None:
+        """Return the configured effective adapter settings."""
+        if target_id not in self.targets:
+            return None
+        return EffectiveTargetConfig(
+            adapter_type="python",
+            parameters={},
+        )
 
 
 class MemoryBenchmarkRepository:

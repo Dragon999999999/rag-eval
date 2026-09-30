@@ -28,8 +28,11 @@ from uuid import uuid4
 import yaml
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from rag_eval.artifacts import ArtifactService
 from rag_eval.artifacts.base import ArtifactStore
+from rag_eval.config import TargetConfigResolver, get_settings
 from rag_eval.db.benchmark_repository import BenchmarkRepository
+from rag_eval.db.repositories import PersistenceRepository
 from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_models import (
     CaseExecutionRecord,
@@ -40,11 +43,13 @@ from rag_eval.db.test_models import (
 )
 from rag_eval.db.test_repository import TestRepository
 from rag_eval.execution.engine import BenchmarkExecutor, ExecutionConfig
+from rag_eval.metrics import ScoringConfig, ScoringService
 from rag_eval.metrics.base import (
     MetricRequirement,
     MetricScope,
 )
 from rag_eval.metrics.registry import MetricRegistry
+from rag_eval.services.secret_service import SecretService
 from rag_eval.services.target_service import TargetService
 
 EXPLICIT = "EXPLICIT"
@@ -864,7 +869,7 @@ class TestService:
         )
 
         for case in cases:
-            case_id = str(getattr(case, "case_id"))
+            case_id = str(case.case_id)
             await self._repository.create_case_execution(
                 CaseExecutionRecord(
                     case_execution_id=f"case-exec-{uuid4()}",
@@ -905,152 +910,245 @@ class TestService:
         method is called, because BenchmarkExecutor uses independent database
         sessions for concurrent execution.
         """
-        if self._target_service is None:
-            raise RuntimeError("TestService requires target_service for run execution")
-
         if self._artifact_store is None:
             raise RuntimeError("TestService requires artifact_store for run execution")
 
         if self._session_factory is None:
             raise RuntimeError("TestService requires session_factory for run execution")
 
-        run = await self._require_run(run_id)
-
-        if run.status != RUN_PENDING:
-            raise RuntimeError(
-                f"run {run_id} cannot be executed from state {run.status}"
-            )
-
-        config_record = await self._repository.get_run_config(run_id)
-
-        if config_record is None:
-            raise KeyError(f"run configuration not found: {run_id}")
-
-        snapshot = dict(config_record.canonical_config)
-
-        target_snapshot = snapshot.get("target")
-        benchmark_snapshot = snapshot.get("benchmark")
-        execution_snapshot = snapshot.get("execution_config", {})
-
-        if not isinstance(target_snapshot, Mapping):
-            raise ValueError(f"run {run_id} has invalid target snapshot")
-
-        if not isinstance(benchmark_snapshot, Mapping):
-            raise ValueError(f"run {run_id} has invalid benchmark snapshot")
-
-        if not isinstance(execution_snapshot, Mapping):
-            raise ValueError(f"run {run_id} has invalid execution configuration")
-
-        target_id_raw = target_snapshot.get("target_id")
-        benchmark_id_raw = benchmark_snapshot.get("benchmark_id")
-
-        if target_id_raw is None:
-            raise ValueError(f"run {run_id} snapshot has no target_id")
-
-        if benchmark_id_raw is None:
-            raise ValueError(f"run {run_id} snapshot has no benchmark_id")
-
-        target_id = str(target_id_raw)
-        benchmark_id = str(benchmark_id_raw)
-
-        # ------------------------------------------------------------------
-        # Load and verify the frozen benchmark
-        # ------------------------------------------------------------------
-
-        benchmark = await self._benchmark_repository.get_benchmark(benchmark_id)
-
-        if benchmark is None:
-            raise KeyError(f"benchmark not found: {benchmark_id}")
-
-        expected_benchmark_version = benchmark_snapshot.get("version")
-        expected_content_hash = benchmark_snapshot.get("content_hash")
-
-        if (
-            expected_benchmark_version is not None
-            and benchmark.manifest.version != expected_benchmark_version
-        ):
-            raise RuntimeError(
-                "benchmark version changed after run creation: "
-                f"expected {expected_benchmark_version}, "
-                f"found {benchmark.manifest.version}"
-            )
-
-        if (
-            expected_content_hash is not None
-            and benchmark.manifest.content_hash != expected_content_hash
-        ):
-            raise RuntimeError("benchmark content changed after run creation")
-
-        # ------------------------------------------------------------------
-        # Verify target configuration version
-        # ------------------------------------------------------------------
-
-        expected_target_version = target_snapshot.get("config_version")
-
-        current_target_config = (
-            await self._target_repository.get_current_config_version(target_id)
-        )
-
-        if current_target_config is None:
-            raise ValueError(f"target {target_id} has no active configuration")
-
-        current_target_version = getattr(
-            current_target_config,
-            "version",
-            None,
-        )
-
-        if (
-            expected_target_version is not None
-            and current_target_version != expected_target_version
-        ):
-            raise RuntimeError(
-                "target configuration changed after run creation: "
-                f"run requires version {expected_target_version}, "
-                f"current version is {current_target_version}"
-            )
-
-        # ------------------------------------------------------------------
-        # Build runtime dependencies
-        # ------------------------------------------------------------------
-
-        adapter = await self._target_service.get_adapter(target_id)
-
-        parameters_raw = target_snapshot.get(
-            "parameters",
-            {},
-        )
-
-        if not isinstance(parameters_raw, Mapping):
-            raise ValueError("run target parameters must be a mapping")
-
-        execution_config = ExecutionConfig.from_mapping(execution_snapshot)
-
-        executor = BenchmarkExecutor(
-            execution_config=execution_config,
-            adapter=adapter,
-            artifact_store=self._artifact_store,
-            session_factory=self._session_factory,
-            corpus_id=benchmark_snapshot.get("corpus_id"),
-            target_parameters=dict(parameters_raw),
-        )
+        adapter: Any | None = None
 
         try:
-            await executor.execute(
-                run_id,
-                benchmark,
+            async with self._session_factory() as session:
+                repository = TestRepository(session)
+                target_repository = TargetRepository(session)
+                benchmark_repository = BenchmarkRepository(session)
+
+                run = await repository.get_run(run_id)
+                if run is None:
+                    raise KeyError(f"run not found: {run_id}")
+                if run.status != RUN_PENDING:
+                    raise RuntimeError(
+                        f"run {run_id} cannot be executed from state {run.status}"
+                    )
+
+                config_record = await repository.get_run_config(run_id)
+                if config_record is None:
+                    raise KeyError(f"run configuration not found: {run_id}")
+
+                snapshot = dict(config_record.canonical_config)
+                target_snapshot = snapshot.get("target")
+                benchmark_snapshot = snapshot.get("benchmark")
+                execution_snapshot = snapshot.get("execution_config", {})
+
+                if not isinstance(target_snapshot, Mapping):
+                    raise ValueError(f"run {run_id} has invalid target snapshot")
+                if not isinstance(benchmark_snapshot, Mapping):
+                    raise ValueError(f"run {run_id} has invalid benchmark snapshot")
+                if not isinstance(execution_snapshot, Mapping):
+                    raise ValueError(
+                        f"run {run_id} has invalid execution configuration"
+                    )
+
+                target_id_raw = target_snapshot.get("target_id")
+                benchmark_id_raw = benchmark_snapshot.get("benchmark_id")
+                if target_id_raw is None:
+                    raise ValueError(f"run {run_id} snapshot has no target_id")
+                if benchmark_id_raw is None:
+                    raise ValueError(f"run {run_id} snapshot has no benchmark_id")
+
+                target_id = str(target_id_raw)
+                benchmark_id = str(benchmark_id_raw)
+                benchmark = await benchmark_repository.get_benchmark(benchmark_id)
+                if benchmark is None:
+                    raise KeyError(f"benchmark not found: {benchmark_id}")
+
+                expected_benchmark_version = benchmark_snapshot.get("version")
+                expected_content_hash = benchmark_snapshot.get("content_hash")
+                if (
+                    expected_benchmark_version is not None
+                    and benchmark.manifest.version != expected_benchmark_version
+                ):
+                    raise RuntimeError(
+                        "benchmark version changed after run creation: "
+                        f"expected {expected_benchmark_version}, "
+                        f"found {benchmark.manifest.version}"
+                    )
+                if (
+                    expected_content_hash is not None
+                    and benchmark.manifest.content_hash != expected_content_hash
+                ):
+                    raise RuntimeError("benchmark content changed after run creation")
+
+                current_target_config = (
+                    await target_repository.get_current_config_version(target_id)
+                )
+                if current_target_config is None:
+                    raise ValueError(f"target {target_id} has no active configuration")
+
+                expected_target_version = target_snapshot.get("config_version")
+                current_target_version = getattr(current_target_config, "version", None)
+                if (
+                    expected_target_version is not None
+                    and current_target_version != expected_target_version
+                ):
+                    raise RuntimeError(
+                        "target configuration changed after run creation: "
+                        f"run requires version {expected_target_version}, "
+                        f"current version is {current_target_version}"
+                    )
+
+                runtime_target_service = self._runtime_target_service(
+                    session,
+                    target_repository,
+                )
+                adapter = await runtime_target_service.get_adapter(target_id)
+
+                parameters_raw = target_snapshot.get("parameters", {})
+                if not isinstance(parameters_raw, Mapping):
+                    raise ValueError("run target parameters must be a mapping")
+
+            execution_config = ExecutionConfig.from_mapping(execution_snapshot)
+            executor = BenchmarkExecutor(
+                execution_config=execution_config,
+                adapter=adapter,
+                artifact_store=self._artifact_store,
+                session_factory=self._session_factory,
+                corpus_id=benchmark_snapshot.get("corpus_id"),
+                target_parameters=dict(parameters_raw),
             )
+
+            await executor.execute(run_id, benchmark)
+            await self._score_run(run_id, snapshot)
+        except Exception as exc:
+            await self._mark_run_failed(run_id, exc)
+            raise
         finally:
-            close = getattr(
-                adapter,
-                "aclose",
-                None,
-            )
+            close = getattr(adapter, "aclose", None)
 
             if close is not None:
                 await close()
 
-        return await self._run_detail(run_id)
+        return await self._run_detail_from_factory(run_id)
+
+    def _runtime_target_service(
+        self,
+        session: AsyncSession,
+        target_repository: TargetRepository,
+    ) -> TargetService:
+        """Build a target service bound to an execution-owned session."""
+        persistence_repository = PersistenceRepository(session)
+        artifact_service = ArtifactService(
+            self._artifact_store,  # type: ignore[arg-type]
+            persistence_repository,
+        )
+        secret_service = SecretService(
+            repository=target_repository,
+            encryption_key=get_settings().secret_key,
+        )
+        return TargetService(
+            repository=target_repository,
+            persistence_repository=persistence_repository,
+            artifact_service=artifact_service,
+            secret_service=secret_service,
+            config_resolver=TargetConfigResolver(),
+        )
+
+    async def _score_run(
+        self,
+        run_id: str,
+        snapshot: Mapping[str, Any],
+    ) -> None:
+        """Score target observations and finalize completed case records."""
+        if self._session_factory is None:
+            raise RuntimeError("session_factory is required for run scoring")
+
+        metrics_snapshot = snapshot.get("metrics", {})
+        resolved_metrics = (
+            metrics_snapshot.get("resolved", [])
+            if isinstance(metrics_snapshot, Mapping)
+            else []
+        )
+        selected_metrics = [
+            str(item["metric_id"])
+            for item in resolved_metrics
+            if isinstance(item, Mapping) and item.get("metric_id")
+        ]
+        metric_versions = {
+            str(item["metric_id"]): str(item.get("version", "1"))
+            for item in resolved_metrics
+            if isinstance(item, Mapping) and item.get("metric_id")
+        }
+
+        async with self._session_factory() as session:
+            async with session.begin():
+                test_repository = TestRepository(session)
+                target_repository = TargetRepository(session)
+                benchmark_repository = BenchmarkRepository(session)
+                scorer = ScoringService(
+                    self._metric_registry,
+                    test_repository,
+                    target_repository,
+                    benchmark_repository=benchmark_repository,
+                    config=ScoringConfig(
+                        mode="explicit",
+                        selected_metrics=selected_metrics,
+                        metric_versions=metric_versions,
+                    ),
+                )
+                await scorer.score_run(
+                    run_id,
+                    run_metadata=dict(snapshot),
+                )
+
+                for case in await test_repository.list_case_executions(run_id):
+                    if case.status == "TARGET_COMPLETE":
+                        await test_repository.update_case_execution_status(
+                            case.case_execution_id,
+                            "COMPLETE",
+                            finished_at=datetime.now(UTC),
+                        )
+
+    async def _run_detail_from_factory(self, run_id: str) -> dict[str, Any]:
+        """Load run details through a fresh session after background execution."""
+        if self._session_factory is None:
+            raise RuntimeError("session_factory is required for run inspection")
+
+        async with self._session_factory() as session:
+            repository = TestRepository(session)
+            run = await repository.get_run(run_id)
+            if run is None:
+                raise KeyError(f"run not found: {run_id}")
+            counts = await repository.get_run_case_counts(run_id)
+            return self._run_detail_payload(run, counts)
+
+    async def _mark_run_failed(self, run_id: str, error: Exception) -> None:
+        """Persist a terminal failure when background execution aborts."""
+        if self._session_factory is None:
+            return
+
+        async with self._session_factory() as session:
+            async with session.begin():
+                repository = TestRepository(session)
+                run = await repository.get_run(run_id)
+                if run is None or run.status in TERMINAL_RUN_STATES:
+                    return
+
+                reason = f"execution failed: {error}"
+                await repository.update_run_lifecycle(
+                    run_id,
+                    status=RUN_FAILED,
+                    status_reason=reason[:2000],
+                    finished_at=datetime.now(UTC),
+                )
+                await repository.append_run_event(
+                    RunEventRecord(
+                        run_event_id=f"evt-{uuid4()}",
+                        run_id=run_id,
+                        event_type="RUN_FAILED",
+                        payload={"reason": reason[:2000]},
+                    )
+                )
 
     async def list_test_runs(
         self,
@@ -1535,14 +1633,19 @@ class TestService:
                 "adapter_type",
                 None,
             ),
-            "parameters": dict(effective_target_config.parameters or {}),
         }
+
+        target_parameters = dict(effective_target_config.parameters or {})
+        if target_parameters:
+            target_snapshot["parameters"] = target_parameters
+
+        benchmark_manifest = getattr(benchmark, "manifest", benchmark)
 
         benchmark_snapshot = {
             "benchmark_id": benchmark_id,
-            "version": benchmark.manifest.version,
-            "content_hash": benchmark.manifest.content_hash,
-            "corpus_id": benchmark.manifest.corpus_id,
+            "version": benchmark_manifest.version,
+            "content_hash": benchmark_manifest.content_hash,
+            "corpus_id": getattr(benchmark_manifest, "corpus_id", None),
         }
 
         return {
@@ -1577,7 +1680,7 @@ class TestService:
         dict[str, dict[str, Any]],
         list[str],
     ]:
-        """Determine metric availability from benchmark, target, and evaluator inputs."""
+        """Determine metric availability from configured inputs."""
 
         warnings: list[str] = []
 
@@ -1591,18 +1694,36 @@ class TestService:
 
         for definition in definitions:
             metric_id = self._metric_id(definition)
-            requirements = self._metric_requirements(definition)
+            requirements, deferred = self._normalized_metric_requirements(definition)
+
+            for requirement in deferred:
+                warnings.append(
+                    f"Metric '{metric_id}' has deferred requirement "
+                    f"'{requirement}'; applicability was not blocked."
+                )
 
             missing = requirements - available
 
+            if missing and test.target_id is None and self._has_requirement_kind(
+                definition,
+                "capability",
+            ):
+                reason = "no target selected"
+            elif missing and test.benchmark_id is None and self._has_requirement_kind(
+                definition,
+                "benchmark_field",
+            ):
+                reason = "no benchmark selected"
+            elif missing:
+                reason = "missing requirements: " + ", ".join(
+                    requirement.name for requirement in missing
+                )
+            else:
+                reason = None
+
             results[metric_id] = {
                 "applicable": not missing,
-                "reason": (
-                    "missing requirements: "
-                    + ", ".join(sorted(requirement.name for requirement in missing))
-                    if missing
-                    else None
-                ),
+                "reason": reason,
                 "missing_requirements": sorted(
                     requirement.name for requirement in missing
                 ),
@@ -1663,6 +1784,7 @@ class TestService:
         available: set[MetricRequirement] = set()
 
         capability_requirements = {
+            MetricRequirement.QUERY: "query",
             MetricRequirement.ANSWER: "answer",
             MetricRequirement.RETRIEVAL: "retrieval",
             MetricRequirement.FINAL_CONTEXT: "context_injection",
@@ -1702,6 +1824,12 @@ class TestService:
         name: str,
     ) -> bool:
         """Read simple or dotted capability names."""
+        if "." in name and not isinstance(capabilities, dict):
+            parent, child = name.split(".", 1)
+            flattened = f"{parent}_{child}"
+            if hasattr(capabilities, flattened):
+                return bool(getattr(capabilities, flattened))
+
         current = capabilities
 
         for part in name.split("."):
@@ -1747,6 +1875,15 @@ class TestService:
     ) -> dict[str, Any]:
         run = await self._require_run(run_id)
         counts = await self._repository.get_run_case_counts(run_id)
+
+        return self._run_detail_payload(run, counts)
+
+    @staticmethod
+    def _run_detail_payload(
+        run: RunRecord,
+        counts: Mapping[str, int],
+    ) -> dict[str, Any]:
+        """Build the API representation of a persisted run and its counts."""
 
         return {
             "run_id": run.run_id,
@@ -1934,12 +2071,94 @@ class TestService:
     def _metric_requirements(
         definition: Any,
     ) -> frozenset[MetricRequirement]:
+        """Return normalized enum requirements for one metric definition."""
+        requirements, _ = TestService._normalized_metric_requirements(definition)
+        return requirements
+
+    @staticmethod
+    def _normalized_metric_requirements(
+        definition: Any,
+    ) -> tuple[frozenset[MetricRequirement], list[str]]:
+        """Normalize enum and descriptor-style metric requirements.
+
+        Registry-backed production metrics use ``MetricRequirement`` values.
+        Descriptor mappings are also accepted for compatibility with imported
+        metric catalogs; unknown descriptors are deferred with a warning.
+        """
         if isinstance(definition, dict):
             raw = definition.get("requirements", ())
         else:
             raw = getattr(definition, "requirements", ())
 
-        return frozenset(raw or ())
+        aliases = {
+            "query": MetricRequirement.QUERY,
+            "history": MetricRequirement.HISTORY,
+            "reference_answer": MetricRequirement.REFERENCE_ANSWER,
+            "gold_evidence": MetricRequirement.GOLD_EVIDENCE,
+            "answerability": MetricRequirement.ANSWERABILITY,
+            "answer": MetricRequirement.ANSWER,
+            "retrieval": MetricRequirement.RETRIEVAL,
+            "retrieval.stages": MetricRequirement.RETRIEVAL,
+            "context": MetricRequirement.FINAL_CONTEXT,
+            "context_injection": MetricRequirement.FINAL_CONTEXT,
+            "citations": MetricRequirement.CITATIONS,
+            "confidence": MetricRequirement.CONFIDENCE,
+            "trace": MetricRequirement.TRACE,
+            "usage": MetricRequirement.USAGE,
+            "judge": MetricRequirement.JUDGE,
+            "run_metadata": MetricRequirement.RUN_METADATA,
+        }
+        normalized: set[MetricRequirement] = set()
+        deferred: list[str] = []
+
+        for requirement in raw or ():
+            if isinstance(requirement, MetricRequirement):
+                normalized.add(requirement)
+                continue
+
+            if isinstance(requirement, str):
+                mapped = aliases.get(requirement.lower())
+                if mapped is None:
+                    deferred.append(requirement)
+                else:
+                    normalized.add(mapped)
+                continue
+
+            if isinstance(requirement, Mapping):
+                if len(requirement) != 1:
+                    deferred.append(str(dict(requirement)))
+                    continue
+
+                kind, value = next(iter(requirement.items()))
+                if kind == "capability":
+                    mapped = aliases.get(str(value).lower())
+                elif kind == "benchmark_field":
+                    mapped = aliases.get(str(value).lower())
+                else:
+                    mapped = aliases.get(str(value).lower())
+
+                if mapped is None:
+                    deferred.append(str(value))
+                else:
+                    normalized.add(mapped)
+                continue
+
+            deferred.append(str(requirement))
+
+        return frozenset(normalized), deferred
+
+    @staticmethod
+    def _has_requirement_kind(
+        definition: Any,
+        kind: str,
+    ) -> bool:
+        """Return whether a descriptor definition has a requirement category."""
+        if isinstance(definition, dict):
+            raw = definition.get("requirements", ())
+        else:
+            raw = getattr(definition, "requirements", ())
+
+        return any(isinstance(item, Mapping) and kind in item for item in raw or ())
 
     @classmethod
     def _definition_dict(

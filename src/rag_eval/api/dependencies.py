@@ -329,6 +329,8 @@ def get_test_service(
     target_repository: TargetRepositoryDep,
     benchmark_repository: BenchmarkRepositoryDep,
     metric_registry: MetricRegistryDep,
+    artifact_store: ArtifactStoreDep,
+    request: Request,
 ) -> TestService:
     """Provide test configuration and run lifecycle service."""
     return TestService(
@@ -336,6 +338,8 @@ def get_test_service(
         target_repository=target_repository,
         benchmark_repository=benchmark_repository,
         metric_registry=metric_registry,
+        artifact_store=artifact_store,
+        session_factory=request.app.state.session_factory,
     )
 
 

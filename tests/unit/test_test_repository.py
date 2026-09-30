@@ -79,6 +79,13 @@ class MemoryAsyncSession:
     async def flush(self) -> None:
         self._check_constraints()
 
+    async def refresh(self, record: Any) -> None:
+        """Mirror SQLAlchemy refresh for the in-memory identity map."""
+        model = type(record)
+        primary_key = inspect(model).primary_key[0].key
+        if getattr(record, primary_key, None) not in self.records.get(model, {}):
+            raise KeyError(f"record not found: {model.__name__}")
+
     async def scalars(self, statement: Any) -> MemoryResult:
         model = statement.column_descriptions[0]["entity"]
         rows = list(self.records.get(model, {}).values())

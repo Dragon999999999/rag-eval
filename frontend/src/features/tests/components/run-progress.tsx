@@ -5,9 +5,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import type { RunStatus, RunStatusResponse } from "../test-types";
 
 export const terminalRunStatuses = new Set([
+  "COMPLETE",
   "COMPLETED",
   "FAILED",
   "CANCELLED",
+  "complete",
   "completed",
   "failed",
   "cancelled",
@@ -35,7 +37,13 @@ export function runStatusLabel(status: RunStatus): string {
 function badgeStatus(
   status: RunStatus
 ): "success" | "warning" | "error" | "info" | "neutral" {
-  if (status === "COMPLETED" || status === "completed") return "success";
+  if (
+    status === "COMPLETE" ||
+    status === "COMPLETED" ||
+    status === "complete" ||
+    status === "completed"
+  )
+    return "success";
   if (status === "FAILED" || status === "failed") return "error";
   if (
     status === "PAUSED" ||

@@ -15,7 +15,15 @@ to TestService.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from fastapi.responses import PlainTextResponse
 
 from rag_eval.api.dependencies import (
@@ -23,7 +31,6 @@ from rag_eval.api.dependencies import (
     TestServiceDep,
     verify_api_key,
 )
-
 from rag_eval.api.test_schemas import (
     AttemptDetail,
     CaseExecutionDetail,
@@ -430,14 +437,21 @@ async def validate_test(
 async def start_test_run(
     test_id: str,
     service: TestServiceDep,
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
 ) -> RunDetail:
     """Create and start a run from the test's current configuration.
 
-    The service must validate the test and persist an immutable configuration
-    snapshot before execution begins.
+    The service validates the test and persists an immutable configuration
+    snapshot before execution is queued. The committed run is then handed to
+    the application background executor so the request can return immediately.
     """
     try:
         run = await service.start_run(test_id)
+        if background_tasks is not None:
+            background_tasks.add_task(
+                service.execute_run,
+                run["run_id"],
+            )
     except KeyError as exc:
         raise _not_found(str(exc)) from exc
     except ValueError as exc:

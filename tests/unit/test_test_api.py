@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 import pytest
-from fastapi import HTTPException
+from fastapi import BackgroundTasks, HTTPException
 
 from rag_eval.api import test as test_api
 from rag_eval.api.test_schemas import (
@@ -146,3 +146,50 @@ async def test_run_api_maps_not_ready_and_missing_runs() -> None:
     with pytest.raises(HTTPException) as missing:
         await test_api.get_run("missing", Service())
     assert missing.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_start_run_queues_execution_after_run_creation() -> None:
+    """A successful run request hands the committed run to execution work."""
+
+    executed: list[str] = []
+
+    class Service:
+        async def start_run(self, test_id: str) -> dict[str, object]:
+            assert test_id == "test-1"
+            return {
+                "run_id": "run-1",
+                "name": "test",
+                "status": "PENDING",
+                "status_reason": None,
+                "config_hash": "hash",
+                "target_id": "target-1",
+                "benchmark_id": "benchmark-1",
+                "test_definition_id": "test-1",
+                "started_at": None,
+                "finished_at": None,
+                "paused_at": None,
+                "interrupted_at": None,
+                "seed": None,
+                "rag_eval_version": None,
+                "tags": [],
+                "metadata": {},
+                "created_at": NOW,
+                "updated_at": NOW,
+                "total_cases": 1,
+                "complete_cases": 0,
+                "failed_cases": 0,
+                "pending_cases": 1,
+                "running_cases": 0,
+            }
+
+        async def execute_run(self, run_id: str) -> None:
+            executed.append(run_id)
+
+    background_tasks = BackgroundTasks()
+    result = await test_api.start_test_run("test-1", Service(), background_tasks)
+
+    assert result.run_id == "run-1"
+    assert len(background_tasks.tasks) == 1
+    await background_tasks()
+    assert executed == ["run-1"]

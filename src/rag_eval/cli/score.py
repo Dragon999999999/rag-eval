@@ -125,7 +125,6 @@ async def _score_run(run_id: str):
             test_repository = TestRepository(session)
 
             target_repository = TargetRepository(session)
-
             registry = get_stage12_catalog()
 
             service = ScoringService(

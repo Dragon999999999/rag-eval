@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Protocol, runtime_checkable
 
-from rag_eval.models.enums import MetricStatus
 from rag_eval.metrics.context import MetricContext
+from rag_eval.models.enums import MetricStatus
 
 
 class MetricScope(Enum):
