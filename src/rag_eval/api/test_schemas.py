@@ -48,9 +48,7 @@ class TestCreate(BaseModel):
         max_length=255,
     )
     description: str | None = None
-    metadata: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TestUpdate(BaseModel):
@@ -136,21 +134,13 @@ class TestMetricSelectionUpdate(BaseModel):
         pattern="^(EXPLICIT|ALL_AVAILABLE)$",
     )
 
-    selected_metrics: list[str] = Field(
-        default_factory=list
-    )
+    selected_metrics: list[str] = Field(default_factory=list)
 
-    metric_parameters: dict[str, dict[str, Any]] = Field(
-        default_factory=dict
-    )
+    metric_parameters: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
-    judge_config: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    judge_config: dict[str, Any] = Field(default_factory=dict)
 
-    retrieval_config: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    retrieval_config: dict[str, Any] = Field(default_factory=dict)
 
 
 class TestMetricInfo(BaseModel):
@@ -168,9 +158,7 @@ class TestMetricInfo(BaseModel):
 
     unavailable_reason: str | None = None
 
-    parameters: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 class TestMetricsInfo(BaseModel):
@@ -188,9 +176,7 @@ class TestMetricsInfo(BaseModel):
     judge_config: dict[str, Any]
     retrieval_config: dict[str, Any]
 
-    warnings: list[str] = Field(
-        default_factory=list
-    )
+    warnings: list[str] = Field(default_factory=list)
 
 
 class MetricImportResult(BaseModel):
@@ -210,9 +196,7 @@ class MetricImportResult(BaseModel):
     target_conflict: bool = False
     benchmark_conflict: bool = False
 
-    warnings: list[str] = Field(
-        default_factory=list
-    )
+    warnings: list[str] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -230,17 +214,11 @@ class TestValidationResult(BaseModel):
     benchmark_valid: bool
     metrics_valid: bool
 
-    resolved_metric_ids: list[str] = Field(
-        default_factory=list
-    )
+    resolved_metric_ids: list[str] = Field(default_factory=list)
 
-    errors: list[str] = Field(
-        default_factory=list
-    )
+    errors: list[str] = Field(default_factory=list)
 
-    warnings: list[str] = Field(
-        default_factory=list
-    )
+    warnings: list[str] = Field(default_factory=list)
 
 
 # ============================================================================
@@ -378,9 +356,7 @@ class CaseExecutionDetail(BaseModel):
     reference_answer: str | None = None
     answerability: str | None = None
 
-    tags: list[str] = Field(
-        default_factory=list
-    )
+    tags: list[str] = Field(default_factory=list)
 
 
 class AttemptSummary(BaseModel):
@@ -597,17 +573,13 @@ class ComparisonResult(BaseModel):
     metric_comparisons: list[dict[str, Any]]
     summary: dict[str, Any]
 
-    compared_at: datetime = Field(
-        default_factory=datetime.utcnow
-    )
+    compared_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ExportRequest(BaseModel):
     """Request to export run results."""
 
-    formats: list[str] = Field(
-        default_factory=lambda: ["parquet", "json"]
-    )
+    formats: list[str] = Field(default_factory=lambda: ["parquet", "json"])
 
     include_raw_artifacts: bool = False
 

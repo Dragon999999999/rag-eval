@@ -10,6 +10,7 @@ class RequestWithId(Protocol):
 
     request_id: str
 
+
 class RetrievalTarget:
     """Target exposing query, retrieval, streaming, and recovery operations."""
 
@@ -134,9 +135,9 @@ class FullCapabilityTarget(RetrievalTarget):
         }
 
     async def upload_chunks(
-            self,
-            corpus_id: str,
-            chunks: AsyncIterable[object],
+        self,
+        corpus_id: str,
+        chunks: AsyncIterable[object],
     ) -> dict[str, object]:
         """Consume the provided async iterator only within the target boundary."""
         chunk_count = 0

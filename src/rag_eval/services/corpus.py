@@ -71,9 +71,7 @@ class CorpusPreparationService:
         manifest = benchmark.manifest
 
         if not benchmark.is_complete:
-            raise ValueError(
-                f"benchmark {manifest.benchmark_id} has no cases"
-            )
+            raise ValueError(f"benchmark {manifest.benchmark_id} has no cases")
 
         if corpus_config.mode not in benchmark.available_corpus_modes:
             available = ", ".join(
@@ -95,9 +93,7 @@ class CorpusPreparationService:
 
         if corpus_config.mode is CorpusMode.EXTERNAL:
             if corpus_config.corpus_id is None:
-                raise ValueError(
-                    "EXTERNAL corpus mode requires a target corpus_id"
-                )
+                raise ValueError("EXTERNAL corpus mode requires a target corpus_id")
 
             await self._persist_corpus(
                 corpus_config.corpus_id,
@@ -128,10 +124,7 @@ class CorpusPreparationService:
                 stage="corpus_prepare",
             )
 
-        if (
-            corpus_config.mode is CorpusMode.CHUNKS
-            and not capabilities.chunk_ingestion
-        ):
+        if corpus_config.mode is CorpusMode.CHUNKS and not capabilities.chunk_ingestion:
             raise TargetAdapterError(
                 "Target does not advertise chunk ingestion.",
                 category=ErrorCategory.UNSUPPORTED_CAPABILITY,
@@ -161,9 +154,7 @@ class CorpusPreparationService:
                 "benchmark_id": manifest.benchmark_id,
                 "requested_configuration": corpus_config.parameters,
                 "effective_configuration": (
-                    created.configuration.effective
-                    if created.configuration
-                    else {}
+                    created.configuration.effective if created.configuration else {}
                 ),
             },
         )
@@ -258,9 +249,7 @@ class CorpusPreparationService:
     ) -> DocumentContent:
         """Resolve stored document bytes for target upload."""
         if document.artifact is None:
-            raise ValueError(
-                f"document {document.document_id} has no stored artifact"
-            )
+            raise ValueError(f"document {document.document_id} has no stored artifact")
 
         if self._artifact_service is None:
             raise ValueError(
@@ -283,15 +272,12 @@ class CorpusPreparationService:
         }:
             if monotonic() >= deadline:
                 raise TimeoutError(
-                    f"ingestion operation timed out: "
-                    f"{current.operation_id}"
+                    f"ingestion operation timed out: {current.operation_id}"
                 )
 
             await asyncio.sleep(self._poll_interval_seconds)
 
-            current = await self._adapter.get_operation(
-                current.operation_id
-            )
+            current = await self._adapter.get_operation(current.operation_id)
 
         if current.status is not OperationStatus.SUCCEEDED:
             if current.error is not None:
@@ -305,8 +291,7 @@ class CorpusPreparationService:
                 raise error
 
             raise TargetAdapterError(
-                f"ingestion operation {current.operation_id} "
-                f"ended as {current.status}",
+                f"ingestion operation {current.operation_id} ended as {current.status}",
                 category=ErrorCategory.INGESTION,
                 code="INGESTION_OPERATION_FAILED",
                 stage="ingestion",
@@ -359,14 +344,10 @@ class CorpusPreparationService:
 
         if config.mode is CorpusMode.DOCUMENTS:
             for document in benchmark.documents:
-                digest.update(
-                    document.model_dump_json().encode()
-                )
+                digest.update(document.model_dump_json().encode())
 
         elif config.mode is CorpusMode.CHUNKS:
             for chunk in benchmark.chunks:
-                digest.update(
-                    chunk.model_dump_json().encode()
-                )
+                digest.update(chunk.model_dump_json().encode())
 
         return digest.hexdigest()

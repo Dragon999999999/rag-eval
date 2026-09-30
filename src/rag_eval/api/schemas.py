@@ -51,9 +51,7 @@ class TargetCreate(BaseModel):
         min_length=1,
         max_length=255,
     )
-    metadata: dict[str, Any] = Field(
-        default_factory=dict
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TargetUpdate(BaseModel):
@@ -230,7 +228,7 @@ class BenchmarkCaseSummary(BaseModel):
     tags: list[str]
     metadata: dict[str, Any]
 
-    
+
 # ============================================================================
 # MetricConfig Schemas
 # ============================================================================

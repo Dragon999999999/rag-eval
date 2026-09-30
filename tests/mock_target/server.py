@@ -605,6 +605,7 @@ async def get_operation(operation_id: str) -> Operation:
         result=operation.result,
     )
 
+
 @app.post("/eval/v1/retrieve")
 async def retrieve(request: RetrieveRequest) -> RetrieveResponse:
     """Retrieve relevant items."""

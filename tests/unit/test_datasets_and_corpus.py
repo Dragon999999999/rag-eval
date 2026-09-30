@@ -186,9 +186,7 @@ def test_canonical_benchmark_file_loads_and_validates(tmp_path: Path) -> None:
 
     assert benchmark.manifest.benchmark_id == "benchmark-1"
     assert [case.case_id for case in benchmark.cases] == ["case-1"]
-    assert [document.document_id for document in benchmark.documents] == [
-        "document-1"
-    ]
+    assert [document.document_id for document in benchmark.documents] == ["document-1"]
     assert [chunk.chunk_id for chunk in benchmark.chunks] == ["chunk-1"]
 
 

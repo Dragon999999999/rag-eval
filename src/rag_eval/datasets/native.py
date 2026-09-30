@@ -128,18 +128,12 @@ def _iter_records(
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise DatasetValidationError(
-            f"could not read dataset file: {path}"
-        ) from exc
+        raise DatasetValidationError(f"could not read dataset file: {path}") from exc
     except json.JSONDecodeError as exc:
-        raise DatasetValidationError(
-            f"invalid JSON in {path}"
-        ) from exc
+        raise DatasetValidationError(f"invalid JSON in {path}") from exc
 
     if not isinstance(payload, list):
-        raise DatasetValidationError(
-            f"JSON dataset file must contain an array: {path}"
-        )
+        raise DatasetValidationError(f"JSON dataset file must contain an array: {path}")
 
     for index, record in enumerate(payload, start=1):
         yield _validate_record(
@@ -158,9 +152,7 @@ def _validate_record(
 ) -> RecordT:
     """Validate one external record into a canonical model."""
     if not isinstance(record, dict):
-        raise DatasetValidationError(
-            f"{record_name} record {index} must be a mapping"
-        )
+        raise DatasetValidationError(f"{record_name} record {index} must be a mapping")
 
     try:
         return model_type.model_validate(record)
@@ -175,9 +167,8 @@ def _parse_json(data: str | bytes, name: str) -> Any:
     try:
         return json.loads(data)
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise DatasetValidationError(
-            f"invalid {name} JSON"
-        ) from exc
+        raise DatasetValidationError(f"invalid {name} JSON") from exc
+
 
 def load_records(
     path: Path,

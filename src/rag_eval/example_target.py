@@ -61,7 +61,9 @@ class ExampleTarget:
     async def upload_chunks(self, corpus_id: str, chunks: object) -> Operation:
         """Accept chunks for the example without materializing target-side state."""
         return Operation(
-            operation_id="example-chunks", kind="CHUNK_INGESTION", status=OperationStatus.SUCCEEDED
+            operation_id="example-chunks",
+            kind="CHUNK_INGESTION",
+            status=OperationStatus.SUCCEEDED,
         )
 
     async def query(self, request: QueryRequest) -> QueryResponse:

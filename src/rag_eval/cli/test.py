@@ -107,12 +107,8 @@ def create_test(
     except (ValueError, KeyError) as exc:
         _handle_error("create failed", exc)
 
-    typer.echo(
-        f"Created test {result['test_definition_id']}"
-    )
-    typer.echo(
-        f"Status: {result['configuration_status']}"
-    )
+    typer.echo(f"Created test {result['test_definition_id']}")
+    typer.echo(f"Status: {result['configuration_status']}")
 
 
 async def _create_test(
@@ -148,9 +144,7 @@ def list_tests() -> None:
             f"{test['configuration_status']:<10}  "
             f"{test['name']}"
         )
-        typer.echo(
-            f"  target={target} benchmark={benchmark}"
-        )
+        typer.echo(f"  target={target} benchmark={benchmark}")
 
 
 async def _list_tests() -> list[dict[str, Any]]:
@@ -181,9 +175,7 @@ async def _show_test(
         result = await service.get_test(test_id)
 
         if result is None:
-            raise KeyError(
-                f"test not found: {test_id}"
-            )
+            raise KeyError(f"test not found: {test_id}")
 
         return result
 
@@ -203,9 +195,7 @@ def delete_test(
 ) -> None:
     """Delete an editable test definition."""
     if not yes:
-        confirmed = typer.confirm(
-            f"Delete test {test_id}?"
-        )
+        confirmed = typer.confirm(f"Delete test {test_id}?")
         if not confirmed:
             raise typer.Abort()
 
@@ -251,12 +241,8 @@ def set_target(
     except (KeyError, ValueError) as exc:
         _handle_error("set-target failed", exc)
 
-    typer.echo(
-        f"Target set to {result['target_id']}"
-    )
-    typer.echo(
-        f"Status: {result['configuration_status']}"
-    )
+    typer.echo(f"Target set to {result['target_id']}")
+    typer.echo(f"Status: {result['configuration_status']}")
 
 
 @app.command("clear-target")
@@ -275,9 +261,7 @@ def clear_target(
         _handle_error("clear-target failed", exc)
 
     typer.echo("Target cleared.")
-    typer.echo(
-        f"Status: {result['configuration_status']}"
-    )
+    typer.echo(f"Status: {result['configuration_status']}")
 
 
 @app.command("set-benchmark")
@@ -302,12 +286,8 @@ def set_benchmark(
     except (KeyError, ValueError) as exc:
         _handle_error("set-benchmark failed", exc)
 
-    typer.echo(
-        f"Benchmark set to {result['benchmark_id']}"
-    )
-    typer.echo(
-        f"Status: {result['configuration_status']}"
-    )
+    typer.echo(f"Benchmark set to {result['benchmark_id']}")
+    typer.echo(f"Status: {result['configuration_status']}")
 
 
 @app.command("clear-benchmark")
@@ -326,9 +306,7 @@ def clear_benchmark(
         _handle_error("clear-benchmark failed", exc)
 
     typer.echo("Benchmark cleared.")
-    typer.echo(
-        f"Status: {result['configuration_status']}"
-    )
+    typer.echo(f"Status: {result['configuration_status']}")
 
 
 async def _update_test(
@@ -360,34 +338,20 @@ def show_metrics(
     except KeyError as exc:
         _handle_error("metrics lookup failed", exc)
 
-    typer.echo(
-        f"Mode: {result['mode']}"
-    )
+    typer.echo(f"Mode: {result['mode']}")
 
     for metric in result["metrics"]:
-        selected = (
-            "[x]"
-            if metric["selected"]
-            else "[ ]"
-        )
+        selected = "[x]" if metric["selected"] else "[ ]"
 
         state = (
             ""
             if metric["applicable"]
             else (
-                "  unavailable: "
-                + (
-                    metric["unavailable_reason"]
-                    or "not applicable"
-                )
+                "  unavailable: " + (metric["unavailable_reason"] or "not applicable")
             )
         )
 
-        typer.echo(
-            f"{selected} "
-            f"{metric['metric_id']} "
-            f"v{metric['version']}{state}"
-        )
+        typer.echo(f"{selected} {metric['metric_id']} v{metric['version']}{state}")
 
     for warning in result.get("warnings", []):
         typer.echo(
@@ -400,9 +364,7 @@ async def _show_metrics(
     test_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.get_test_metrics(
-            test_id
-        )
+        return await service.get_test_metrics(test_id)
 
 
 @app.command("set-metrics")
@@ -428,9 +390,7 @@ def set_metrics(
         _handle_error("set-metrics failed", exc)
 
     typer.echo("Selected metrics:")
-    for metric_id in result[
-        "selected_metric_ids"
-    ]:
+    for metric_id in result["selected_metric_ids"]:
         typer.echo(f"  {metric_id}")
 
 
@@ -439,9 +399,7 @@ async def _set_metrics(
     metric_ids: list[str],
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        current = await service.get_test_metrics(
-            test_id
-        )
+        current = await service.get_test_metrics(test_id)
 
         return await service.set_test_metrics(
             test_id,
@@ -457,12 +415,8 @@ async def _set_metrics(
                 for metric in current["metrics"]
                 if metric["metric_id"] in metric_ids
             },
-            judge_config=current[
-                "judge_config"
-            ],
-            retrieval_config=current[
-                "retrieval_config"
-            ],
+            judge_config=current["judge_config"],
+            retrieval_config=current["retrieval_config"],
         )
 
 
@@ -472,9 +426,7 @@ def select_all_metrics(
 ) -> None:
     """Select all metrics applicable to the current test."""
     try:
-        result = _run(
-            _select_all_metrics(test_id)
-        )
+        result = _run(_select_all_metrics(test_id))
     except (KeyError, ValueError) as exc:
         _handle_error(
             "select-all-metrics failed",
@@ -482,8 +434,7 @@ def select_all_metrics(
         )
 
     typer.echo(
-        "Selected all applicable metrics "
-        f"({len(result['selected_metric_ids'])})."
+        f"Selected all applicable metrics ({len(result['selected_metric_ids'])})."
     )
 
 
@@ -491,11 +442,7 @@ async def _select_all_metrics(
     test_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return (
-            await service.select_all_applicable_metrics(
-                test_id
-            )
-        )
+        return await service.select_all_applicable_metrics(test_id)
 
 
 @app.command("import-yaml")
@@ -530,9 +477,7 @@ async def _import_yaml(
     test_id: str,
     config: Path,
 ) -> dict[str, Any]:
-    text = config.read_text(
-        encoding="utf-8"
-    )
+    text = config.read_text(encoding="utf-8")
 
     async with _service_context() as service:
         return await service.import_test_yaml(
@@ -556,9 +501,7 @@ def export_yaml(
 ) -> None:
     """Export the current test configuration as YAML."""
     try:
-        text = _run(
-            _export_yaml(test_id)
-        )
+        text = _run(_export_yaml(test_id))
     except KeyError as exc:
         _handle_error("export failed", exc)
 
@@ -570,18 +513,14 @@ def export_yaml(
         text,
         encoding="utf-8",
     )
-    typer.echo(
-        f"Wrote configuration to {output}"
-    )
+    typer.echo(f"Wrote configuration to {output}")
 
 
 async def _export_yaml(
     test_id: str,
 ) -> str:
     async with _service_context() as service:
-        return await service.export_test_yaml(
-            test_id
-        )
+        return await service.export_test_yaml(test_id)
 
 
 # ============================================================================
@@ -598,9 +537,7 @@ def validate_test(
 ) -> None:
     """Validate whether a test is currently runnable."""
     try:
-        result = _run(
-            _validate_test(test_id)
-        )
+        result = _run(_validate_test(test_id))
     except KeyError as exc:
         _handle_error("validation failed", exc)
 
@@ -624,15 +561,7 @@ def validate_test(
             err=True,
         )
 
-    typer.echo(
-        "Resolved metrics: "
-        + (
-            ", ".join(
-                result["resolved_metric_ids"]
-            )
-            or "-"
-        )
-    )
+    typer.echo("Resolved metrics: " + (", ".join(result["resolved_metric_ids"]) or "-"))
 
     if not result["valid"]:
         raise typer.Exit(code=1)
@@ -642,9 +571,7 @@ async def _validate_test(
     test_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.validate_test(
-            test_id
-        )
+        return await service.validate_test(test_id)
 
 
 @app.command("start")
@@ -656,30 +583,20 @@ def start_run(
 ) -> None:
     """Create and queue a run from the current saved test configuration."""
     try:
-        result = _run(
-            _start_run(test_id)
-        )
+        result = _run(_start_run(test_id))
     except (KeyError, ValueError, RuntimeError) as exc:
         _handle_error("start failed", exc)
 
-    typer.echo(
-        f"Run created: {result['run_id']}"
-    )
-    typer.echo(
-        f"Status: {result['status']}"
-    )
-    typer.echo(
-        f"Cases: {result['total_cases']}"
-    )
+    typer.echo(f"Run created: {result['run_id']}")
+    typer.echo(f"Status: {result['status']}")
+    typer.echo(f"Cases: {result['total_cases']}")
 
 
 async def _start_run(
     test_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.start_run(
-            test_id
-        )
+        return await service.start_run(test_id)
 
 
 @app.command("runs")
@@ -691,9 +608,7 @@ def list_test_runs(
 ) -> None:
     """List runs created from a test."""
     try:
-        runs = _run(
-            _list_test_runs(test_id)
-        )
+        runs = _run(_list_test_runs(test_id))
     except KeyError as exc:
         _handle_error("runs lookup failed", exc)
 
@@ -714,9 +629,7 @@ async def _list_test_runs(
     test_id: str,
 ) -> list[dict[str, Any]]:
     async with _service_context() as service:
-        return await service.list_test_runs(
-            test_id
-        )
+        return await service.list_test_runs(test_id)
 
 
 # ============================================================================
@@ -733,9 +646,7 @@ def show_run(
 ) -> None:
     """Show one evaluation run."""
     try:
-        result = _run(
-            _show_run(run_id)
-        )
+        result = _run(_show_run(run_id))
     except KeyError as exc:
         _handle_error("run lookup failed", exc)
 
@@ -749,9 +660,7 @@ async def _show_run(
         result = await service.get_run(run_id)
 
         if result is None:
-            raise KeyError(
-                f"run not found: {run_id}"
-            )
+            raise KeyError(f"run not found: {run_id}")
 
         return result
 
@@ -765,9 +674,7 @@ def run_status(
 ) -> None:
     """Show concise run progress."""
     try:
-        result = _run(
-            _run_status(run_id)
-        )
+        result = _run(_run_status(run_id))
     except KeyError as exc:
         _handle_error("status lookup failed", exc)
 
@@ -775,9 +682,7 @@ def run_status(
     typer.echo(f"Status: {result['status']}")
 
     if result.get("status_reason"):
-        typer.echo(
-            f"Reason: {result['status_reason']}"
-        )
+        typer.echo(f"Reason: {result['status_reason']}")
 
     typer.echo(
         "Progress: "
@@ -786,27 +691,17 @@ def run_status(
         f"({result['progress_percent']:.1f}%)"
     )
 
-    typer.echo(
-        f"  complete: {result['complete_cases']}"
-    )
-    typer.echo(
-        f"  failed:   {result['failed_cases']}"
-    )
-    typer.echo(
-        f"  running:  {result['running_cases']}"
-    )
-    typer.echo(
-        f"  pending:  {result['pending_cases']}"
-    )
+    typer.echo(f"  complete: {result['complete_cases']}")
+    typer.echo(f"  failed:   {result['failed_cases']}")
+    typer.echo(f"  running:  {result['running_cases']}")
+    typer.echo(f"  pending:  {result['pending_cases']}")
 
 
 async def _run_status(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.get_run_status(
-            run_id
-        )
+        return await service.get_run_status(run_id)
 
 
 @app.command("cases")
@@ -818,9 +713,7 @@ def list_run_cases(
 ) -> None:
     """List case executions belonging to a run."""
     try:
-        cases = _run(
-            _list_run_cases(run_id)
-        )
+        cases = _run(_list_run_cases(run_id))
     except KeyError as exc:
         _handle_error("cases lookup failed", exc)
 
@@ -841,9 +734,7 @@ async def _list_run_cases(
     run_id: str,
 ) -> list[dict[str, Any]]:
     async with _service_context() as service:
-        return await service.list_run_cases(
-            run_id
-        )
+        return await service.list_run_cases(run_id)
 
 
 @app.command("attempts")
@@ -881,10 +772,7 @@ def list_case_attempts(
         )
 
         if attempt.get("error_summary"):
-            typer.echo(
-                f"  error: "
-                f"{attempt['error_summary']}"
-            )
+            typer.echo(f"  error: {attempt['error_summary']}")
 
 
 async def _list_case_attempts(
@@ -907,9 +795,7 @@ def list_run_events(
 ) -> None:
     """List append-only lifecycle events for a run."""
     try:
-        events = _run(
-            _list_run_events(run_id)
-        )
+        events = _run(_list_run_events(run_id))
     except KeyError as exc:
         _handle_error("event lookup failed", exc)
 
@@ -918,10 +804,7 @@ def list_run_events(
         return
 
     for event in events:
-        typer.echo(
-            f"{event['created_at']}  "
-            f"{event['event_type']}"
-        )
+        typer.echo(f"{event['created_at']}  {event['event_type']}")
 
         if event["payload"]:
             typer.echo(
@@ -938,9 +821,7 @@ async def _list_run_events(
     run_id: str,
 ) -> list[dict[str, Any]]:
     async with _service_context() as service:
-        return await service.list_run_events(
-            run_id
-        )
+        return await service.list_run_events(run_id)
 
 
 @app.command("results")
@@ -952,9 +833,7 @@ def show_results(
 ) -> None:
     """Show persisted metric results and aggregates."""
     try:
-        result = _run(
-            _show_results(run_id)
-        )
+        result = _run(_show_results(run_id))
     except KeyError as exc:
         _handle_error("results lookup failed", exc)
 
@@ -965,9 +844,7 @@ async def _show_results(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.get_run_results(
-            run_id
-        )
+        return await service.get_run_results(run_id)
 
 
 # ============================================================================
@@ -984,24 +861,18 @@ def pause_run(
 ) -> None:
     """Request a graceful pause."""
     try:
-        result = _run(
-            _pause_run(run_id)
-        )
+        result = _run(_pause_run(run_id))
     except (KeyError, RuntimeError) as exc:
         _handle_error("pause failed", exc)
 
-    typer.echo(
-        f"Run {run_id}: {result['status']}"
-    )
+    typer.echo(f"Run {run_id}: {result['status']}")
 
 
 async def _pause_run(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.pause_run(
-            run_id
-        )
+        return await service.pause_run(run_id)
 
 
 @app.command("resume")
@@ -1013,24 +884,18 @@ def resume_run(
 ) -> None:
     """Resume a deliberately paused run."""
     try:
-        result = _run(
-            _resume_run(run_id)
-        )
+        result = _run(_resume_run(run_id))
     except (KeyError, RuntimeError) as exc:
         _handle_error("resume failed", exc)
 
-    typer.echo(
-        f"Run {run_id}: {result['status']}"
-    )
+    typer.echo(f"Run {run_id}: {result['status']}")
 
 
 async def _resume_run(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.resume_run(
-            run_id
-        )
+        return await service.resume_run(run_id)
 
 
 @app.command("recover")
@@ -1042,24 +907,18 @@ def recover_run(
 ) -> None:
     """Prepare an interrupted run for recovery."""
     try:
-        result = _run(
-            _recover_run(run_id)
-        )
+        result = _run(_recover_run(run_id))
     except (KeyError, RuntimeError) as exc:
         _handle_error("recover failed", exc)
 
-    typer.echo(
-        f"Run {run_id}: {result['status']}"
-    )
+    typer.echo(f"Run {run_id}: {result['status']}")
 
 
 async def _recover_run(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.recover_run(
-            run_id
-        )
+        return await service.recover_run(run_id)
 
 
 @app.command("cancel")
@@ -1077,28 +936,20 @@ def cancel_run(
 ) -> None:
     """Cancel a nonterminal run."""
     if not yes:
-        confirmed = typer.confirm(
-            f"Cancel run {run_id}?"
-        )
+        confirmed = typer.confirm(f"Cancel run {run_id}?")
         if not confirmed:
             raise typer.Abort()
 
     try:
-        result = _run(
-            _cancel_run(run_id)
-        )
+        result = _run(_cancel_run(run_id))
     except (KeyError, RuntimeError) as exc:
         _handle_error("cancel failed", exc)
 
-    typer.echo(
-        f"Run {run_id}: {result['status']}"
-    )
+    typer.echo(f"Run {run_id}: {result['status']}")
 
 
 async def _cancel_run(
     run_id: str,
 ) -> dict[str, Any]:
     async with _service_context() as service:
-        return await service.cancel_run(
-            run_id
-        )
+        return await service.cancel_run(run_id)

@@ -104,18 +104,10 @@ def register_target_adapter(
     normalized_type = adapter_type.strip()
 
     if not normalized_type:
-        raise ValueError(
-            "adapter_type must not be empty."
-        )
+        raise ValueError("adapter_type must not be empty.")
 
-    if (
-        normalized_type in _ADAPTERS
-        and not replace
-    ):
-        raise ValueError(
-            f"Target adapter '{normalized_type}' "
-            "is already registered."
-        )
+    if normalized_type in _ADAPTERS and not replace:
+        raise ValueError(f"Target adapter '{normalized_type}' is already registered.")
 
     _ADAPTERS[normalized_type] = TargetAdapterRegistration(
         adapter_type=normalized_type,
@@ -134,14 +126,10 @@ def get_target_adapter_registration(
 ) -> TargetAdapterRegistration:
     """Return one adapter registration or raise for an unknown type."""
 
-    registration = _ADAPTERS.get(
-        adapter_type
-    )
+    registration = _ADAPTERS.get(adapter_type)
 
     if registration is None:
-        available = ", ".join(
-            sorted(_ADAPTERS)
-        )
+        available = ", ".join(sorted(_ADAPTERS))
 
         raise ValueError(
             f"Unknown target adapter type '{adapter_type}'. "
@@ -154,19 +142,13 @@ def get_target_adapter_registration(
 def registered_target_adapters() -> tuple[str, ...]:
     """Return all registered adapter names deterministically."""
 
-    return tuple(
-        sorted(_ADAPTERS)
-    )
+    return tuple(sorted(_ADAPTERS))
 
 
-def target_adapter_descriptors(
-) -> tuple[TargetAdapterDescriptor, ...]:
+def target_adapter_descriptors() -> tuple[TargetAdapterDescriptor, ...]:
     """Return public descriptors for all registered adapters."""
 
-    return tuple(
-        _ADAPTERS[name].descriptor()
-        for name in sorted(_ADAPTERS)
-    )
+    return tuple(_ADAPTERS[name].descriptor() for name in sorted(_ADAPTERS))
 
 
 # ============================================================================
@@ -180,14 +162,10 @@ def create_target_adapter(
 ) -> TargetAdapter:
     """Construct the selected ordinary target adapter."""
 
-    registration = get_target_adapter_registration(
-        config.adapter_type
-    )
+    registration = get_target_adapter_registration(config.adapter_type)
 
     if registration.validator is not None:
-        registration.validator(
-            config
-        )
+        registration.validator(config)
 
     if registration.factory is None:
         raise ValueError(
@@ -196,9 +174,7 @@ def create_target_adapter(
         )
 
     resolved_credentials = (
-        credentials
-        if credentials is not None
-        else ResolvedTargetCredentials()
+        credentials if credentials is not None else ResolvedTargetCredentials()
     )
 
     _validate_required_credentials(
@@ -226,23 +202,11 @@ def _validate_required_credentials(
     auth = config.auth
 
     if auth is not None:
-        if (
-            auth.bearer_token is not None
-            and credentials.bearer_token is None
-        ):
-            raise ValueError(
-                "Configured bearer_token SecretRef "
-                "was not resolved."
-            )
+        if auth.bearer_token is not None and credentials.bearer_token is None:
+            raise ValueError("Configured bearer_token SecretRef was not resolved.")
 
-        if (
-            auth.api_key is not None
-            and credentials.api_key is None
-        ):
-            raise ValueError(
-                "Configured api_key SecretRef "
-                "was not resolved."
-            )
+        if auth.api_key is not None and credentials.api_key is None:
+            raise ValueError("Configured api_key SecretRef was not resolved.")
 
     connection = config.connection
 
@@ -250,14 +214,8 @@ def _validate_required_credentials(
         return
 
     for name, value in connection.headers.items():
-        if (
-            isinstance(value, SecretRef)
-            and name not in credentials.headers
-        ):
-            raise ValueError(
-                f"Configured secret header '{name}' "
-                "was not resolved."
-            )
+        if isinstance(value, SecretRef) and name not in credentials.headers:
+            raise ValueError(f"Configured secret header '{name}' was not resolved.")
 
 
 # ============================================================================
@@ -273,21 +231,12 @@ def _python_factory(
 
     del credentials
 
-    import_path = config.parameters.get(
-        "python_target"
-    )
+    import_path = config.parameters.get("python_target")
 
     if not isinstance(import_path, str) or not import_path:
-        raise ValueError(
-            "python adapter requires "
-            "parameters.python_target."
-        )
+        raise ValueError("python adapter requires parameters.python_target.")
 
-    return PythonTargetAdapter(
-        load_python_target(
-            import_path
-        )
-    )
+    return PythonTargetAdapter(load_python_target(import_path))
 
 
 def _rag_eval_protocol_factory(
@@ -298,14 +247,8 @@ def _rag_eval_protocol_factory(
 
     connection = config.connection
 
-    if (
-        connection is None
-        or connection.base_url is None
-    ):
-        raise ValueError(
-            "rag_eval_protocol adapter requires "
-            "connection.base_url."
-        )
+    if connection is None or connection.base_url is None:
+        raise ValueError("rag_eval_protocol adapter requires connection.base_url.")
 
     headers: dict[str, str] = {}
 
@@ -314,46 +257,28 @@ def _rag_eval_protocol_factory(
             headers[name] = value
             continue
 
-        resolved = credentials.headers.get(
-            name
-        )
+        resolved = credentials.headers.get(name)
 
         if resolved is None:
-            raise ValueError(
-                f"Secret header '{name}' "
-                "was not resolved."
-            )
+            raise ValueError(f"Secret header '{name}' was not resolved.")
 
         headers[name] = resolved
 
-    headers.update(
-        credentials.headers
-    )
+    headers.update(credentials.headers)
 
-    timeout = (
-        connection.timeout_seconds
-        or 60.0
-    )
+    timeout = connection.timeout_seconds or 60.0
 
-    verify_tls = (
-        True
-        if connection.verify_tls is None
-        else connection.verify_tls
-    )
+    verify_tls = True if connection.verify_tls is None else connection.verify_tls
 
     health_endpoint: str | None = "health"
 
-    health_spec = config.protocol.get(
-        "health"
-    )
+    health_spec = config.protocol.get("health")
 
     if health_spec is None:
         health_endpoint = None
 
     elif isinstance(health_spec, Mapping):
-        configured_endpoint = health_spec.get(
-            "endpoint"
-        )
+        configured_endpoint = health_spec.get("endpoint")
 
         if configured_endpoint is None:
             health_endpoint = None
@@ -362,10 +287,7 @@ def _rag_eval_protocol_factory(
             health_endpoint = configured_endpoint
 
         else:
-            raise ValueError(
-                "protocol.health.endpoint must be "
-                "a string or null."
-            )
+            raise ValueError("protocol.health.endpoint must be a string or null.")
 
     return HttpTargetAdapter(
         str(connection.base_url),
@@ -413,14 +335,8 @@ def _validate_http_connection(
 ) -> None:
     """Require a base URL for network-backed adapters."""
 
-    if (
-        config.connection is None
-        or config.connection.base_url is None
-    ):
-        raise ValueError(
-            f"{config.adapter_type} adapter requires "
-            "connection.base_url."
-        )
+    if config.connection is None or config.connection.base_url is None:
+        raise ValueError(f"{config.adapter_type} adapter requires connection.base_url.")
 
 
 def _validate_openai_compatible(
@@ -428,19 +344,12 @@ def _validate_openai_compatible(
 ) -> None:
     """Validate required OpenAI-compatible settings."""
 
-    _validate_http_connection(
-        config
-    )
+    _validate_http_connection(config)
 
-    model = config.parameters.get(
-        "model"
-    )
+    model = config.parameters.get("model")
 
     if not isinstance(model, str) or not model:
-        raise ValueError(
-            "openai_compatible adapter requires "
-            "parameters.model."
-        )
+        raise ValueError("openai_compatible adapter requires parameters.model.")
 
 
 def _validate_python(
@@ -448,15 +357,10 @@ def _validate_python(
 ) -> None:
     """Validate required local Python adapter settings."""
 
-    import_path = config.parameters.get(
-        "python_target"
-    )
+    import_path = config.parameters.get("python_target")
 
     if not isinstance(import_path, str) or not import_path:
-        raise ValueError(
-            "python adapter requires "
-            "parameters.python_target."
-        )
+        raise ValueError("python adapter requires parameters.python_target.")
 
 
 def _validate_generic_http(
@@ -464,15 +368,10 @@ def _validate_generic_http(
 ) -> None:
     """Validate the minimum generic HTTP configuration."""
 
-    _validate_http_connection(
-        config
-    )
+    _validate_http_connection(config)
 
     if not config.protocol:
-        raise ValueError(
-            "generic_http adapter requires "
-            "a protocol configuration."
-        )
+        raise ValueError("generic_http adapter requires a protocol configuration.")
 
 
 # ============================================================================
@@ -488,10 +387,7 @@ register_target_adapter(
         "parameters": {},
         "metadata": {},
     },
-    description=(
-        "In-process Python implementation of the "
-        "canonical target protocol."
-    ),
+    description=("In-process Python implementation of the canonical target protocol."),
     version="1",
     supports_overrides=False,
     supports_full_protocol=False,
@@ -518,9 +414,7 @@ register_target_adapter(
         "parameters": {},
         "metadata": {},
     },
-    description=(
-        "Native Rag-Eval Target Protocol v1 over HTTP."
-    ),
+    description=("Native Rag-Eval Target Protocol v1 over HTTP."),
     version="1",
     supports_overrides=True,
     supports_full_protocol=False,
@@ -551,9 +445,7 @@ register_target_adapter(
         "parameters": {},
         "metadata": {},
     },
-    description=(
-        "OpenAI-compatible chat-completions HTTP API."
-    ),
+    description=("OpenAI-compatible chat-completions HTTP API."),
     version="1",
     supports_overrides=True,
     supports_full_protocol=False,
@@ -575,9 +467,7 @@ register_target_adapter(
         "parameters": {},
         "metadata": {},
     },
-    description=(
-        "Declaratively configured JSON HTTP target."
-    ),
+    description=("Declaratively configured JSON HTTP target."),
     version="1",
     supports_overrides=True,
     supports_full_protocol=True,
@@ -593,9 +483,7 @@ register_target_adapter(
         "parameters": {},
         "metadata": {},
     },
-    description=(
-        "Trusted user-supplied Python TargetAdapter."
-    ),
+    description=("Trusted user-supplied Python TargetAdapter."),
     version="1",
     supports_overrides=False,
     supports_full_protocol=False,

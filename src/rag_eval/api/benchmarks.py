@@ -72,9 +72,7 @@ async def create_benchmark(
         benchmark = await service.create(
             name=request.name,
             version=request.version,
-            corpus_mode=CorpusMode(
-                request.corpus_mode
-            ),
+            corpus_mode=CorpusMode(request.corpus_mode),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -98,13 +96,9 @@ async def list_benchmarks(
     result: list[BenchmarkInfo] = []
 
     for record in records:
-        benchmark = await service.get(
-            record.benchmark_id
-        )
+        benchmark = await service.get(record.benchmark_id)
 
-        result.append(
-            _benchmark_info(benchmark)
-        )
+        result.append(_benchmark_info(benchmark))
 
     return result
 
@@ -130,9 +124,7 @@ async def create_benchmark_from_files(
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"invalid corpus mode: {corpus_mode}"
-            ),
+            detail=(f"invalid corpus mode: {corpus_mode}"),
         ) from exc
 
     case_files = cases or []
@@ -151,9 +143,7 @@ async def create_benchmark_from_files(
         corpus_mode=mode,
     )
 
-    benchmark_id = (
-        benchmark.manifest.benchmark_id
-    )
+    benchmark_id = benchmark.manifest.benchmark_id
 
     await _add_case_uploads(
         service,
@@ -174,9 +164,7 @@ async def create_benchmark_from_files(
         chunk_files,
     )
 
-    return _benchmark_info(
-        await service.get(benchmark_id)
-    )
+    return _benchmark_info(await service.get(benchmark_id))
 
 
 @router.get(
@@ -206,18 +194,14 @@ async def delete_benchmark(
 ) -> Response:
     """Delete one benchmark."""
     try:
-        await service.delete(
-            benchmark_id
-        )
+        await service.delete(benchmark_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put(
@@ -264,9 +248,7 @@ async def list_benchmark_cases(
 ) -> list[BenchmarkCase]:
     """Return only the cases of a benchmark."""
     try:
-        cases = await service.list_cases(
-            benchmark_id
-        )
+        cases = await service.list_cases(benchmark_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -315,9 +297,7 @@ async def import_benchmark_cases(
 ) -> BenchmarkInfo:
     """Import cases from JSON/JSONL files."""
     try:
-        await service.get_manifest(
-            benchmark_id
-        )
+        await service.get_manifest(benchmark_id)
 
         await _add_case_uploads(
             service,
@@ -335,9 +315,7 @@ async def import_benchmark_cases(
             detail=str(exc),
         ) from exc
 
-    return _benchmark_info(
-        await service.get(benchmark_id)
-    )
+    return _benchmark_info(await service.get(benchmark_id))
 
 
 @router.get(
@@ -383,9 +361,7 @@ async def delete_benchmark_case(
             detail=str(exc),
         ) from exc
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ============================================================================
@@ -403,9 +379,7 @@ async def list_benchmark_documents(
 ) -> list[Document]:
     """Return only benchmark documents."""
     try:
-        documents = await service.list_documents(
-            benchmark_id
-        )
+        documents = await service.list_documents(benchmark_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -445,9 +419,7 @@ async def add_benchmark_documents(
             detail=str(exc),
         ) from exc
 
-    return _benchmark_info(
-        await service.get(benchmark_id)
-    )
+    return _benchmark_info(await service.get(benchmark_id))
 
 
 @router.get(
@@ -493,9 +465,7 @@ async def delete_benchmark_document(
             detail=str(exc),
         ) from exc
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ============================================================================
@@ -513,9 +483,7 @@ async def list_benchmark_chunks(
 ) -> list[Chunk]:
     """Return only benchmark chunks."""
     try:
-        chunks = await service.list_chunks(
-            benchmark_id
-        )
+        chunks = await service.list_chunks(benchmark_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -580,9 +548,7 @@ async def import_benchmark_chunks(
             detail=str(exc),
         ) from exc
 
-    return _benchmark_info(
-        await service.get(benchmark_id)
-    )
+    return _benchmark_info(await service.get(benchmark_id))
 
 
 @router.get(
@@ -628,9 +594,7 @@ async def delete_benchmark_chunk(
             detail=str(exc),
         ) from exc
 
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # ============================================================================
@@ -650,10 +614,7 @@ async def _add_case_uploads(
 
         cases = _parse_uploaded_records(
             data=data,
-            filename=(
-                upload.filename
-                or "cases.json"
-            ),
+            filename=(upload.filename or "cases.json"),
             model_type=BenchmarkCase,
             record_name="case",
         )
@@ -672,22 +633,14 @@ async def _add_document_uploads(
     benchmark_id: str,
     files: list[UploadFile],
 ) -> int:
-    await service.get_manifest(
-        benchmark_id
-    )
+    await service.get_manifest(benchmark_id)
 
     count = 0
 
     for upload in files:
-        filename = (
-            upload.filename
-            or "document"
-        )
+        filename = upload.filename or "document"
 
-        mime_type = (
-            upload.content_type
-            or mimetypes.guess_type(filename)[0]
-        )
+        mime_type = upload.content_type or mimetypes.guess_type(filename)[0]
 
         await upload.seek(0)
 
@@ -732,10 +685,7 @@ async def _add_chunk_uploads(
 
         chunks = _parse_uploaded_records(
             data=data,
-            filename=(
-                upload.filename
-                or "chunks.json"
-            ),
+            filename=(upload.filename or "chunks.json"),
             model_type=Chunk,
             record_name="chunk",
         )
@@ -765,12 +715,8 @@ def _parse_uploaded_records(
         text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                f"{filename} must be UTF-8 encoded"
-            ),
+            status_code=(status.HTTP_422_UNPROCESSABLE_ENTITY),
+            detail=(f"{filename} must be UTF-8 encoded"),
         ) from exc
 
     if Path(filename).suffix.lower() == ".jsonl":
@@ -786,21 +732,15 @@ def _parse_uploaded_records(
             try:
                 raw = json.loads(line)
 
-                records.append(
-                    model_type.model_validate(raw)
-                )
+                records.append(model_type.model_validate(raw))
             except (
                 json.JSONDecodeError,
                 ValidationError,
             ) as exc:
                 raise HTTPException(
-                    status_code=(
-                        status.HTTP_422_UNPROCESSABLE_ENTITY
-                    ),
+                    status_code=(status.HTTP_422_UNPROCESSABLE_ENTITY),
                     detail=(
-                        f"invalid {record_name} at "
-                        f"{filename}:{line_number}: "
-                        f"{exc}"
+                        f"invalid {record_name} at {filename}:{line_number}: {exc}"
                     ),
                 ) from exc
 
@@ -810,39 +750,22 @@ def _parse_uploaded_records(
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
         raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                f"invalid JSON in {filename}: {exc}"
-            ),
+            status_code=(status.HTTP_422_UNPROCESSABLE_ENTITY),
+            detail=(f"invalid JSON in {filename}: {exc}"),
         ) from exc
 
     if not isinstance(payload, list):
         raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                f"{filename} must contain a JSON array "
-                "or use JSONL"
-            ),
+            status_code=(status.HTTP_422_UNPROCESSABLE_ENTITY),
+            detail=(f"{filename} must contain a JSON array or use JSONL"),
         )
 
     try:
-        return [
-            model_type.model_validate(record)
-            for record in payload
-        ]
+        return [model_type.model_validate(record) for record in payload]
     except ValidationError as exc:
         raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                f"invalid {record_name} in "
-                f"{filename}: {exc}"
-            ),
+            status_code=(status.HTTP_422_UNPROCESSABLE_ENTITY),
+            detail=(f"invalid {record_name} in {filename}: {exc}"),
         ) from exc
 
 
@@ -857,43 +780,22 @@ def _validate_uploaded_modes(
     document_files: list[UploadFile],
     chunk_files: list[UploadFile],
 ) -> None:
-    if (
-        mode is CorpusMode.DOCUMENTS
-        and chunk_files
-    ):
+    if mode is CorpusMode.DOCUMENTS and chunk_files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "chunk files cannot be supplied to "
-                "a DOCUMENTS benchmark"
-            ),
+            detail=("chunk files cannot be supplied to a DOCUMENTS benchmark"),
         )
 
-    if (
-        mode is CorpusMode.CHUNKS
-        and document_files
-    ):
+    if mode is CorpusMode.CHUNKS and document_files:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "documents cannot be supplied to "
-                "a CHUNKS benchmark"
-            ),
+            detail=("documents cannot be supplied to a CHUNKS benchmark"),
         )
 
-    if (
-        mode is CorpusMode.EXTERNAL
-        and (
-            document_files
-            or chunk_files
-        )
-    ):
+    if mode is CorpusMode.EXTERNAL and (document_files or chunk_files):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "EXTERNAL benchmarks cannot contain "
-                "documents or chunks"
-            ),
+            detail=("EXTERNAL benchmarks cannot contain documents or chunks"),
         )
 
 
@@ -902,9 +804,7 @@ async def _get_benchmark(
     benchmark_id: str,
 ) -> Benchmark:
     try:
-        return await service.get(
-            benchmark_id
-        )
+        return await service.get(benchmark_id)
     except KeyError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -933,9 +833,7 @@ def _benchmark_info(
         chunk_count=benchmark.chunk_count,
         is_complete=benchmark.is_complete,
         available_corpus_modes=sorted(
-            mode.value
-            for mode
-            in benchmark.available_corpus_modes
+            mode.value for mode in benchmark.available_corpus_modes
         ),
         created_at=manifest.created_at,
     )

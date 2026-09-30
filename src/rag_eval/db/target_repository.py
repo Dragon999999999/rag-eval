@@ -64,9 +64,7 @@ def _payload_hash(payload: Mapping[str, Any]) -> str:
         default=str,
     )
 
-    return hashlib.sha256(
-        encoded.encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _target_config_hash(
@@ -131,17 +129,13 @@ class TargetRepository:
         )
 
         if existing is not None:
-            raise ValueError(
-                f"target already exists: {target_id}"
-            )
+            raise ValueError(f"target already exists: {target_id}")
 
         record = TargetRecord(
             target_id=target_id,
             name=name,
             adapter_type=None,
-            configuration_status=(
-                TargetConfigurationStatus.EMPTY.value
-            ),
+            configuration_status=(TargetConfigurationStatus.EMPTY.value),
             current_config_version=None,
             enabled=True,
             metadata_json=dict(metadata or {}),
@@ -169,9 +163,7 @@ class TargetRepository:
         """Return registered targets in deterministic identity order."""
 
         result = await self._session.scalars(
-            select(TargetRecord).order_by(
-                TargetRecord.target_id
-            )
+            select(TargetRecord).order_by(TargetRecord.target_id)
         )
 
         return list(result.all())
@@ -186,9 +178,7 @@ class TargetRepository:
     ) -> TargetRecord:
         """Update evaluator-owned target identity metadata."""
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
         if name is not None:
             target.name = name
@@ -210,9 +200,7 @@ class TargetRepository:
     ) -> TargetRecord:
         """Enable or disable a registered target."""
 
-        record = await self._require_target(
-            target_id
-        )
+        record = await self._require_target(target_id)
 
         record.enabled = enabled
 
@@ -227,9 +215,7 @@ class TargetRepository:
     ) -> TargetRecord:
         """Update target configuration lifecycle state."""
 
-        record = await self._require_target(
-            target_id
-        )
+        record = await self._require_target(target_id)
 
         record.configuration_status = status.value
 
@@ -237,20 +223,15 @@ class TargetRepository:
 
         return record
 
-
     async def delete_target(
         self,
         target_id: str,
     ) -> None:
         """Delete a target and its target-owned persisted state."""
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
-        await self._session.delete(
-            target
-        )
+        await self._session.delete(target)
 
         await self._session.flush()
 
@@ -283,27 +264,20 @@ class TargetRepository:
         """
 
         if version < 1:
-            raise ValueError(
-                "target configuration version must be >= 1"
-            )
+            raise ValueError("target configuration version must be >= 1")
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
         existing = await self._session.scalar(
             select(TargetConfigVersionRecord).where(
-                TargetConfigVersionRecord.target_id
-                == target_id,
-                TargetConfigVersionRecord.version
-                == version,
+                TargetConfigVersionRecord.target_id == target_id,
+                TargetConfigVersionRecord.version == version,
             )
         )
 
         if existing is not None:
             raise ValueError(
-                f"target configuration version already exists: "
-                f"{target_id} v{version}"
+                f"target configuration version already exists: {target_id} v{version}"
             )
 
         declared_payload = declared.model_dump(
@@ -333,9 +307,7 @@ class TargetRepository:
         self._session.add(record)
 
         target.adapter_type = effective.adapter_type
-        target.configuration_status = (
-            TargetConfigurationStatus.CONFIGURED.value
-        )
+        target.configuration_status = TargetConfigurationStatus.CONFIGURED.value
         target.current_config_version = version
 
         await self._session.flush()
@@ -351,10 +323,8 @@ class TargetRepository:
 
         return await self._session.scalar(
             select(TargetConfigVersionRecord).where(
-                TargetConfigVersionRecord.target_id
-                == target_id,
-                TargetConfigVersionRecord.version
-                == version,
+                TargetConfigVersionRecord.target_id == target_id,
+                TargetConfigVersionRecord.version == version,
             )
         )
 
@@ -369,10 +339,7 @@ class TargetRepository:
             target_id,
         )
 
-        if (
-            target is None
-            or target.current_config_version is None
-        ):
+        if target is None or target.current_config_version is None:
             return None
 
         return await self.get_config_version(
@@ -388,13 +355,8 @@ class TargetRepository:
 
         result = await self._session.scalars(
             select(TargetConfigVersionRecord)
-            .where(
-                TargetConfigVersionRecord.target_id
-                == target_id
-            )
-            .order_by(
-                TargetConfigVersionRecord.version
-            )
+            .where(TargetConfigVersionRecord.target_id == target_id)
+            .order_by(TargetConfigVersionRecord.version)
         )
 
         return list(result.all())
@@ -405,16 +367,12 @@ class TargetRepository:
     ) -> TargetConfig | None:
         """Reload the current declared configuration canonically."""
 
-        record = await self.get_current_config_version(
-            target_id
-        )
+        record = await self.get_current_config_version(target_id)
 
         if record is None:
             return None
 
-        return TargetConfig.model_validate(
-            record.declared_config
-        )
+        return TargetConfig.model_validate(record.declared_config)
 
     async def load_current_effective_config(
         self,
@@ -422,16 +380,12 @@ class TargetRepository:
     ) -> EffectiveTargetConfig | None:
         """Reload the current effective configuration canonically."""
 
-        record = await self.get_current_config_version(
-            target_id
-        )
+        record = await self.get_current_config_version(target_id)
 
         if record is None:
             return None
 
-        return EffectiveTargetConfig.model_validate(
-            record.effective_config
-        )
+        return EffectiveTargetConfig.model_validate(record.effective_config)
 
     # -------------------------------------------------------------------------
     # Secrets
@@ -455,16 +409,12 @@ class TargetRepository:
         target configuration can continue referring to the same SecretRef.
         """
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
         existing = await self._session.scalar(
             select(TargetSecretRecord).where(
-                TargetSecretRecord.target_id
-                == target_id,
-                TargetSecretRecord.name
-                == name,
+                TargetSecretRecord.target_id == target_id,
+                TargetSecretRecord.name == name,
             )
         )
 
@@ -519,10 +469,8 @@ class TargetRepository:
 
         return await self._session.scalar(
             select(TargetSecretRecord).where(
-                TargetSecretRecord.target_id
-                == target_id,
-                TargetSecretRecord.name
-                == name,
+                TargetSecretRecord.target_id == target_id,
+                TargetSecretRecord.name == name,
             )
         )
 
@@ -537,13 +485,8 @@ class TargetRepository:
 
         result = await self._session.scalars(
             select(TargetSecretRecord)
-            .where(
-                TargetSecretRecord.target_id
-                == target_id
-            )
-            .order_by(
-                TargetSecretRecord.name
-            )
+            .where(TargetSecretRecord.target_id == target_id)
+            .order_by(TargetSecretRecord.name)
         )
 
         return result.all()
@@ -582,9 +525,7 @@ class TargetRepository:
     ) -> TargetConnectionRecord:
         """Persist the latest evaluator-observed target connectivity state."""
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
         record = await self._session.get(
             TargetConnectionRecord,
@@ -600,11 +541,7 @@ class TargetRepository:
             else None
         )
 
-        error_payload = (
-            dict(state.error)
-            if state.error is not None
-            else None
-        )
+        error_payload = dict(state.error) if state.error is not None else None
 
         if record is None:
             record = TargetConnectionRecord(
@@ -621,9 +558,7 @@ class TargetRepository:
         else:
             record.status = state.status.value
             record.checked_at = state.checked_at
-            record.last_successful_at = (
-                state.last_successful_at
-            )
+            record.last_successful_at = state.last_successful_at
             record.health_payload = health_payload
             record.error_json = error_payload
 
@@ -649,9 +584,7 @@ class TargetRepository:
             {
                 "status": record.status,
                 "checked_at": record.checked_at,
-                "last_successful_at": (
-                    record.last_successful_at
-                ),
+                "last_successful_at": (record.last_successful_at),
                 "health": record.health_payload,
                 "error": record.error_json,
             }
@@ -668,9 +601,7 @@ class TargetRepository:
     ) -> TargetCapabilityRecord:
         """Persist the latest canonical target capabilities."""
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
         record = await self._session.get(
             TargetCapabilityRecord,
@@ -696,7 +627,7 @@ class TargetRepository:
         else:
             record.payload = payload
             record.checked_at = checked_at
-            
+
         await self._session.flush()
 
         return record
@@ -726,9 +657,7 @@ class TargetRepository:
             target_payload.pop("adapter_type", None)
             payload["target"] = target_payload
 
-        return TargetCapabilities.model_validate(
-            payload
-        )
+        return TargetCapabilities.model_validate(payload)
 
     # -------------------------------------------------------------------------
     # Prepared target corpora
@@ -741,9 +670,7 @@ class TargetRepository:
         """Persist target corpus identity and current preparation state."""
 
         if record.target_id is not None:
-            await self._require_target(
-                record.target_id
-            )
+            await self._require_target(record.target_id)
 
         existing = await self._session.get(
             CorpusRecord,
@@ -758,9 +685,7 @@ class TargetRepository:
             existing.mode = record.mode
             existing.status = record.status
             existing.content_hash = record.content_hash
-            existing.metadata_json = (
-                record.metadata_json
-            )
+            existing.metadata_json = record.metadata_json
 
             record = existing
 
@@ -781,9 +706,7 @@ class TargetRepository:
         )
 
         if corpus is None:
-            raise KeyError(
-                f"target corpus not found: {corpus_id}"
-            )
+            raise KeyError(f"target corpus not found: {corpus_id}")
 
         record = await self._session.get(
             DocumentRecord,
@@ -797,9 +720,7 @@ class TargetRepository:
             "sha256": document.sha256,
             "size_bytes": document.size_bytes,
             "artifact_id": (
-                document.artifact.artifact_id
-                if document.artifact is not None
-                else None
+                document.artifact.artifact_id if document.artifact is not None else None
             ),
             "metadata_json": document.metadata,
         }
@@ -836,20 +757,14 @@ class TargetRepository:
     ) -> TargetObservationRecord:
         """Persist one immutable normalized target observation."""
 
-        payload = observation.model_dump(
-            mode="json"
-        )
+        payload = observation.model_dump(mode="json")
 
         record = TargetObservationRecord(
-            observation_id=(
-                observation.observation_id
-            ),
+            observation_id=(observation.observation_id),
             request_id=observation.request_id,
             case_execution_id=case_execution_id,
             attempt_id=attempt_id,
-            normalization_version=(
-                observation.normalization_version
-            ),
+            normalization_version=(observation.normalization_version),
             payload=payload,
             payload_hash=_payload_hash(payload),
         )
@@ -873,9 +788,7 @@ class TargetRepository:
         if record is None:
             return None
 
-        return TargetObservation.model_validate(
-            record.payload
-        )
+        return TargetObservation.model_validate(record.payload)
 
     # -------------------------------------------------------------------------
     # Internal helpers
@@ -893,8 +806,6 @@ class TargetRepository:
         )
 
         if record is None:
-            raise KeyError(
-                f"target not found: {target_id}"
-            )
+            raise KeyError(f"target not found: {target_id}")
 
         return record

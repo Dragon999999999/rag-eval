@@ -51,13 +51,9 @@ class TargetConfigResolver:
     ) -> EffectiveTargetConfig:
         """Return the complete effective configuration for one target."""
 
-        registration = get_target_adapter_registration(
-            config.adapter.type
-        )
+        registration = get_target_adapter_registration(config.adapter.type)
 
-        defaults = deepcopy(
-            dict(registration.defaults)
-        )
+        defaults = deepcopy(dict(registration.defaults))
 
         connection = self._resolve_optional_model_section(
             defaults.get("connection"),
@@ -128,9 +124,7 @@ class TargetConfigResolver:
             payload["auth"] = auth
 
         try:
-            effective = EffectiveTargetConfig.model_validate(
-                payload
-            )
+            effective = EffectiveTargetConfig.model_validate(payload)
         except ValidationError as exc:
             raise ValueError(
                 f"Unable to resolve target configuration "
@@ -140,9 +134,7 @@ class TargetConfigResolver:
         # Run adapter-specific semantic validation after canonical Pydantic
         # validation.
         if registration.validator is not None:
-            registration.validator(
-                effective
-            )
+            registration.validator(effective)
 
         return effective
 
@@ -157,17 +149,9 @@ class TargetConfigResolver:
         if defaults is None and declared is None:
             return None
 
-        default_mapping = (
-            dict(defaults)
-            if isinstance(defaults, Mapping)
-            else {}
-        )
+        default_mapping = dict(defaults) if isinstance(defaults, Mapping) else {}
 
-        declared_mapping = (
-            dict(declared)
-            if declared is not None
-            else {}
-        )
+        declared_mapping = dict(declared) if declared is not None else {}
 
         return cls._deep_merge(
             default_mapping,
@@ -182,11 +166,7 @@ class TargetConfigResolver:
     ) -> dict[str, Any]:
         """Merge two mapping-valued configuration sections."""
 
-        default_mapping = (
-            dict(defaults)
-            if isinstance(defaults, Mapping)
-            else {}
-        )
+        default_mapping = dict(defaults) if isinstance(defaults, Mapping) else {}
 
         return cls._deep_merge(
             default_mapping,
@@ -201,19 +181,12 @@ class TargetConfigResolver:
     ) -> dict[str, Any]:
         """Recursively merge mappings using deterministic override semantics."""
 
-        result: dict[str, Any] = deepcopy(
-            dict(base)
-        )
+        result: dict[str, Any] = deepcopy(dict(base))
 
         for key, override_value in override.items():
-            existing = result.get(
-                key
-            )
+            existing = result.get(key)
 
-            if (
-                isinstance(existing, Mapping)
-                and isinstance(override_value, Mapping)
-            ):
+            if isinstance(existing, Mapping) and isinstance(override_value, Mapping):
                 result[key] = cls._deep_merge(
                     existing,
                     override_value,
@@ -221,8 +194,6 @@ class TargetConfigResolver:
                 continue
 
             # Scalars, lists, and explicit None replace the existing value.
-            result[key] = deepcopy(
-                override_value
-            )
+            result[key] = deepcopy(override_value)
 
         return result

@@ -13,7 +13,6 @@ class PersistenceRepository:
         """Bind this repository to one caller-managed async session."""
         self._session = session
 
-
     # -------------------------------------------------------------------------
     # Artifacts
     # -------------------------------------------------------------------------

@@ -98,38 +98,22 @@ class ExecutionConfig:
         config: Mapping[str, Any],
     ) -> ExecutionConfig:
         """Build validated execution settings from a run snapshot."""
-        concurrency = int(
-            config.get("concurrency", 1)
-        )
-        connect_timeout = float(
-            config.get("connect_timeout", 10.0)
-        )
-        request_timeout = float(
-            config.get("request_timeout", 60.0)
-        )
-        total_timeout = float(
-            config.get("total_timeout", 120.0)
-        )
+        concurrency = int(config.get("concurrency", 1))
+        connect_timeout = float(config.get("connect_timeout", 10.0))
+        request_timeout = float(config.get("request_timeout", 60.0))
+        total_timeout = float(config.get("total_timeout", 120.0))
 
         if concurrency < 1:
-            raise ValueError(
-                "execution concurrency must be >= 1"
-            )
+            raise ValueError("execution concurrency must be >= 1")
 
         if connect_timeout <= 0:
-            raise ValueError(
-                "connect_timeout must be > 0"
-            )
+            raise ValueError("connect_timeout must be > 0")
 
         if request_timeout <= 0:
-            raise ValueError(
-                "request_timeout must be > 0"
-            )
+            raise ValueError("request_timeout must be > 0")
 
         if total_timeout <= 0:
-            raise ValueError(
-                "total_timeout must be > 0"
-            )
+            raise ValueError("total_timeout must be > 0")
 
         raw_mode = config.get(
             "execution_mode",
@@ -145,21 +129,12 @@ class ExecutionConfig:
             value = str(raw_mode)
 
             try:
-                execution_mode = QueryExecutionMode(
-                    value
-                )
+                execution_mode = QueryExecutionMode(value)
             except ValueError:
                 try:
-                    execution_mode = (
-                        QueryExecutionMode[
-                            value.upper()
-                        ]
-                    )
+                    execution_mode = QueryExecutionMode[value.upper()]
                 except KeyError as exc:
-                    raise ValueError(
-                        "invalid execution_mode: "
-                        f"{raw_mode}"
-                    ) from exc
+                    raise ValueError(f"invalid execution_mode: {raw_mode}") from exc
 
         return cls(
             concurrency=concurrency,
@@ -198,20 +173,12 @@ class BenchmarkExecutor:
         self._session_factory = session_factory
 
         self._corpus_id = corpus_id
-        self._target_parameters = dict(
-            target_parameters or {}
-        )
+        self._target_parameters = dict(target_parameters or {})
 
-        self._request_identity = (
-            RequestIdentityGenerator()
-        )
-        self._normalizer = (
-            ObservationNormalizer()
-        )
+        self._request_identity = RequestIdentityGenerator()
+        self._normalizer = ObservationNormalizer()
 
-        self._capabilities: (
-            TargetCapabilities | None
-        ) = None
+        self._capabilities: TargetCapabilities | None = None
 
     async def execute(
         self,
@@ -221,9 +188,7 @@ class BenchmarkExecutor:
         """Execute all persisted case executions for one run."""
         if not benchmark.is_complete:
             raise ValueError(
-                "benchmark "
-                f"{benchmark.manifest.benchmark_id} "
-                "has no cases"
+                f"benchmark {benchmark.manifest.benchmark_id} has no cases"
             )
 
         logger.info(
@@ -232,9 +197,7 @@ class BenchmarkExecutor:
             run_id,
         )
 
-        self._capabilities = (
-            await self._adapter.capabilities()
-        )
+        self._capabilities = await self._adapter.capabilities()
 
         logger.info(
             "Target capabilities: query=%s retrieval=%s",
@@ -242,11 +205,9 @@ class BenchmarkExecutor:
             self._capabilities.retrieval,
         )
 
-        case_execution_ids = (
-            await self._load_case_execution_ids(
-                run_id,
-                benchmark,
-            )
+        case_execution_ids = await self._load_case_execution_ids(
+            run_id,
+            benchmark,
         )
 
         await self._set_run_running(run_id)
@@ -262,9 +223,7 @@ class BenchmarkExecutor:
             failed=failed,
         )
 
-        return await self._summarize_execution(
-            run_id
-        )
+        return await self._summarize_execution(run_id)
 
     async def _load_case_execution_ids(
         self,
@@ -275,11 +234,7 @@ class BenchmarkExecutor:
         async with self._session_factory() as session:
             repository = TestRepository(session)
 
-            records = (
-                await repository.list_case_executions(
-                    run_id
-                )
-            )
+            records = await repository.list_case_executions(run_id)
 
         by_case: dict[str, str] = {}
 
@@ -291,38 +246,25 @@ class BenchmarkExecutor:
                     f"case {record.case_id}"
                 )
 
-            by_case[record.case_id] = (
-                record.case_execution_id
-            )
+            by_case[record.case_id] = record.case_execution_id
 
-        expected_case_ids = {
-            case.case_id
-            for case in benchmark.cases
-        }
+        expected_case_ids = {case.case_id for case in benchmark.cases}
 
         persisted_case_ids = set(by_case)
 
-        missing = (
-            expected_case_ids
-            - persisted_case_ids
-        )
+        missing = expected_case_ids - persisted_case_ids
 
-        unexpected = (
-            persisted_case_ids
-            - expected_case_ids
-        )
+        unexpected = persisted_case_ids - expected_case_ids
 
         if missing:
             raise ValueError(
-                "run is missing case executions for: "
-                + ", ".join(sorted(missing))
+                "run is missing case executions for: " + ", ".join(sorted(missing))
             )
 
         if unexpected:
             raise ValueError(
                 "run contains case executions not "
-                "present in the benchmark: "
-                + ", ".join(sorted(unexpected))
+                "present in the benchmark: " + ", ".join(sorted(unexpected))
             )
 
         return by_case
@@ -334,17 +276,13 @@ class BenchmarkExecutor:
         case_execution_ids: Mapping[str, str],
     ) -> bool:
         """Execute cases using a bounded worker pool."""
-        queue: asyncio.Queue[
-            tuple[BenchmarkCase, str] | None
-        ] = asyncio.Queue()
+        queue: asyncio.Queue[tuple[BenchmarkCase, str] | None] = asyncio.Queue()
 
         for case in benchmark.cases:
             await queue.put(
                 (
                     case,
-                    case_execution_ids[
-                        case.case_id
-                    ],
+                    case_execution_ids[case.case_id],
                 )
             )
 
@@ -366,18 +304,14 @@ class BenchmarkExecutor:
             for _ in range(worker_count)
         ]
 
-        failure_counts = await asyncio.gather(
-            *workers
-        )
+        failure_counts = await asyncio.gather(*workers)
 
         return sum(failure_counts) > 0
 
     async def _worker(
         self,
         run_id: str,
-        queue: asyncio.Queue[
-            tuple[BenchmarkCase, str] | None
-        ],
+        queue: asyncio.Queue[tuple[BenchmarkCase, str] | None],
     ) -> int:
         """Consume case executions until the worker sentinel."""
         failures = 0
@@ -410,23 +344,16 @@ class BenchmarkExecutor:
         """Mark the persisted run as active."""
         async with self._session_factory() as session:
             async with session.begin():
-                repository = TestRepository(
-                    session
-                )
+                repository = TestRepository(session)
 
-                run = await repository.get_run(
-                    run_id
-                )
+                run = await repository.get_run(run_id)
 
                 if run is None:
-                    raise KeyError(
-                        f"run not found: {run_id}"
-                    )
+                    raise KeyError(f"run not found: {run_id}")
 
                 if run.status != RUN_PENDING:
                     raise RuntimeError(
-                        f"run {run_id} cannot start "
-                        f"from state {run.status}"
+                        f"run {run_id} cannot start from state {run.status}"
                     )
 
                 now = datetime.now(UTC)
@@ -434,9 +361,7 @@ class BenchmarkExecutor:
                 await repository.update_run_lifecycle(
                     run_id,
                     status=RUN_RUNNING,
-                    started_at=(
-                        run.started_at or now
-                    ),
+                    started_at=(run.started_at or now),
                     clear_finished_at=True,
                     clear_status_reason=True,
                 )
@@ -448,26 +373,20 @@ class BenchmarkExecutor:
         case_execution_id: str,
     ) -> None:
         """Execute one existing logical case execution."""
-        attempt_id = (
-            f"attempt-{case_execution_id}-1"
-        )
+        attempt_id = f"attempt-{case_execution_id}-1"
 
         try:
-            request = (
-                await self._register_attempt(
-                    run_id,
-                    case,
-                    case_execution_id,
-                    attempt_id,
-                )
+            request = await self._register_attempt(
+                run_id,
+                case,
+                case_execution_id,
+                attempt_id,
             )
 
-            observation = (
-                await self._execute_target_call(
-                    case,
-                    request,
-                    attempt_id,
-                )
+            observation = await self._execute_target_call(
+                case,
+                request,
+                attempt_id,
             )
 
             await self._complete_case_execution(
@@ -500,15 +419,11 @@ class BenchmarkExecutor:
         attempt_id: str,
     ) -> QueryRequest | RetrieveRequest:
         """Persist RUNNING case/attempt state before target I/O."""
-        base_request = self._build_request(
-            case
-        )
+        base_request = self._build_request(case)
 
-        identity = (
-            self._request_identity.generate(
-                base_request,
-                attempt_id,
-            )
+        identity = self._request_identity.generate(
+            base_request,
+            attempt_id,
         )
 
         request = base_request.model_copy(
@@ -519,51 +434,30 @@ class BenchmarkExecutor:
 
         async with self._session_factory() as session:
             async with session.begin():
-                test_repository = TestRepository(
-                    session
-                )
+                test_repository = TestRepository(session)
 
-                persistence_repository = (
-                    PersistenceRepository(
-                        session
-                    )
-                )
+                persistence_repository = PersistenceRepository(session)
 
-                case_execution = (
-                    await test_repository.get_case_execution(
-                        case_execution_id
-                    )
+                case_execution = await test_repository.get_case_execution(
+                    case_execution_id
                 )
 
                 if case_execution is None:
-                    raise KeyError(
-                        "case execution not found: "
-                        f"{case_execution_id}"
-                    )
+                    raise KeyError(f"case execution not found: {case_execution_id}")
 
-                if (
-                    case_execution.run_id
-                    != run_id
-                ):
+                if case_execution.run_id != run_id:
                     raise ValueError(
                         "case execution does not "
                         f"belong to run {run_id}: "
                         f"{case_execution_id}"
                     )
 
-                if (
-                    case_execution.case_id
-                    != case.case_id
-                ):
+                if case_execution.case_id != case.case_id:
                     raise ValueError(
-                        "case execution case_id "
-                        "does not match benchmark case"
+                        "case execution case_id does not match benchmark case"
                     )
 
-                if (
-                    case_execution.status
-                    != CaseExecutionStatus.PENDING.value
-                ):
+                if case_execution.status != CaseExecutionStatus.PENDING.value:
                     raise RuntimeError(
                         f"case execution "
                         f"{case_execution_id} "
@@ -580,59 +474,36 @@ class BenchmarkExecutor:
                     clear_finished_at=True,
                 )
 
-                existing_attempt = (
-                    await test_repository.get_attempt(
-                        attempt_id
-                    )
-                )
+                existing_attempt = await test_repository.get_attempt(attempt_id)
 
                 if existing_attempt is not None:
-                    raise RuntimeError(
-                        f"attempt already exists: "
-                        f"{attempt_id}"
-                    )
+                    raise RuntimeError(f"attempt already exists: {attempt_id}")
 
                 attempt = AttemptRecord(
                     attempt_id=attempt_id,
-                    case_execution_id=(
-                        case_execution_id
-                    ),
+                    case_execution_id=(case_execution_id),
                     attempt_number=1,
-                    request_id=(
-                        identity.request_id
-                    ),
-                    idempotency_key=(
-                        identity.idempotency_key
-                    ),
-                    canonical_request_hash=(
-                        identity.canonical_request_hash
-                    ),
-                    status=(
-                        AttemptStatus.RUNNING.value
-                    ),
+                    request_id=(identity.request_id),
+                    idempotency_key=(identity.idempotency_key),
+                    canonical_request_hash=(identity.canonical_request_hash),
+                    status=(AttemptStatus.RUNNING.value),
                     started_at=now,
                 )
 
-                await test_repository.create_attempt(
-                    attempt
-                )
+                await test_repository.create_attempt(attempt)
 
                 artifact_service = ArtifactService(
                     self._artifact_store,
                     persistence_repository,
                 )
 
-                raw_request_artifact = (
-                    await self._persist_raw_request(
-                        artifact_service,
-                        request,
-                        identity.request_id,
-                    )
+                raw_request_artifact = await self._persist_raw_request(
+                    artifact_service,
+                    request,
+                    identity.request_id,
                 )
 
-                attempt.raw_request_artifact_id = (
-                    raw_request_artifact.artifact_id
-                )
+                attempt.raw_request_artifact_id = raw_request_artifact.artifact_id
 
                 await session.flush()
 
@@ -643,22 +514,15 @@ class BenchmarkExecutor:
         case: BenchmarkCase,
     ) -> QueryRequest | RetrieveRequest:
         """Construct request without benchmark gold truth."""
-        history: list[Message] = list(
-            case.history
-        )
+        history: list[Message] = list(case.history)
 
-        if (
-            self._exec_config.execution_mode
-            is QueryExecutionMode.RETRIEVAL
-        ):
+        if self._exec_config.execution_mode is QueryExecutionMode.RETRIEVAL:
             return RetrieveRequest(
                 request_id="",
                 corpus_id=self._corpus_id,
                 query=case.query,
                 history=history,
-                parameters=dict(
-                    self._target_parameters
-                ),
+                parameters=dict(self._target_parameters),
             )
 
         return QueryRequest(
@@ -666,12 +530,8 @@ class BenchmarkExecutor:
             corpus_id=self._corpus_id,
             query=case.query,
             history=history,
-            context_policy=(
-                ContextPolicy.TARGET_RETRIEVAL
-            ),
-            parameters=dict(
-                self._target_parameters
-            ),
+            context_policy=(ContextPolicy.TARGET_RETRIEVAL),
+            parameters=dict(self._target_parameters),
         )
 
     async def _persist_raw_request(
@@ -682,9 +542,7 @@ class BenchmarkExecutor:
     ) -> ArtifactRef:
         """Persist the canonical request."""
         return await artifact_service.put_json(
-            request.model_dump(
-                mode="json"
-            ),
+            request.model_dump(mode="json"),
             ArtifactType.RAW_TARGET_REQUEST,
             metadata={
                 "request_id": request_id,
@@ -702,24 +560,14 @@ class BenchmarkExecutor:
         timing.start()
 
         try:
-            async with asyncio.timeout(
-                self._exec_config.total_timeout
-            ):
+            async with asyncio.timeout(self._exec_config.total_timeout):
                 if isinstance(
                     request,
                     RetrieveRequest,
                 ):
-                    response = (
-                        await self._adapter.retrieve(
-                            request
-                        )
-                    )
+                    response = await self._adapter.retrieve(request)
                 else:
-                    response = (
-                        await self._adapter.query(
-                            request
-                        )
-                    )
+                    response = await self._adapter.query(request)
 
             timing.end()
 
@@ -727,12 +575,10 @@ class BenchmarkExecutor:
             timing.end()
             raise
 
-        raw_response_artifact = (
-            await self._persist_raw_response(
-                response,
-                request.request_id,
-                attempt_id,
-            )
+        raw_response_artifact = await self._persist_raw_response(
+            response,
+            request.request_id,
+            attempt_id,
         )
 
         return self._normalizer.normalize(
@@ -752,48 +598,29 @@ class BenchmarkExecutor:
         """Persist raw response before observation normalization."""
         async with self._session_factory() as session:
             async with session.begin():
-                test_repository = TestRepository(
-                    session
-                )
+                test_repository = TestRepository(session)
 
-                persistence_repository = (
-                    PersistenceRepository(
-                        session
-                    )
-                )
+                persistence_repository = PersistenceRepository(session)
 
                 artifact_service = ArtifactService(
                     self._artifact_store,
                     persistence_repository,
                 )
 
-                attempt = (
-                    await test_repository.get_attempt(
-                        attempt_id
-                    )
-                )
+                attempt = await test_repository.get_attempt(attempt_id)
 
                 if attempt is None:
-                    raise KeyError(
-                        f"attempt not found: "
-                        f"{attempt_id}"
-                    )
+                    raise KeyError(f"attempt not found: {attempt_id}")
 
-                artifact = (
-                    await artifact_service.put_json(
-                        response.model_dump(
-                            mode="json"
-                        ),
-                        ArtifactType.RAW_TARGET_RESPONSE,
-                        metadata={
-                            "request_id": request_id,
-                        },
-                    )
+                artifact = await artifact_service.put_json(
+                    response.model_dump(mode="json"),
+                    ArtifactType.RAW_TARGET_RESPONSE,
+                    metadata={
+                        "request_id": request_id,
+                    },
                 )
 
-                attempt.raw_response_artifact_id = (
-                    artifact.artifact_id
-                )
+                attempt.raw_response_artifact_id = artifact.artifact_id
 
                 await session.flush()
 
@@ -808,15 +635,9 @@ class BenchmarkExecutor:
         """Persist observation and mark target execution complete."""
         async with self._session_factory() as session:
             async with session.begin():
-                test_repository = TestRepository(
-                    session
-                )
+                test_repository = TestRepository(session)
 
-                target_repository = (
-                    TargetRepository(
-                        session
-                    )
-                )
+                target_repository = TargetRepository(session)
 
                 await target_repository.persist_observation(
                     observation,
@@ -848,29 +669,15 @@ class BenchmarkExecutor:
         """Persist execution failure without destroying prior progress."""
         async with self._session_factory() as session:
             async with session.begin():
-                repository = TestRepository(
-                    session
-                )
+                repository = TestRepository(session)
 
-                case_execution = (
-                    await repository.get_case_execution(
-                        case_execution_id
-                    )
-                )
+                case_execution = await repository.get_case_execution(case_execution_id)
 
-                attempt = (
-                    await repository.get_attempt(
-                        attempt_id
-                    )
-                )
+                attempt = await repository.get_attempt(attempt_id)
 
                 error = ErrorRecord(
-                    error_id=(
-                        f"error-{case_execution_id}"
-                    ),
-                    category=(
-                        ErrorCategory.INTERNAL
-                    ),
+                    error_id=(f"error-{case_execution_id}"),
+                    category=(ErrorCategory.INTERNAL),
                     code="EXECUTION_ERROR",
                     message=str(exc),
                     stage="target_execution",
@@ -882,15 +689,9 @@ class BenchmarkExecutor:
                     error,
                     run_id=run_id,
                     case_execution_id=(
-                        case_execution_id
-                        if case_execution is not None
-                        else None
+                        case_execution_id if case_execution is not None else None
                     ),
-                    attempt_id=(
-                        attempt_id
-                        if attempt is not None
-                        else None
-                    ),
+                    attempt_id=(attempt_id if attempt is not None else None),
                 )
 
                 now = datetime.now(UTC)
@@ -920,21 +721,13 @@ class BenchmarkExecutor:
         """Mark the run COMPLETE or FAILED."""
         async with self._session_factory() as session:
             async with session.begin():
-                repository = TestRepository(
-                    session
-                )
+                repository = TestRepository(session)
 
                 await repository.update_run_lifecycle(
                     run_id,
-                    status=(
-                        RUN_FAILED
-                        if failed
-                        else RUN_COMPLETE
-                    ),
+                    status=(RUN_FAILED if failed else RUN_COMPLETE),
                     status_reason=(
-                        "one or more case executions failed"
-                        if failed
-                        else None
+                        "one or more case executions failed" if failed else None
                     ),
                     finished_at=datetime.now(UTC),
                     clear_status_reason=not failed,
@@ -946,15 +739,9 @@ class BenchmarkExecutor:
     ) -> ExecutionResult:
         """Summarize persisted case-execution states."""
         async with self._session_factory() as session:
-            repository = TestRepository(
-                session
-            )
+            repository = TestRepository(session)
 
-            case_executions = (
-                await repository.list_case_executions(
-                    run_id
-                )
-            )
+            case_executions = await repository.list_case_executions(run_id)
 
         completed = 0
         failed = 0
@@ -964,35 +751,21 @@ class BenchmarkExecutor:
         for case_execution in case_executions:
             status = case_execution.status
 
-            if (
-                status
-                == CaseExecutionStatus.COMPLETE.value
-            ):
+            if status == CaseExecutionStatus.COMPLETE.value:
                 completed += 1
 
-            elif (
-                status
-                == CaseExecutionStatus.FAILED.value
-            ):
+            elif status == CaseExecutionStatus.FAILED.value:
                 failed += 1
 
-            elif (
-                status
-                == CaseExecutionStatus.TARGET_COMPLETE.value
-            ):
+            elif status == CaseExecutionStatus.TARGET_COMPLETE.value:
                 target_complete += 1
 
-            elif (
-                status
-                == CaseExecutionStatus.PENDING.value
-            ):
+            elif status == CaseExecutionStatus.PENDING.value:
                 pending += 1
 
         return ExecutionResult(
             run_id=run_id,
-            total_cases=len(
-                case_executions
-            ),
+            total_cases=len(case_executions),
             completed=completed,
             failed=failed,
             target_complete=target_complete,

@@ -22,6 +22,7 @@ from rag_eval.models import (
 
 RecordT = TypeVar("RecordT", BenchmarkCase, Document, Chunk)
 
+
 def load_benchmark_file(path: Path) -> Benchmark:
     """Load a portable JSON/YAML benchmark definition into a Benchmark.
 
@@ -39,9 +40,7 @@ def load_benchmark_file(path: Path) -> Benchmark:
     try:
         manifest = BenchmarkManifest.model_validate(manifest_payload)
     except ValidationError as exc:
-        raise DatasetValidationError(
-            f"invalid benchmark manifest: {exc}"
-        ) from exc
+        raise DatasetValidationError(f"invalid benchmark manifest: {exc}") from exc
 
     cases = _load_component(
         payload.get("cases"),
@@ -89,9 +88,7 @@ def validate_benchmark(benchmark: Benchmark) -> None:
 
     for chunk in benchmark.chunks:
         if chunk.chunk_id in chunk_ids:
-            raise DatasetValidationError(
-                f"duplicate chunk_id: {chunk.chunk_id}"
-            )
+            raise DatasetValidationError(f"duplicate chunk_id: {chunk.chunk_id}")
 
         chunk_ids.add(chunk.chunk_id)
 
@@ -105,9 +102,7 @@ def validate_benchmark(benchmark: Benchmark) -> None:
 
     for case in benchmark.cases:
         if case.case_id in case_ids:
-            raise DatasetValidationError(
-                f"duplicate case_id: {case.case_id}"
-            )
+            raise DatasetValidationError(f"duplicate case_id: {case.case_id}")
 
         case_ids.add(case.case_id)
 
@@ -125,9 +120,7 @@ def benchmark_file_sha256(path: Path) -> str:
     try:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except FileNotFoundError as exc:
-        raise DatasetValidationError(
-            f"benchmark file not found: {path}"
-        ) from exc
+        raise DatasetValidationError(f"benchmark file not found: {path}") from exc
 
 
 def _load_payload(path: Path) -> tuple[dict[str, Any], bytes]:
@@ -135,9 +128,7 @@ def _load_payload(path: Path) -> tuple[dict[str, Any], bytes]:
     try:
         raw = path.read_bytes()
     except FileNotFoundError as exc:
-        raise DatasetValidationError(
-            f"benchmark file not found: {path}"
-        ) from exc
+        raise DatasetValidationError(f"benchmark file not found: {path}") from exc
 
     try:
         if path.suffix.lower() == ".json":
@@ -145,14 +136,10 @@ def _load_payload(path: Path) -> tuple[dict[str, Any], bytes]:
         else:
             payload = yaml.safe_load(raw)
     except (json.JSONDecodeError, yaml.YAMLError) as exc:
-        raise DatasetValidationError(
-            f"invalid benchmark syntax: {path}"
-        ) from exc
+        raise DatasetValidationError(f"invalid benchmark syntax: {path}") from exc
 
     if not isinstance(payload, dict):
-        raise DatasetValidationError(
-            "benchmark root must be a mapping"
-        )
+        raise DatasetValidationError("benchmark root must be a mapping")
 
     return payload, raw
 
@@ -168,10 +155,7 @@ def _load_component(
 
     if isinstance(source, list):
         try:
-            return [
-                model_type.model_validate(record)
-                for record in source
-            ]
+            return [model_type.model_validate(record) for record in source]
         except ValidationError as exc:
             raise DatasetValidationError(
                 f"invalid {model_type.__name__} record: {exc}"
@@ -186,6 +170,5 @@ def _load_component(
         )
 
     raise DatasetValidationError(
-        f"{model_type.__name__} source must be "
-        "an inline list or JSON/JSONL path"
+        f"{model_type.__name__} source must be an inline list or JSON/JSONL path"
     )

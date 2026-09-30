@@ -155,9 +155,7 @@ class SecretService:
         )
 
         if not isinstance(result, dict):
-            raise TypeError(
-                "Sanitized target configuration must remain a mapping."
-            )
+            raise TypeError("Sanitized target configuration must remain a mapping.")
 
         return result
 
@@ -271,14 +269,12 @@ class SecretService:
 
         if not isinstance(plaintext, str):
             raise ValueError(
-                f"Secret value at '{self._format_path(path)}' "
-                "must be a string."
+                f"Secret value at '{self._format_path(path)}' must be a string."
             )
 
         if not plaintext:
             raise ValueError(
-                f"Secret value at '{self._format_path(path)}' "
-                "must not be empty."
+                f"Secret value at '{self._format_path(path)}' must not be empty."
             )
 
         name = self._format_path(path)
@@ -288,15 +284,9 @@ class SecretService:
             name,
         )
 
-        secret_id = (
-            existing.secret_id
-            if existing is not None
-            else f"sec-{uuid4()}"
-        )
+        secret_id = existing.secret_id if existing is not None else f"sec-{uuid4()}"
 
-        encrypted_value = self._cipher.encrypt(
-            plaintext.encode("utf-8")
-        )
+        encrypted_value = self._cipher.encrypt(plaintext.encode("utf-8"))
 
         await self._repository.persist_secret(
             secret_id=secret_id,
@@ -363,9 +353,7 @@ class SecretService:
                     auth.api_key,
                 )
 
-            configured_header = auth.parameters.get(
-                "api_key_header"
-            )
+            configured_header = auth.parameters.get("api_key_header")
 
             if isinstance(configured_header, str):
                 api_key_header = configured_header
@@ -396,14 +384,10 @@ class SecretService:
     ) -> str:
         """Resolve one SecretRef to plaintext after checking target ownership."""
 
-        record = await self._repository.get_secret(
-            reference.secret_id
-        )
+        record = await self._repository.get_secret(reference.secret_id)
 
         if record is None:
-            raise KeyError(
-                f"target secret not found: {reference.secret_id}"
-            )
+            raise KeyError(f"target secret not found: {reference.secret_id}")
 
         if record.target_id != target_id:
             raise ValueError(
@@ -412,13 +396,10 @@ class SecretService:
             )
 
         try:
-            plaintext = self._cipher.decrypt(
-                record.encrypted_value
-            )
+            plaintext = self._cipher.decrypt(record.encrypted_value)
         except InvalidToken as exc:
             raise RuntimeError(
-                f"unable to decrypt target secret: "
-                f"{reference.secret_id}"
+                f"unable to decrypt target secret: {reference.secret_id}"
             ) from exc
 
         try:
@@ -445,14 +426,10 @@ class SecretService:
         does not need to be rewritten merely because a token was rotated.
         """
 
-        record = await self._repository.get_secret(
-            reference.secret_id
-        )
+        record = await self._repository.get_secret(reference.secret_id)
 
         if record is None:
-            raise KeyError(
-                f"target secret not found: {reference.secret_id}"
-            )
+            raise KeyError(f"target secret not found: {reference.secret_id}")
 
         if record.target_id != target_id:
             raise ValueError(
@@ -461,13 +438,9 @@ class SecretService:
             )
 
         if not plaintext:
-            raise ValueError(
-                "replacement secret must not be empty"
-            )
+            raise ValueError("replacement secret must not be empty")
 
-        encrypted_value = self._cipher.encrypt(
-            plaintext.encode("utf-8")
-        )
+        encrypted_value = self._cipher.encrypt(plaintext.encode("utf-8"))
 
         await self._repository.persist_secret(
             secret_id=record.secret_id,
@@ -498,10 +471,7 @@ class SecretService:
 
         secret_id = value.get("secret_id")
 
-        return (
-            isinstance(secret_id, str)
-            and bool(secret_id)
-        )
+        return isinstance(secret_id, str) and bool(secret_id)
 
     @staticmethod
     def _looks_like_explicit_secret(
@@ -522,17 +492,12 @@ class SecretService:
     ) -> bool:
         """Recognize common sensitive field names conservatively."""
 
-        normalized = cls._normalize_field_name(
-            name
-        )
+        normalized = cls._normalize_field_name(name)
 
         if normalized in _SECRET_FIELD_NAMES:
             return True
 
-        return any(
-            normalized.endswith(suffix)
-            for suffix in _SECRET_FIELD_SUFFIXES
-        )
+        return any(normalized.endswith(suffix) for suffix in _SECRET_FIELD_SUFFIXES)
 
     @staticmethod
     def _normalize_field_name(
@@ -557,9 +522,7 @@ class SecretService:
         """Return one stable target-local secret name from a config path."""
 
         if not path:
-            raise ValueError(
-                "secret configuration path must not be empty"
-            )
+            raise ValueError("secret configuration path must not be empty")
 
         return ".".join(path)
 
@@ -570,14 +533,10 @@ class SecretService:
     ) -> None:
         """Reject references to another target's secret."""
 
-        record = await self._repository.get_secret(
-            reference.secret_id
-        )
+        record = await self._repository.get_secret(reference.secret_id)
 
         if record is None:
-            raise KeyError(
-                f"target secret not found: {reference.secret_id}"
-            )
+            raise KeyError(f"target secret not found: {reference.secret_id}")
 
         if record.target_id != target_id:
             raise ValueError(

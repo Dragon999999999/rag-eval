@@ -66,9 +66,7 @@ class LocalArtifactStore(ArtifactStore):
             sha256 = digest.hexdigest()
 
             if expected_sha256 is not None and sha256 != expected_sha256:
-                raise ValueError(
-                    "artifact SHA-256 does not match expected_sha256"
-                )
+                raise ValueError("artifact SHA-256 does not match expected_sha256")
 
             final_path = self._path_for_hash(sha256)
             final_path.parent.mkdir(parents=True, exist_ok=True)

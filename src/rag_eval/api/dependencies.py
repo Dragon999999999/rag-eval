@@ -166,9 +166,7 @@ def get_target_repository(
 ) -> TargetRepository:
     """Provide target-specific persistence."""
 
-    return TargetRepository(
-        session
-    )
+    return TargetRepository(session)
 
 
 TargetRepositoryDep = Annotated[
@@ -323,10 +321,7 @@ def get_metric_registry() -> MetricRegistry:
     return _metric_registry
 
 
-MetricRegistryDep = Annotated[
-    MetricRegistry,
-    Depends(get_metric_registry)
-]
+MetricRegistryDep = Annotated[MetricRegistry, Depends(get_metric_registry)]
 
 
 def get_test_service(

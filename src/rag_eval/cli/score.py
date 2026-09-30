@@ -113,26 +113,18 @@ async def _score_run(run_id: str):
     """Score a run."""
     from rag_eval.config import get_settings
 
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with (
             session_factory() as session,
             session.begin(),
         ):
-            test_repository = TestRepository(
-                session
-            )
+            test_repository = TestRepository(session)
 
-            target_repository = TargetRepository(
-                session
-            )
+            target_repository = TargetRepository(session)
 
             registry = get_stage12_catalog()
 
@@ -142,9 +134,7 @@ async def _score_run(run_id: str):
                 target_repository,
             )
 
-            return await service.score_run(
-                run_id
-            )
+            return await service.score_run(run_id)
 
     finally:
         await engine.dispose()
@@ -219,7 +209,9 @@ def _format_report(report: Any) -> str:
         "Timing:",
         f"  Started: {report.started_at or 'N/A'}",
         f"  Finished: {report.finished_at or 'N/A'}",
-        f"  Duration: {report.duration_seconds:.1f}s" if report.duration_seconds else "  Duration: N/A",
+        f"  Duration: {report.duration_seconds:.1f}s"
+        if report.duration_seconds
+        else "  Duration: N/A",
         "",
         "Case Summary:",
         f"  Total:     {report.total_cases}",
@@ -291,8 +283,16 @@ def _format_comparison(result: Any) -> str:
 
     for comp in result.comparisons:
         # Format values
-        val_a = f"{comp.value_a:.4f}" if isinstance(comp.value_a, (int, float)) else str(comp.value_a)
-        val_b = f"{comp.value_b:.4f}" if isinstance(comp.value_b, (int, float)) else str(comp.value_b)
+        val_a = (
+            f"{comp.value_a:.4f}"
+            if isinstance(comp.value_a, (int, float))
+            else str(comp.value_a)
+        )
+        val_b = (
+            f"{comp.value_b:.4f}"
+            if isinstance(comp.value_b, (int, float))
+            else str(comp.value_b)
+        )
 
         # Format delta
         if comp.absolute_delta is not None:
@@ -310,9 +310,7 @@ def _format_comparison(result: Any) -> str:
             "inconclusive": "?",
         }.get(comp.assessment, "?")
 
-        lines.append(
-            f"{indicator} {comp.metric_id}.{comp.aggregation}"
-        )
+        lines.append(f"{indicator} {comp.metric_id}.{comp.aggregation}")
         lines.append(f"    A: {val_a} → B: {val_b} | Δ: {delta_str}")
 
     return "\n".join(lines)

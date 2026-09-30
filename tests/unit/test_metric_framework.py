@@ -11,7 +11,6 @@ Tests verify:
 - No TargetAdapter dependency
 """
 
-
 from rag_eval.metrics import (
     MetricContext,
 )

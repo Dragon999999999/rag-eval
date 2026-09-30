@@ -13,7 +13,12 @@ from rag_eval.config.loader import (
     resolve_environment_reference,
 )
 from rag_eval.config.matrix import PlannedExperiment, expand_matrix
-from rag_eval.config.models import ExecutionConfig, ExperimentConfig, RetryConfig, ExperimentTargetConfig
+from rag_eval.config.models import (
+    ExecutionConfig,
+    ExperimentConfig,
+    RetryConfig,
+    ExperimentTargetConfig,
+)
 from rag_eval.config.target_resolver import TargetConfigResolver
 
 
@@ -82,9 +87,7 @@ def get_settings() -> Settings:
 def validate_secret_key(self) -> "Settings":
     """Require the target-secret encryption key at application startup."""
     if not self.secret_key:
-        raise ValueError(
-            "RAG_EVAL_SECRET_KEY must be configured."
-        )
+        raise ValueError("RAG_EVAL_SECRET_KEY must be configured.")
     return self
 
 

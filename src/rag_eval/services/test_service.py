@@ -168,10 +168,7 @@ class TestService:
         }
         unknown = set(changes) - allowed
         if unknown:
-            raise ValueError(
-                "unsupported test fields: "
-                + ", ".join(sorted(unknown))
-            )
+            raise ValueError("unsupported test fields: " + ", ".join(sorted(unknown)))
 
         target_id = changes.get("target_id", record.target_id)
         benchmark_id = changes.get(
@@ -209,14 +206,10 @@ class TestService:
             if changes["benchmark_id"] is None:
                 kwargs["clear_benchmark"] = True
             else:
-                kwargs["benchmark_id"] = str(
-                    changes["benchmark_id"]
-                )
+                kwargs["benchmark_id"] = str(changes["benchmark_id"])
 
         if "execution_config" in changes:
-            kwargs["execution_config"] = dict(
-                changes["execution_config"] or {}
-            )
+            kwargs["execution_config"] = dict(changes["execution_config"] or {})
 
         if "seed" in changes:
             if changes["seed"] is None:
@@ -228,9 +221,7 @@ class TestService:
             kwargs["tags"] = list(changes["tags"] or [])
 
         if "metadata" in changes:
-            kwargs["metadata"] = dict(
-                changes["metadata"] or {}
-            )
+            kwargs["metadata"] = dict(changes["metadata"] or {})
 
         await self._repository.update_test(
             test_id,
@@ -257,15 +248,9 @@ class TestService:
     ) -> dict[str, Any]:
         """Return registered metrics annotated for one test."""
         test = await self._require_test(test_id)
-        selections = await self._repository.list_test_metric_selections(
-            test_id
-        )
+        selections = await self._repository.list_test_metric_selections(test_id)
 
-        selected_by_id = {
-            item.metric_id: item
-            for item in selections
-            if item.enabled
-        }
+        selected_by_id = {item.metric_id: item for item in selections if item.enabled}
 
         definitions = self._metric_definitions()
         applicability, warnings = await self._metric_applicability(
@@ -315,9 +300,7 @@ class TestService:
             "selected_metric_ids": sorted(selected_ids),
             "applicable_metric_ids": sorted(applicable_ids),
             "judge_config": dict(test.judge_config or {}),
-            "retrieval_config": dict(
-                test.retrieval_config or {}
-            ),
+            "retrieval_config": dict(test.retrieval_config or {}),
             "warnings": warnings,
         }
 
@@ -342,30 +325,20 @@ class TestService:
             EXPLICIT,
             ALL_AVAILABLE,
         }:
-            raise ValueError(
-                "mode must be EXPLICIT or ALL_AVAILABLE"
-            )
+            raise ValueError("mode must be EXPLICIT or ALL_AVAILABLE")
 
         definitions = self._metric_definitions()
         definitions_by_id = {
-            self._metric_id(definition): definition
-            for definition in definitions
+            self._metric_id(definition): definition for definition in definitions
         }
 
-        requested = self._unique_strings(
-            selected_metrics
-        )
+        requested = self._unique_strings(selected_metrics)
 
         unknown = [
-            metric_id
-            for metric_id in requested
-            if metric_id not in definitions_by_id
+            metric_id for metric_id in requested if metric_id not in definitions_by_id
         ]
         if unknown:
-            raise ValueError(
-                "unknown metrics: "
-                + ", ".join(sorted(unknown))
-            )
+            raise ValueError("unknown metrics: " + ", ".join(sorted(unknown)))
 
         applicability, _ = await self._metric_applicability(
             test,
@@ -379,37 +352,25 @@ class TestService:
         ]
         if inapplicable:
             details = ", ".join(
-                f"{metric_id}: "
-                f"{applicability[metric_id]['reason']}"
+                f"{metric_id}: {applicability[metric_id]['reason']}"
                 for metric_id in inapplicable
             )
-            raise ValueError(
-                "selected metrics are not applicable: "
-                + details
-            )
+            raise ValueError("selected metrics are not applicable: " + details)
 
         if normalized_mode == EXPLICIT and not requested:
-            raise ValueError(
-                "EXPLICIT mode requires at least one metric"
-            )
+            raise ValueError("EXPLICIT mode requires at least one metric")
 
-        selection_records: list[
-            TestMetricSelectionRecord
-        ] = []
+        selection_records: list[TestMetricSelectionRecord] = []
 
         if normalized_mode == EXPLICIT:
             for metric_id in requested:
                 definition = definitions_by_id[metric_id]
                 selection_records.append(
                     TestMetricSelectionRecord(
-                        test_metric_selection_id=(
-                            f"tms-{uuid4()}"
-                        ),
+                        test_metric_selection_id=(f"tms-{uuid4()}"),
                         test_definition_id=test_id,
                         metric_id=metric_id,
-                        metric_version=self._metric_version(
-                            definition
-                        ),
+                        metric_version=self._metric_version(definition),
                         parameters=dict(
                             metric_parameters.get(
                                 metric_id,
@@ -444,17 +405,13 @@ class TestService:
         """Switch a test to dynamically resolved ALL_AVAILABLE mode."""
         test = await self._require_test(test_id)
 
-        await self._repository.clear_test_metric_selections(
-            test_id
-        )
+        await self._repository.clear_test_metric_selections(test_id)
 
         await self._repository.update_test(
             test_id,
             metric_selection_mode=ALL_AVAILABLE,
             judge_config=dict(test.judge_config or {}),
-            retrieval_config=dict(
-                test.retrieval_config or {}
-            ),
+            retrieval_config=dict(test.retrieval_config or {}),
             clear_definition_hash=True,
             configuration_status=INCOMPLETE,
         )
@@ -482,17 +439,13 @@ class TestService:
         try:
             loaded = yaml.safe_load(yaml_text)
         except yaml.YAMLError as exc:
-            raise ValueError(
-                f"invalid YAML: {exc}"
-            ) from exc
+            raise ValueError(f"invalid YAML: {exc}") from exc
 
         if loaded is None:
             loaded = {}
 
         if not isinstance(loaded, dict):
-            raise ValueError(
-                "test YAML root must be a mapping"
-            )
+            raise ValueError("test YAML root must be a mapping")
 
         detected_target_id = self._optional_string(
             loaded.get("target_id", loaded.get("target"))
@@ -512,17 +465,14 @@ class TestService:
         benchmark_conflict = bool(
             detected_benchmark_id
             and test.benchmark_id
-            and detected_benchmark_id
-            != test.benchmark_id
+            and detected_benchmark_id != test.benchmark_id
         )
 
         warnings: list[str] = []
         update_changes: dict[str, Any] = {}
 
         if detected_target_id:
-            target = await self._target_repository.get_target(
-                detected_target_id
-            )
+            target = await self._target_repository.get_target(detected_target_id)
             if target is None:
                 warnings.append(
                     "YAML target_id "
@@ -530,9 +480,7 @@ class TestService:
                     "and was not applied."
                 )
             elif test.target_id is None:
-                update_changes["target_id"] = (
-                    detected_target_id
-                )
+                update_changes["target_id"] = detected_target_id
             elif target_conflict:
                 warnings.append(
                     "YAML contains a different target; "
@@ -540,10 +488,8 @@ class TestService:
                 )
 
         if detected_benchmark_id:
-            benchmark = (
-                await self._benchmark_repository.get_benchmark(
-                    detected_benchmark_id
-                )
+            benchmark = await self._benchmark_repository.get_benchmark(
+                detected_benchmark_id
             )
             if benchmark is None:
                 warnings.append(
@@ -552,9 +498,7 @@ class TestService:
                     "and was not applied."
                 )
             elif test.benchmark_id is None:
-                update_changes["benchmark_id"] = (
-                    detected_benchmark_id
-                )
+                update_changes["benchmark_id"] = detected_benchmark_id
             elif benchmark_conflict:
                 warnings.append(
                     "YAML contains a different benchmark; "
@@ -568,41 +512,32 @@ class TestService:
             )
             test = await self._require_test(test_id)
 
-        mode, requested_metrics = self._parse_yaml_metrics(
-            loaded.get("metrics")
-        )
+        mode, requested_metrics = self._parse_yaml_metrics(loaded.get("metrics"))
 
         raw_parameters = loaded.get(
             "parameters",
             loaded.get("metric_parameters", {}),
         )
         if not isinstance(raw_parameters, dict):
-            raise ValueError(
-                "parameters must be a mapping"
-            )
+            raise ValueError("parameters must be a mapping")
 
         judge_config = loaded.get(
             "judge",
             loaded.get("judge_config", {}),
         )
         if not isinstance(judge_config, dict):
-            raise ValueError(
-                "judge configuration must be a mapping"
-            )
+            raise ValueError("judge configuration must be a mapping")
 
         retrieval_config = loaded.get(
             "retrieval",
             loaded.get("retrieval_config", {}),
         )
         if not isinstance(retrieval_config, dict):
-            raise ValueError(
-                "retrieval configuration must be a mapping"
-            )
+            raise ValueError("retrieval configuration must be a mapping")
 
         definitions = self._metric_definitions()
         definitions_by_id = {
-            self._metric_id(definition): definition
-            for definition in definitions
+            self._metric_id(definition): definition for definition in definitions
         }
 
         ignored: list[str] = []
@@ -615,9 +550,7 @@ class TestService:
             for metric_id in requested_metrics:
                 if metric_id not in definitions_by_id:
                     ignored.append(metric_id)
-                    warnings.append(
-                        f"Unknown metric '{metric_id}' was ignored."
-                    )
+                    warnings.append(f"Unknown metric '{metric_id}' was ignored.")
                 else:
                     recognized.append(metric_id)
 
@@ -643,9 +576,7 @@ class TestService:
             # Preserve a valid incomplete configuration instead of failing the
             # entire import because every requested metric was unknown or
             # unavailable.
-            await self._repository.clear_test_metric_selections(
-                test_id
-            )
+            await self._repository.clear_test_metric_selections(test_id)
             await self._repository.update_test(
                 test_id,
                 metric_selection_mode=EXPLICIT,
@@ -675,9 +606,7 @@ class TestService:
             "selected_metrics": (
                 recognized
                 if mode == EXPLICIT
-                else (
-                    await self.get_test_metrics(test_id)
-                )["selected_metric_ids"]
+                else (await self.get_test_metrics(test_id))["selected_metric_ids"]
             ),
             "ignored_metrics": ignored,
             "unavailable_metrics": unavailable,
@@ -694,20 +623,15 @@ class TestService:
     ) -> str:
         """Serialize the current portable test configuration to YAML."""
         test = await self._require_test(test_id)
-        selections = (
-            await self._repository.list_test_metric_selections(
-                test_id,
-                enabled_only=True,
-            )
+        selections = await self._repository.list_test_metric_selections(
+            test_id,
+            enabled_only=True,
         )
 
         if test.metric_selection_mode == ALL_AVAILABLE:
             metrics_value: str | list[str] = "all"
         else:
-            metrics_value = [
-                item.metric_id
-                for item in selections
-            ]
+            metrics_value = [item.metric_id for item in selections]
 
         parameters = {
             item.metric_id: dict(item.parameters or {})
@@ -732,9 +656,7 @@ class TestService:
             payload["judge"] = dict(test.judge_config)
 
         if test.retrieval_config:
-            payload["retrieval"] = dict(
-                test.retrieval_config
-            )
+            payload["retrieval"] = dict(test.retrieval_config)
 
         return yaml.safe_dump(
             payload,
@@ -762,50 +684,37 @@ class TestService:
         if test.target_id is None:
             errors.append("No target selected.")
         else:
-            target = await self._target_repository.get_target(
-                test.target_id
-            )
+            target = await self._target_repository.get_target(test.target_id)
             if target is None:
-                errors.append(
-                    f"Target not found: {test.target_id}"
-                )
+                errors.append(f"Target not found: {test.target_id}")
             elif not getattr(target, "enabled", True):
-                errors.append(
-                    f"Target is disabled: {test.target_id}"
+                errors.append(f"Target is disabled: {test.target_id}")
+            elif (
+                getattr(
+                    target,
+                    "current_config_version",
+                    None,
                 )
-            elif getattr(
-                target,
-                "current_config_version",
-                None,
-            ) is None:
-                errors.append(
-                    f"Target is not configured: {test.target_id}"
-                )
+                is None
+            ):
+                errors.append(f"Target is not configured: {test.target_id}")
             else:
                 target_valid = True
 
         if test.benchmark_id is None:
             errors.append("No benchmark selected.")
         else:
-            benchmark = (
-                await self._benchmark_repository.get_benchmark(
-                    test.benchmark_id
-                )
+            benchmark = await self._benchmark_repository.get_benchmark(
+                test.benchmark_id
             )
             if benchmark is None:
-                errors.append(
-                    f"Benchmark not found: {test.benchmark_id}"
-                )
+                errors.append(f"Benchmark not found: {test.benchmark_id}")
             else:
-                case_records = (
-                    await self._benchmark_repository.list_cases(
-                        test.benchmark_id
-                    )
+                case_records = await self._benchmark_repository.list_cases(
+                    test.benchmark_id
                 )
                 if not case_records:
-                    errors.append(
-                        "Benchmark contains no cases."
-                    )
+                    errors.append("Benchmark contains no cases.")
                 else:
                     benchmark_valid = True
 
@@ -814,39 +723,30 @@ class TestService:
 
         definitions = self._metric_definitions()
         definitions_by_id = {
-            self._metric_id(definition): definition
-            for definition in definitions
+            self._metric_id(definition): definition for definition in definitions
         }
 
-        applicability, applicability_warnings = (
-            await self._metric_applicability(
-                test,
-                definitions,
-            )
+        applicability, applicability_warnings = await self._metric_applicability(
+            test,
+            definitions,
         )
         warnings.extend(applicability_warnings)
 
         if test.metric_selection_mode == ALL_AVAILABLE:
             resolved_metrics = sorted(
                 metric_id
-                for metric_id, result
-                in applicability.items()
+                for metric_id, result in applicability.items()
                 if result["applicable"]
             )
             if resolved_metrics:
                 metrics_valid = True
             else:
-                errors.append(
-                    "No registered metrics are applicable "
-                    "to this test."
-                )
+                errors.append("No registered metrics are applicable to this test.")
 
         elif test.metric_selection_mode == EXPLICIT:
-            selections = (
-                await self._repository.list_test_metric_selections(
-                    test_id,
-                    enabled_only=True,
-                )
+            selections = await self._repository.list_test_metric_selections(
+                test_id,
+                enabled_only=True,
             )
 
             if not selections:
@@ -856,55 +756,37 @@ class TestService:
                     metric_id = selection.metric_id
                     if metric_id not in definitions_by_id:
                         errors.append(
-                            f"Selected metric is no longer "
-                            f"registered: {metric_id}"
+                            f"Selected metric is no longer registered: {metric_id}"
                         )
                         continue
 
                     result = applicability[metric_id]
                     if not result["applicable"]:
                         errors.append(
-                            f"Metric '{metric_id}' is unavailable: "
-                            f"{result['reason']}"
+                            f"Metric '{metric_id}' is unavailable: {result['reason']}"
                         )
                         continue
 
                     resolved_metrics.append(metric_id)
 
-                metrics_valid = (
-                    bool(resolved_metrics)
-                    and not any(
-                        error.startswith(
-                            "Selected metric"
-                        )
-                        or error.startswith("Metric '")
-                        for error in errors
-                    )
+                metrics_valid = bool(resolved_metrics) and not any(
+                    error.startswith("Selected metric") or error.startswith("Metric '")
+                    for error in errors
                 )
         else:
             errors.append(
-                "Unknown metric selection mode: "
-                f"{test.metric_selection_mode}"
+                f"Unknown metric selection mode: {test.metric_selection_mode}"
             )
 
-        valid = (
-            target_valid
-            and benchmark_valid
-            and metrics_valid
-            and not errors
-        )
+        valid = target_valid and benchmark_valid and metrics_valid and not errors
 
         return {
             "valid": valid,
-            "configuration_status": (
-                READY if valid else INCOMPLETE
-            ),
+            "configuration_status": (READY if valid else INCOMPLETE),
             "target_valid": target_valid,
             "benchmark_valid": benchmark_valid,
             "metrics_valid": metrics_valid,
-            "resolved_metric_ids": sorted(
-                resolved_metrics
-            ),
+            "resolved_metric_ids": sorted(resolved_metrics),
             "errors": errors,
             "warnings": warnings,
         }
@@ -922,10 +804,7 @@ class TestService:
         validation = await self.validate_test(test_id)
 
         if not validation["valid"]:
-            raise ValueError(
-                "test is not ready: "
-                + "; ".join(validation["errors"])
-            )
+            raise ValueError("test is not ready: " + "; ".join(validation["errors"]))
 
         target_id = test.target_id
         benchmark_id = test.benchmark_id
@@ -936,27 +815,15 @@ class TestService:
         if benchmark_id is None:
             raise ValueError("test has no benchmark configured")
 
-        benchmark = (
-            await self._benchmark_repository.get_benchmark(
-                benchmark_id
-            )
-        )
+        benchmark = await self._benchmark_repository.get_benchmark(benchmark_id)
         if benchmark is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
-        target = await self._target_repository.get_target(
-            target_id
-        )
+        target = await self._target_repository.get_target(target_id)
         if target is None:
-            raise KeyError(
-                f"target not found: {target_id}"
-            )
+            raise KeyError(f"target not found: {target_id}")
 
-        cases = await self._benchmark_repository.list_cases(
-            benchmark_id
-        )
+        cases = await self._benchmark_repository.list_cases(benchmark_id)
 
         snapshot = await self._build_run_snapshot(
             test,
@@ -964,9 +831,7 @@ class TestService:
             benchmark_id=benchmark_id,
             target=target,
             benchmark=benchmark,
-            resolved_metric_ids=validation[
-                "resolved_metric_ids"
-            ],
+            resolved_metric_ids=validation["resolved_metric_ids"],
         )
         config_hash = self._hash_payload(snapshot)
 
@@ -989,9 +854,7 @@ class TestService:
             tags=list(test.tags or []),
             metadata_json={
                 **dict(test.metadata_json or {}),
-                "test_definition_hash": (
-                    test.definition_hash
-                ),
+                "test_definition_hash": (test.definition_hash),
             },
         )
 
@@ -1001,9 +864,7 @@ class TestService:
         )
 
         for case in cases:
-            case_id = str(
-                getattr(case, "case_id")
-            )
+            case_id = str(getattr(case, "case_id"))
             await self._repository.create_case_execution(
                 CaseExecutionRecord(
                     case_execution_id=f"case-exec-{uuid4()}",
@@ -1045,19 +906,13 @@ class TestService:
         sessions for concurrent execution.
         """
         if self._target_service is None:
-            raise RuntimeError(
-                "TestService requires target_service for run execution"
-            )
+            raise RuntimeError("TestService requires target_service for run execution")
 
         if self._artifact_store is None:
-            raise RuntimeError(
-                "TestService requires artifact_store for run execution"
-            )
+            raise RuntimeError("TestService requires artifact_store for run execution")
 
         if self._session_factory is None:
-            raise RuntimeError(
-                "TestService requires session_factory for run execution"
-            )
+            raise RuntimeError("TestService requires session_factory for run execution")
 
         run = await self._require_run(run_id)
 
@@ -1069,9 +924,7 @@ class TestService:
         config_record = await self._repository.get_run_config(run_id)
 
         if config_record is None:
-            raise KeyError(
-                f"run configuration not found: {run_id}"
-            )
+            raise KeyError(f"run configuration not found: {run_id}")
 
         snapshot = dict(config_record.canonical_config)
 
@@ -1080,32 +933,22 @@ class TestService:
         execution_snapshot = snapshot.get("execution_config", {})
 
         if not isinstance(target_snapshot, Mapping):
-            raise ValueError(
-                f"run {run_id} has invalid target snapshot"
-            )
+            raise ValueError(f"run {run_id} has invalid target snapshot")
 
         if not isinstance(benchmark_snapshot, Mapping):
-            raise ValueError(
-                f"run {run_id} has invalid benchmark snapshot"
-            )
+            raise ValueError(f"run {run_id} has invalid benchmark snapshot")
 
         if not isinstance(execution_snapshot, Mapping):
-            raise ValueError(
-                f"run {run_id} has invalid execution configuration"
-            )
+            raise ValueError(f"run {run_id} has invalid execution configuration")
 
         target_id_raw = target_snapshot.get("target_id")
         benchmark_id_raw = benchmark_snapshot.get("benchmark_id")
 
         if target_id_raw is None:
-            raise ValueError(
-                f"run {run_id} snapshot has no target_id"
-            )
+            raise ValueError(f"run {run_id} snapshot has no target_id")
 
         if benchmark_id_raw is None:
-            raise ValueError(
-                f"run {run_id} snapshot has no benchmark_id"
-            )
+            raise ValueError(f"run {run_id} snapshot has no benchmark_id")
 
         target_id = str(target_id_raw)
         benchmark_id = str(benchmark_id_raw)
@@ -1114,22 +957,17 @@ class TestService:
         # Load and verify the frozen benchmark
         # ------------------------------------------------------------------
 
-        benchmark = await self._benchmark_repository.get_benchmark(
-            benchmark_id
-        )
+        benchmark = await self._benchmark_repository.get_benchmark(benchmark_id)
 
         if benchmark is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
         expected_benchmark_version = benchmark_snapshot.get("version")
         expected_content_hash = benchmark_snapshot.get("content_hash")
 
         if (
             expected_benchmark_version is not None
-            and benchmark.manifest.version
-            != expected_benchmark_version
+            and benchmark.manifest.version != expected_benchmark_version
         ):
             raise RuntimeError(
                 "benchmark version changed after run creation: "
@@ -1139,31 +977,22 @@ class TestService:
 
         if (
             expected_content_hash is not None
-            and benchmark.manifest.content_hash
-            != expected_content_hash
+            and benchmark.manifest.content_hash != expected_content_hash
         ):
-            raise RuntimeError(
-                "benchmark content changed after run creation"
-            )
+            raise RuntimeError("benchmark content changed after run creation")
 
         # ------------------------------------------------------------------
         # Verify target configuration version
         # ------------------------------------------------------------------
 
-        expected_target_version = target_snapshot.get(
-            "config_version"
-        )
+        expected_target_version = target_snapshot.get("config_version")
 
         current_target_config = (
-            await self._target_repository.get_current_config_version(
-                target_id
-            )
+            await self._target_repository.get_current_config_version(target_id)
         )
 
         if current_target_config is None:
-            raise ValueError(
-                f"target {target_id} has no active configuration"
-            )
+            raise ValueError(f"target {target_id} has no active configuration")
 
         current_target_version = getattr(
             current_target_config,
@@ -1185,9 +1014,7 @@ class TestService:
         # Build runtime dependencies
         # ------------------------------------------------------------------
 
-        adapter = await self._target_service.get_adapter(
-            target_id
-        )
+        adapter = await self._target_service.get_adapter(target_id)
 
         parameters_raw = target_snapshot.get(
             "parameters",
@@ -1195,22 +1022,16 @@ class TestService:
         )
 
         if not isinstance(parameters_raw, Mapping):
-            raise ValueError(
-                "run target parameters must be a mapping"
-            )
+            raise ValueError("run target parameters must be a mapping")
 
-        execution_config = ExecutionConfig.from_mapping(
-            execution_snapshot
-        )
+        execution_config = ExecutionConfig.from_mapping(execution_snapshot)
 
         executor = BenchmarkExecutor(
             execution_config=execution_config,
             adapter=adapter,
             artifact_store=self._artifact_store,
             session_factory=self._session_factory,
-            corpus_id=benchmark_snapshot.get(
-                "corpus_id"
-            ),
+            corpus_id=benchmark_snapshot.get("corpus_id"),
             target_parameters=dict(parameters_raw),
         )
 
@@ -1237,14 +1058,9 @@ class TestService:
     ) -> list[dict[str, Any]]:
         """List historical runs for a test."""
         await self._require_test(test_id)
-        runs = await self._repository.list_runs(
-            test_definition_id=test_id
-        )
+        runs = await self._repository.list_runs(test_definition_id=test_id)
 
-        return [
-            await self._run_detail(record.run_id)
-            for record in runs
-        ]
+        return [await self._run_detail(record.run_id) for record in runs]
 
     async def get_run(
         self,
@@ -1262,25 +1078,16 @@ class TestService:
     ) -> dict[str, Any]:
         """Return lightweight status/progress for polling."""
         run = await self._require_run(run_id)
-        counts = await self._repository.get_run_case_counts(
-            run_id
-        )
+        counts = await self._repository.get_run_case_counts(run_id)
 
         total = sum(counts.values())
         complete = counts.get(RUN_COMPLETED, 0)
         failed = counts.get(RUN_FAILED, 0)
         running = counts.get(RUN_RUNNING, 0)
-        pending = (
-            counts.get(RUN_PENDING, 0)
-            + counts.get(RUN_CREATED, 0)
-        )
+        pending = counts.get(RUN_PENDING, 0) + counts.get(RUN_CREATED, 0)
 
         done = complete + failed
-        progress = (
-            (done / total) * 100.0
-            if total
-            else 0.0
-        )
+        progress = (done / total) * 100.0 if total else 0.0
 
         elapsed_seconds: float | None = None
         if run.started_at is not None:
@@ -1322,9 +1129,7 @@ class TestService:
             return await self._run_detail(run_id)
 
         if run.status in TERMINAL_RUN_STATES:
-            raise RuntimeError(
-                f"cannot pause run in state {run.status}"
-            )
+            raise RuntimeError(f"cannot pause run in state {run.status}")
 
         now = datetime.now(UTC)
 
@@ -1339,13 +1144,9 @@ class TestService:
         elif run.status == RUN_PAUSING:
             return await self._run_detail(run_id)
         elif run.status == RUN_INTERRUPTED:
-            raise RuntimeError(
-                "interrupted runs must be recovered, not paused"
-            )
+            raise RuntimeError("interrupted runs must be recovered, not paused")
         else:
-            raise RuntimeError(
-                f"cannot pause run in state {run.status}"
-            )
+            raise RuntimeError(f"cannot pause run in state {run.status}")
 
         await self._repository.update_run_lifecycle(
             run_id,
@@ -1368,9 +1169,7 @@ class TestService:
         run = await self._require_run(run_id)
 
         if run.status != RUN_PAUSED:
-            raise RuntimeError(
-                "only PAUSED runs can be resumed"
-            )
+            raise RuntimeError("only PAUSED runs can be resumed")
 
         await self._repository.update_run_lifecycle(
             run_id,
@@ -1400,13 +1199,9 @@ class TestService:
         run = await self._require_run(run_id)
 
         if run.status != RUN_INTERRUPTED:
-            raise RuntimeError(
-                "only INTERRUPTED runs can be recovered"
-            )
+            raise RuntimeError("only INTERRUPTED runs can be recovered")
 
-        cases = await self._repository.list_case_executions(
-            run_id
-        )
+        cases = await self._repository.list_case_executions(run_id)
 
         recovered_cases = 0
 
@@ -1446,9 +1241,7 @@ class TestService:
             return await self._run_detail(run_id)
 
         if run.status == RUN_COMPLETED:
-            raise RuntimeError(
-                "completed runs cannot be cancelled"
-            )
+            raise RuntimeError("completed runs cannot be cancelled")
 
         now = datetime.now(UTC)
 
@@ -1460,9 +1253,7 @@ class TestService:
             clear_interrupted_at=True,
         )
 
-        cases = await self._repository.list_case_executions(
-            run_id
-        )
+        cases = await self._repository.list_case_executions(run_id)
         for case in cases:
             if case.status not in {
                 RUN_COMPLETED,
@@ -1489,9 +1280,7 @@ class TestService:
     ) -> list[dict[str, Any]]:
         """List append-only lifecycle events."""
         await self._require_run(run_id)
-        events = await self._repository.list_run_events(
-            run_id
-        )
+        events = await self._repository.list_run_events(run_id)
         return [
             {
                 "run_event_id": event.run_event_id,
@@ -1513,15 +1302,11 @@ class TestService:
     ) -> list[dict[str, Any]]:
         """List persisted logical case executions."""
         await self._require_run(run_id)
-        cases = await self._repository.list_case_executions(
-            run_id
-        )
+        cases = await self._repository.list_case_executions(run_id)
 
         result: list[dict[str, Any]] = []
         for case in cases:
-            attempts = await self._repository.list_attempts(
-                case.case_execution_id
-            )
+            attempts = await self._repository.list_attempts(case.case_execution_id)
 
             result.append(
                 {
@@ -1531,9 +1316,7 @@ class TestService:
                     "status": case.status,
                     "started_at": case.started_at,
                     "finished_at": case.finished_at,
-                    "metadata": dict(
-                        case.metadata_json or {}
-                    ),
+                    "metadata": dict(case.metadata_json or {}),
                     # Benchmark detail enrichment can be added here once the
                     # BenchmarkRepository exposes get_case(case_id).
                     "query": None,
@@ -1554,39 +1337,26 @@ class TestService:
         """List attempts and verify that the case belongs to the run."""
         await self._require_run(run_id)
 
-        case = await self._repository.get_case_execution(
-            case_execution_id
-        )
+        case = await self._repository.get_case_execution(case_execution_id)
         if case is None or case.run_id != run_id:
-            raise KeyError(
-                f"case execution not found in run: "
-                f"{case_execution_id}"
-            )
+            raise KeyError(f"case execution not found in run: {case_execution_id}")
 
-        attempts = await self._repository.list_attempts(
-            case_execution_id
-        )
+        attempts = await self._repository.list_attempts(case_execution_id)
 
         return [
             {
                 "attempt_id": attempt.attempt_id,
-                "case_execution_id": (
-                    attempt.case_execution_id
-                ),
+                "case_execution_id": (attempt.case_execution_id),
                 "attempt_number": attempt.attempt_number,
                 "request_id": attempt.request_id,
                 "idempotency_key": attempt.idempotency_key,
-                "canonical_request_hash": (
-                    attempt.canonical_request_hash
-                ),
+                "canonical_request_hash": (attempt.canonical_request_hash),
                 "status": attempt.status,
                 "started_at": attempt.started_at,
                 "finished_at": attempt.finished_at,
                 "retryable": attempt.retryable,
                 "error_summary": attempt.error_summary,
-                "metadata": dict(
-                    attempt.metadata_json or {}
-                ),
+                "metadata": dict(attempt.metadata_json or {}),
             }
             for attempt in attempts
         ]
@@ -1598,12 +1368,8 @@ class TestService:
         """Return individual and aggregate metric results."""
         await self._require_run(run_id)
 
-        metrics = await self._repository.list_metric_results(
-            run_id
-        )
-        aggregates = await self._repository.list_aggregates(
-            run_id
-        )
+        metrics = await self._repository.list_metric_results(run_id)
+        aggregates = await self._repository.list_aggregates(run_id)
 
         return {
             "run_id": run_id,
@@ -1611,9 +1377,7 @@ class TestService:
                 {
                     "metric_result_id": item.metric_result_id,
                     "run_id": item.run_id,
-                    "case_execution_id": (
-                        item.case_execution_id
-                    ),
+                    "case_execution_id": (item.case_execution_id),
                     "case_id": item.case_id,
                     "metric_id": item.metric_id,
                     "metric_version": item.metric_version,
@@ -1628,9 +1392,7 @@ class TestService:
             ],
             "aggregates": [
                 {
-                    "aggregate_metric_result_id": (
-                        item.aggregate_metric_result_id
-                    ),
+                    "aggregate_metric_result_id": (item.aggregate_metric_result_id),
                     "run_id": item.run_id,
                     "metric_id": item.metric_id,
                     "metric_version": item.metric_version,
@@ -1682,37 +1444,24 @@ class TestService:
         resolved_metric_ids: Sequence[str],
     ) -> dict[str, Any]:
         """Build deterministic current editable configuration payload."""
-        selections = (
-            await self._repository.list_test_metric_selections(
-                test.test_definition_id,
-                enabled_only=True,
-            )
+        selections = await self._repository.list_test_metric_selections(
+            test.test_definition_id,
+            enabled_only=True,
         )
 
         parameters = {
-            item.metric_id: dict(item.parameters or {})
-            for item in selections
+            item.metric_id: dict(item.parameters or {}) for item in selections
         }
 
         return {
             "target_id": test.target_id,
             "benchmark_id": test.benchmark_id,
-            "metric_selection_mode": (
-                test.metric_selection_mode
-            ),
-            "resolved_metric_ids": sorted(
-                resolved_metric_ids
-            ),
+            "metric_selection_mode": (test.metric_selection_mode),
+            "resolved_metric_ids": sorted(resolved_metric_ids),
             "metric_parameters": parameters,
-            "judge_config": dict(
-                test.judge_config or {}
-            ),
-            "retrieval_config": dict(
-                test.retrieval_config or {}
-            ),
-            "execution_config": dict(
-                test.execution_config or {}
-            ),
+            "judge_config": dict(test.judge_config or {}),
+            "retrieval_config": dict(test.retrieval_config or {}),
+            "execution_config": dict(test.execution_config or {}),
             "seed": test.seed,
         }
 
@@ -1727,16 +1476,11 @@ class TestService:
         resolved_metric_ids: Sequence[str],
     ) -> dict[str, Any]:
         """Resolve mutable test configuration to an immutable run snapshot."""
-        selections = (
-            await self._repository.list_test_metric_selections(
-                test.test_definition_id,
-                enabled_only=True,
-            )
+        selections = await self._repository.list_test_metric_selections(
+            test.test_definition_id,
+            enabled_only=True,
         )
-        selected_by_id = {
-            item.metric_id: item
-            for item in selections
-        }
+        selected_by_id = {item.metric_id: item for item in selections}
 
         definitions = {
             self._metric_id(definition): definition
@@ -1751,9 +1495,7 @@ class TestService:
             resolved_metrics.append(
                 {
                     "metric_id": metric_id,
-                    "version": self._metric_version(
-                        definition
-                    ),
+                    "version": self._metric_version(definition),
                     "parameters": (
                         dict(selection.parameters or {})
                         if selection is not None
@@ -1763,21 +1505,15 @@ class TestService:
             )
 
         current_target_config = (
-            await self._target_repository.get_current_config_version(
-                target_id
-            )
+            await self._target_repository.get_current_config_version(target_id)
         )
 
         effective_target_config = (
-            await self._target_repository.load_current_effective_config(
-                target_id
-            )
+            await self._target_repository.load_current_effective_config(target_id)
         )
 
         if effective_target_config is None:
-            raise ValueError(
-                f"target has no effective configuration: {target_id}"
-            )
+            raise ValueError(f"target has no effective configuration: {target_id}")
 
         target_snapshot = {
             "target_id": target_id,
@@ -1799,9 +1535,7 @@ class TestService:
                 "adapter_type",
                 None,
             ),
-            "parameters": dict(
-                effective_target_config.parameters or {}
-            ),
+            "parameters": dict(effective_target_config.parameters or {}),
         }
 
         benchmark_snapshot = {
@@ -1813,25 +1547,17 @@ class TestService:
 
         return {
             "schema_version": "1.0",
-            "test_definition_id": (
-                test.test_definition_id
-            ),
+            "test_definition_id": (test.test_definition_id),
             "test_definition_hash": test.definition_hash,
             "target": target_snapshot,
             "benchmark": benchmark_snapshot,
             "metrics": {
                 "mode": test.metric_selection_mode,
                 "resolved": resolved_metrics,
-                "judge_config": dict(
-                    test.judge_config or {}
-                ),
-                "retrieval_config": dict(
-                    test.retrieval_config or {}
-                ),
+                "judge_config": dict(test.judge_config or {}),
+                "retrieval_config": dict(test.retrieval_config or {}),
             },
-            "execution_config": dict(
-                test.execution_config or {}
-            ),
+            "execution_config": dict(test.execution_config or {}),
             "seed": test.seed,
         }
 
@@ -1859,11 +1585,7 @@ class TestService:
         target_available = await self._target_requirements_available(test)
         evaluator_available = self._evaluator_requirements_available(test)
 
-        available = (
-            benchmark_available
-            | target_available
-            | evaluator_available
-        )
+        available = benchmark_available | target_available | evaluator_available
 
         results: dict[str, dict[str, Any]] = {}
 
@@ -1877,9 +1599,7 @@ class TestService:
                 "applicable": not missing,
                 "reason": (
                     "missing requirements: "
-                    + ", ".join(
-                        sorted(requirement.name for requirement in missing)
-                    )
+                    + ", ".join(sorted(requirement.name for requirement in missing))
                     if missing
                     else None
                 ),
@@ -1899,15 +1619,11 @@ class TestService:
         if test.benchmark_id is None:
             return set()
 
-        benchmark = await self._benchmark_repository.get_benchmark(
-            test.benchmark_id
-        )
+        benchmark = await self._benchmark_repository.get_benchmark(test.benchmark_id)
         if benchmark is None:
             return set()
 
-        cases = await self._benchmark_repository.list_cases(
-            test.benchmark_id
-        )
+        cases = await self._benchmark_repository.list_cases(test.benchmark_id)
 
         available: set[MetricRequirement] = set()
 
@@ -2030,9 +1746,7 @@ class TestService:
         run_id: str,
     ) -> dict[str, Any]:
         run = await self._require_run(run_id)
-        counts = await self._repository.get_run_case_counts(
-            run_id
-        )
+        counts = await self._repository.get_run_case_counts(run_id)
 
         return {
             "run_id": run.run_id,
@@ -2042,9 +1756,7 @@ class TestService:
             "config_hash": run.config_hash,
             "target_id": run.target_id,
             "benchmark_id": run.benchmark_id,
-            "test_definition_id": (
-                run.test_definition_id
-            ),
+            "test_definition_id": (run.test_definition_id),
             "started_at": run.started_at,
             "finished_at": run.finished_at,
             "paused_at": run.paused_at,
@@ -2052,9 +1764,7 @@ class TestService:
             "seed": run.seed,
             "rag_eval_version": run.rag_eval_version,
             "tags": list(run.tags or []),
-            "metadata": dict(
-                run.metadata_json or {}
-            ),
+            "metadata": dict(run.metadata_json or {}),
             "created_at": run.created_at,
             "updated_at": run.updated_at,
             "total_cases": sum(counts.values()),
@@ -2066,10 +1776,7 @@ class TestService:
                 RUN_FAILED,
                 0,
             ),
-            "pending_cases": (
-                counts.get(RUN_PENDING, 0)
-                + counts.get(RUN_CREATED, 0)
-            ),
+            "pending_cases": (counts.get(RUN_PENDING, 0) + counts.get(RUN_CREATED, 0)),
             "running_cases": counts.get(
                 RUN_RUNNING,
                 0,
@@ -2081,33 +1788,19 @@ class TestService:
         record: TestDefinitionRecord,
     ) -> dict[str, Any]:
         return {
-            "test_definition_id": (
-                record.test_definition_id
-            ),
+            "test_definition_id": (record.test_definition_id),
             "name": record.name,
             "description": record.description,
-            "configuration_status": (
-                record.configuration_status
-            ),
+            "configuration_status": (record.configuration_status),
             "target_id": record.target_id,
             "benchmark_id": record.benchmark_id,
-            "metric_selection_mode": (
-                record.metric_selection_mode
-            ),
-            "judge_config": dict(
-                record.judge_config or {}
-            ),
-            "retrieval_config": dict(
-                record.retrieval_config or {}
-            ),
-            "execution_config": dict(
-                record.execution_config or {}
-            ),
+            "metric_selection_mode": (record.metric_selection_mode),
+            "judge_config": dict(record.judge_config or {}),
+            "retrieval_config": dict(record.retrieval_config or {}),
+            "execution_config": dict(record.execution_config or {}),
             "seed": record.seed,
             "tags": list(record.tags or []),
-            "metadata": dict(
-                record.metadata_json or {}
-            ),
+            "metadata": dict(record.metadata_json or {}),
             "definition_hash": record.definition_hash,
             "created_at": record.created_at,
             "updated_at": record.updated_at,
@@ -2150,28 +1843,18 @@ class TestService:
         self,
         target_id: str,
     ) -> Any:
-        record = await self._target_repository.get_target(
-            target_id
-        )
+        record = await self._target_repository.get_target(target_id)
         if record is None:
-            raise ValueError(
-                f"target not found: {target_id}"
-            )
+            raise ValueError(f"target not found: {target_id}")
         return record
 
     async def _require_benchmark(
         self,
         benchmark_id: str,
     ) -> Any:
-        record = (
-            await self._benchmark_repository.get_benchmark(
-                benchmark_id
-            )
-        )
+        record = await self._benchmark_repository.get_benchmark(benchmark_id)
         if record is None:
-            raise ValueError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise ValueError(f"benchmark not found: {benchmark_id}")
         return record
 
     @staticmethod
@@ -2227,13 +1910,9 @@ class TestService:
             return EXPLICIT, []
 
         if isinstance(value, list):
-            return EXPLICIT, cls._unique_strings(
-                [str(item) for item in value]
-            )
+            return EXPLICIT, cls._unique_strings([str(item) for item in value])
 
-        raise ValueError(
-            "metrics must be 'all' or a list of metric IDs"
-        )
+        raise ValueError("metrics must be 'all' or a list of metric IDs")
 
     @staticmethod
     def _metric_id(
@@ -2248,12 +1927,8 @@ class TestService:
         definition: Any,
     ) -> str:
         if isinstance(definition, dict):
-            return str(
-                definition.get("version", "1")
-            )
-        return str(
-            getattr(definition, "version", "1")
-        )
+            return str(definition.get("version", "1"))
+        return str(getattr(definition, "version", "1"))
 
     @staticmethod
     def _metric_requirements(
@@ -2288,8 +1963,7 @@ class TestService:
             "version": cls._metric_version(definition),
             "scope": scope_value,
             "requirements": sorted(
-                requirement.name
-                for requirement in cls._metric_requirements(definition)
+                requirement.name for requirement in cls._metric_requirements(definition)
             ),
             "description": str(description),
         }

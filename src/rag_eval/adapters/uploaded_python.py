@@ -90,17 +90,11 @@ def load_uploaded_python_adapter(
 
     text = source.decode("utf-8")
 
-    source_hash = hashlib.sha256(
-        source
-    ).hexdigest()[:16]
+    source_hash = hashlib.sha256(source).hexdigest()[:16]
 
-    module_name = (
-        f"rag_eval_uploaded_adapter_{source_hash}"
-    )
+    module_name = f"rag_eval_uploaded_adapter_{source_hash}"
 
-    module = ModuleType(
-        module_name
-    )
+    module = ModuleType(module_name)
 
     module.__file__ = filename
     module.__package__ = None
@@ -130,8 +124,7 @@ def load_uploaded_python_adapter(
 
     if not callable(factory):
         raise UploadedPythonAdapterError(
-            f"Uploaded adapter must define "
-            f"`def {ENTRYPOINT}() -> TargetAdapter`."
+            f"Uploaded adapter must define `def {ENTRYPOINT}() -> TargetAdapter`."
         )
 
     try:
@@ -142,9 +135,7 @@ def load_uploaded_python_adapter(
             f"Uploaded adapter entrypoint '{ENTRYPOINT}' failed."
         ) from exc
 
-    _validate_adapter_interface(
-        adapter
-    )
+    _validate_adapter_interface(adapter)
 
     return cast(
         TargetAdapter,
@@ -167,14 +158,10 @@ def _validate_adapter_interface(
         )
 
         if not callable(member):
-            missing.append(
-                name
-            )
+            missing.append(name)
 
     if missing:
-        joined = ", ".join(
-            missing
-        )
+        joined = ", ".join(missing)
 
         raise UploadedPythonAdapterError(
             "Uploaded adapter does not implement the complete "

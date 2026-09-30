@@ -102,27 +102,49 @@ class ReportGenerator:
 
             # Route to appropriate category
             if metric_id.startswith("answer."):
-                answer_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                answer_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("retrieval."):
-                retrieval_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                retrieval_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("citation."):
-                citation_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                citation_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("performance."):
-                performance_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                performance_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("usage."):
-                usage_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                usage_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("cost."):
-                cost_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                cost_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
             elif metric_id.startswith("reliability."):
-                reliability_metrics[f"{metric_id}.{agg_name}"] = self._format_value(value, metric_id)
+                reliability_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
 
         # Compute duration
         duration = None
         if run.started_at and run.finished_at:
             from datetime import timezone
 
-            started = run.started_at.replace(tzinfo=timezone.utc) if run.started_at.tzinfo is None else run.started_at
-            finished = run.finished_at.replace(tzinfo=timezone.utc) if run.finished_at.tzinfo is None else run.finished_at
+            started = (
+                run.started_at.replace(tzinfo=timezone.utc)
+                if run.started_at.tzinfo is None
+                else run.started_at
+            )
+            finished = (
+                run.finished_at.replace(tzinfo=timezone.utc)
+                if run.finished_at.tzinfo is None
+                else run.finished_at
+            )
             duration = (finished - started).total_seconds()
 
         return RunReport(

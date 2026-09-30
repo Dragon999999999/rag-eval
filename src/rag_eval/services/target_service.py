@@ -328,8 +328,7 @@ class TargetService:
 
         if record is None:
             raise KeyError(
-                f"target configuration version not found: "
-                f"{target_id} v{version}"
+                f"target configuration version not found: {target_id} v{version}"
             )
 
         return record
@@ -352,13 +351,10 @@ class TargetService:
 
         if artifact is None:
             raise KeyError(
-                "target configuration artifact not found: "
-                f"{record.source_artifact_id}"
+                f"target configuration artifact not found: {record.source_artifact_id}"
             )
 
-        content = await self._artifact_service.get(
-            artifact
-        )
+        content = await self._artifact_service.get(artifact)
 
         return content.decode("utf-8")
 
@@ -374,26 +370,18 @@ class TargetService:
         avoids re-extracting or duplicating secrets.
         """
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
         historical = await self.get_config_version(
             target_id,
             version,
         )
 
-        declared = TargetConfig.model_validate(
-            historical.declared_config
-        )
+        declared = TargetConfig.model_validate(historical.declared_config)
 
-        effective = EffectiveTargetConfig.model_validate(
-            historical.effective_config
-        )
+        effective = EffectiveTargetConfig.model_validate(historical.effective_config)
 
-        next_version = (
-            (target.current_config_version or 0) + 1
-        )
+        next_version = (target.current_config_version or 0) + 1
 
         record = await self._repository.persist_config_version(
             config_version_id=f"tcfg-{uuid4()}",
@@ -434,14 +422,10 @@ class TargetService:
         the Python source artifact reference.
         """
 
-        target = await self._require_target(
-            target_id
-        )
+        target = await self._require_target(target_id)
 
         if not filename.lower().endswith(".py"):
-            raise ValueError(
-                "Uploaded target adapter must be a .py file."
-            )
+            raise ValueError("Uploaded target adapter must be a .py file.")
 
         # Syntax validation only. Do not execute arbitrary code merely because
         # it has been uploaded.
@@ -502,9 +486,7 @@ class TargetService:
             },
         )
 
-        next_version = (
-            (target.current_config_version or 0) + 1
-        )
+        next_version = (target.current_config_version or 0) + 1
 
         await self._repository.persist_config_version(
             config_version_id=f"tcfg-{uuid4()}",
@@ -529,56 +511,37 @@ class TargetService:
             created_at=source_artifact.created_at,
         )
 
-
     async def get_python_adapter_source(
         self,
         target_id: str,
     ) -> UploadedPythonAdapterSourceInfo | None:
         """Return metadata for the active uploaded Python adapter source."""
 
-        await self._require_target(
-            target_id
-        )
+        await self._require_target(target_id)
 
-        effective = await self._repository.load_current_effective_config(
-            target_id
-        )
+        effective = await self._repository.load_current_effective_config(target_id)
 
-        if (
-            effective is None
-            or effective.adapter_type != "uploaded_python"
-        ):
+        if effective is None or effective.adapter_type != "uploaded_python":
             return None
 
-        artifact_id = effective.parameters.get(
-            "source_artifact_id"
-        )
+        artifact_id = effective.parameters.get("source_artifact_id")
 
         if not isinstance(artifact_id, str) or not artifact_id:
             raise ValueError(
-                "uploaded_python configuration requires "
-                "parameters.source_artifact_id."
+                "uploaded_python configuration requires parameters.source_artifact_id."
             )
 
-        artifact = await self._persistence_repository.get_artifact(
-            artifact_id
-        )
+        artifact = await self._persistence_repository.get_artifact(artifact_id)
 
         if artifact is None:
-            raise KeyError(
-                f"uploaded Python adapter artifact not found: {artifact_id}"
-            )
+            raise KeyError(f"uploaded Python adapter artifact not found: {artifact_id}")
 
-        filename_value = effective.parameters.get(
-            "filename"
-        )
+        filename_value = effective.parameters.get("filename")
 
         if isinstance(filename_value, str) and filename_value:
             filename = filename_value
         else:
-            metadata_filename = artifact.metadata.get(
-                "filename"
-            )
+            metadata_filename = artifact.metadata.get("filename")
 
             filename = (
                 metadata_filename
@@ -592,7 +555,6 @@ class TargetService:
             content_hash=artifact.sha256,
             created_at=artifact.created_at,
         )
-
 
     # ---------------------------------------------------------------------
     # Runtime adapter construction

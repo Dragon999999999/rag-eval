@@ -8,10 +8,10 @@ from rag_eval.artifacts.service import ArtifactService
 
 def create_artifact_store(settings: object) -> ArtifactStore:
     """Create an artifact store from settings.
-    
+
     Args:
         settings: Application settings with S3 configuration.
-    
+
     Returns:
         Artifact store implementation (S3 or local).
     """
@@ -21,7 +21,7 @@ def create_artifact_store(settings: object) -> ArtifactStore:
     s3_access_key = getattr(settings, "s3_access_key", None)
     s3_secret_key = getattr(settings, "s3_secret_key", None)
     s3_region = getattr(settings, "s3_region", "us-east-1")
-    
+
     if s3_endpoint and s3_access_key and s3_secret_key:
         return S3ArtifactStore(
             endpoint_url=s3_endpoint,
@@ -34,7 +34,7 @@ def create_artifact_store(settings: object) -> ArtifactStore:
         # Fall back to local storage for development
         import tempfile
         from pathlib import Path
-        
+
         local_dir = Path(tempfile.mkdtemp(prefix="rag-eval-artifacts-"))
         return LocalArtifactStore(root_dir=local_dir)
 

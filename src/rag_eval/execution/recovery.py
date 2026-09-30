@@ -92,9 +92,7 @@ class CaseRecoveryService:
         self._repository = repository
         self._target_repository = target_repository
         self._normalizer = normalizer
-        self._staleness_threshold = timedelta(
-            seconds=staleness_threshold_seconds
-        )
+        self._staleness_threshold = timedelta(seconds=staleness_threshold_seconds)
 
     async def decide_recovery(
         self,
@@ -127,10 +125,8 @@ class CaseRecoveryService:
         # ------------------------------------------------------------------
 
         if latest_attempt is not None:
-            observation = (
-                await self._target_repository.get_observation(
-                    latest_attempt.attempt_id
-                )
+            observation = await self._target_repository.get_observation(
+                latest_attempt.attempt_id
             )
 
             if observation is not None:
@@ -158,8 +154,7 @@ class CaseRecoveryService:
                 return RecoveryDecision(
                     action=RecoveryAction.RENORMALIZE_RAW,
                     reason=(
-                        "Raw response artifact exists and "
-                        "was successfully renormalized"
+                        "Raw response artifact exists and was successfully renormalized"
                     ),
                     observation=renormalized,
                 )
@@ -168,12 +163,9 @@ class CaseRecoveryService:
         # 3 / 4. Unknown or stale execution outcome
         # ------------------------------------------------------------------
 
-        unknown_or_stale = (
-            status == CaseExecutionStatus.UNKNOWN.value
-            or (
-                status == CaseExecutionStatus.RUNNING.value
-                and self._is_attempt_stale(latest_attempt)
-            )
+        unknown_or_stale = status == CaseExecutionStatus.UNKNOWN.value or (
+            status == CaseExecutionStatus.RUNNING.value
+            and self._is_attempt_stale(latest_attempt)
         )
 
         if unknown_or_stale:
@@ -181,8 +173,7 @@ class CaseRecoveryService:
                 return RecoveryDecision(
                     action=RecoveryAction.MARK_UNKNOWN,
                     reason=(
-                        "Execution outcome is unknown and no "
-                        "attempt record exists"
+                        "Execution outcome is unknown and no attempt record exists"
                     ),
                 )
 
@@ -192,8 +183,7 @@ class CaseRecoveryService:
                 return RecoveryDecision(
                     action=RecoveryAction.RECOVER_REQUEST,
                     reason=(
-                        "Unknown/stale outcome and target supports "
-                        "request recovery"
+                        "Unknown/stale outcome and target supports request recovery"
                     ),
                 )
 
@@ -201,16 +191,14 @@ class CaseRecoveryService:
                 return RecoveryDecision(
                     action=RecoveryAction.IDEMPOTENT_REPLAY,
                     reason=(
-                        "Unknown/stale outcome and target supports "
-                        "idempotent replay"
+                        "Unknown/stale outcome and target supports idempotent replay"
                     ),
                 )
 
             return RecoveryDecision(
                 action=RecoveryAction.MARK_UNKNOWN,
                 reason=(
-                    "Unknown outcome and target exposes no safe "
-                    "recovery mechanism"
+                    "Unknown outcome and target exposes no safe recovery mechanism"
                 ),
             )
 
@@ -269,9 +257,7 @@ class CaseRecoveryService:
         """Renormalize one durably persisted canonical raw response."""
 
         try:
-            artifact = await self._repository.get_artifact(
-                artifact_id
-            )
+            artifact = await self._repository.get_artifact(artifact_id)
 
             if artifact is None:
                 logger.warning(
@@ -280,9 +266,7 @@ class CaseRecoveryService:
                 )
                 return None
 
-            raw_data = await self._artifact_service.get_json(
-                artifact
-            )
+            raw_data = await self._artifact_service.get_json(artifact)
 
             if not isinstance(raw_data, dict):
                 logger.warning(
@@ -294,14 +278,10 @@ class CaseRecoveryService:
             response: QueryResponse | RetrieveResponse
 
             if "answer" in raw_data:
-                response = QueryResponse.model_validate(
-                    raw_data
-                )
+                response = QueryResponse.model_validate(raw_data)
 
             elif "retrieval" in raw_data:
-                response = RetrieveResponse.model_validate(
-                    raw_data
-                )
+                response = RetrieveResponse.model_validate(raw_data)
 
             else:
                 logger.warning(
@@ -345,21 +325,12 @@ class CaseRecoveryService:
     ) -> bool:
         """Return whether the latest attempt can no longer be trusted active."""
 
-        if (
-            attempt is None
-            or attempt.started_at is None
-        ):
+        if attempt is None or attempt.started_at is None:
             return True
 
-        elapsed = (
-            datetime.now(UTC)
-            - attempt.started_at
-        )
+        elapsed = datetime.now(UTC) - attempt.started_at
 
-        return (
-            elapsed
-            > self._staleness_threshold
-        )
+        return elapsed > self._staleness_threshold
 
     async def execute_recovery(
         self,
@@ -381,14 +352,10 @@ class CaseRecoveryService:
 
         if decision.action == RecoveryAction.RECOVER_REQUEST:
             if attempt is None:
-                logger.error(
-                    "Cannot recover request without an attempt record"
-                )
+                logger.error("Cannot recover request without an attempt record")
                 return None
 
-            await self._recover_via_request_id(
-                attempt.request_id
-            )
+            await self._recover_via_request_id(attempt.request_id)
 
             # Request recovery may return a canonical response, but creating
             # and persisting the resulting observation requires case/attempt
@@ -406,9 +373,7 @@ class CaseRecoveryService:
         """Ask the target for the durable outcome of a prior request."""
 
         try:
-            result = await self._adapter.recover_request(
-                request_id
-            )
+            result = await self._adapter.recover_request(request_id)
 
         except Exception as exc:
             logger.warning(

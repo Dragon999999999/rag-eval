@@ -66,16 +66,12 @@ class OpenAICompatibleAdapter:
         connection = config.connection
 
         if connection is None or connection.base_url is None:
-            raise ValueError(
-                "openai_compatible adapter requires connection.base_url."
-            )
+            raise ValueError("openai_compatible adapter requires connection.base_url.")
 
         model = config.parameters.get("model")
 
         if not isinstance(model, str) or not model:
-            raise ValueError(
-                "openai_compatible adapter requires parameters.model."
-            )
+            raise ValueError("openai_compatible adapter requires parameters.model.")
 
         self._config = config
         self._model = model
@@ -95,20 +91,13 @@ class OpenAICompatibleAdapter:
         headers.update(credentials.headers)
 
         # OpenAI-compatible APIs overwhelmingly use bearer authentication.
-        token = (
-            credentials.bearer_token
-            or credentials.api_key
-        )
+        token = credentials.bearer_token or credentials.api_key
 
         if token is not None:
             headers["Authorization"] = f"Bearer {token}"
 
         timeout = connection.timeout_seconds or 60.0
-        verify_tls = (
-            True
-            if connection.verify_tls is None
-            else connection.verify_tls
-        )
+        verify_tls = True if connection.verify_tls is None else connection.verify_tls
 
         self._client = client or httpx.AsyncClient(
             base_url=str(connection.base_url).rstrip("/") + "/",
@@ -174,9 +163,7 @@ class OpenAICompatibleAdapter:
                 target.model_dump(mode="json"),
             )
 
-        return TargetCapabilities.model_validate(
-            payload
-        )
+        return TargetCapabilities.model_validate(payload)
 
     async def health(self) -> HealthStatus | None:
         """Check an explicitly configured health endpoint.
@@ -205,9 +192,7 @@ class OpenAICompatibleAdapter:
         method = spec.get("method", "GET")
 
         if not isinstance(method, str):
-            raise ValueError(
-                "protocol.health.method must be a string."
-            )
+            raise ValueError("protocol.health.method must be a string.")
 
         logger.info(
             "Running OpenAI-compatible health check using %s %s",
@@ -227,8 +212,7 @@ class OpenAICompatibleAdapter:
             {
                 item.get("id")
                 for item in models
-                if isinstance(item, dict)
-                and isinstance(item.get("id"), str)
+                if isinstance(item, dict) and isinstance(item.get("id"), str)
             }
             if isinstance(models, list)
             else set()
@@ -305,13 +289,9 @@ class OpenAICompatibleAdapter:
             json_body=body,
         )
 
-        answer_text = self._extract_answer(
-            payload
-        )
+        answer_text = self._extract_answer(payload)
 
-        usage = self._normalize_usage(
-            payload.get("usage")
-        )
+        usage = self._normalize_usage(payload.get("usage"))
 
         return QueryResponse(
             request_id=request.request_id,
@@ -436,30 +416,18 @@ class OpenAICompatibleAdapter:
     def _target_info(self) -> TargetInfo:
         """Build normalized provider identity from effective configuration."""
 
-        target_name = self._config.metadata.get(
-            "target_name"
-        )
+        target_name = self._config.metadata.get("target_name")
 
         if not isinstance(target_name, str):
-            target_name = (
-                f"OpenAI-compatible ({self._model})"
-            )
+            target_name = f"OpenAI-compatible ({self._model})"
 
-        implementation = self._config.metadata.get(
-            "implementation"
-        )
+        implementation = self._config.metadata.get("implementation")
 
-        version = self._config.metadata.get(
-            "version"
-        )
+        version = self._config.metadata.get("version")
 
         return TargetInfo(
             name=target_name,
-            version=(
-                version
-                if isinstance(version, str)
-                else None
-            ),
+            version=(version if isinstance(version, str) else None),
             implementation=(
                 implementation
                 if isinstance(implementation, str)
@@ -602,14 +570,13 @@ class OpenAICompatibleAdapter:
         request_method = method.upper()
         request_path = path.lstrip("/")
 
-        request_url = self._client.base_url.join(
-            request_path
-        )
+        request_url = self._client.base_url.join(request_path)
 
         safe_headers = {
             name: (
                 "<redacted>"
-                if name.lower() in {
+                if name.lower()
+                in {
                     "authorization",
                     "x-api-key",
                     "api-key",
@@ -688,14 +655,11 @@ class OpenAICompatibleAdapter:
             raise TargetAdapterError(
                 f"OpenAI-compatible target returned HTTP "
                 f"{response.status_code} during '{operation}'.",
-                category=self._status_category(
-                    response.status_code
-                ),
+                category=self._status_category(response.status_code),
                 code=f"HTTP_{response.status_code}",
                 stage=operation,
                 http_status=response.status_code,
-                retryable=response.status_code
-                in {429, 502, 503, 504},
+                retryable=response.status_code in {429, 502, 503, 504},
                 details={
                     "response_body": response.text,
                 },
@@ -705,8 +669,7 @@ class OpenAICompatibleAdapter:
             payload = response.json()
         except ValueError as exc:
             raise TargetProtocolError(
-                f"OpenAI-compatible target returned invalid JSON "
-                f"during '{operation}'.",
+                f"OpenAI-compatible target returned invalid JSON during '{operation}'.",
                 operation=operation,
             ) from exc
 

@@ -75,14 +75,10 @@ class BenchmarkService:
         benchmark_id: str,
     ) -> Benchmark:
         """Load one complete benchmark aggregate."""
-        benchmark = await self._repository.get_benchmark(
-            benchmark_id
-        )
+        benchmark = await self._repository.get_benchmark(benchmark_id)
 
         if benchmark is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
         return benchmark
 
@@ -91,16 +87,10 @@ class BenchmarkService:
         benchmark_id: str,
     ) -> BenchmarkManifest:
         """Load benchmark metadata without loading its contents."""
-        manifest = (
-            await self._repository.get_benchmark_manifest(
-                benchmark_id
-            )
-        )
+        manifest = await self._repository.get_benchmark_manifest(benchmark_id)
 
         if manifest is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
         return manifest
 
@@ -112,14 +102,10 @@ class BenchmarkService:
 
         Artifact byte cleanup is intentionally handled separately.
         """
-        deleted = await self._repository.delete_benchmark(
-            benchmark_id
-        )
+        deleted = await self._repository.delete_benchmark(benchmark_id)
 
         if not deleted:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
     # ------------------------------------------------------------------
     # Cases
@@ -168,10 +154,7 @@ class BenchmarkService:
         )
 
         if case is None:
-            raise KeyError(
-                f"case {case_id} not found in "
-                f"benchmark {benchmark_id}"
-            )
+            raise KeyError(f"case {case_id} not found in benchmark {benchmark_id}")
 
         return case
 
@@ -182,9 +165,7 @@ class BenchmarkService:
         """Load only the cases of a benchmark."""
         await self.get_manifest(benchmark_id)
 
-        return await self._repository.list_cases(
-            benchmark_id
-        )
+        return await self._repository.list_cases(benchmark_id)
 
     async def delete_case(
         self,
@@ -198,10 +179,7 @@ class BenchmarkService:
         )
 
         if not deleted:
-            raise KeyError(
-                f"case {case_id} not found in "
-                f"benchmark {benchmark_id}"
-            )
+            raise KeyError(f"case {case_id} not found in benchmark {benchmark_id}")
 
     # ------------------------------------------------------------------
     # Documents
@@ -213,9 +191,7 @@ class BenchmarkService:
         document: Document,
     ) -> Document:
         """Create one atomic benchmark document."""
-        manifest = await self.get_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_manifest(benchmark_id)
 
         if manifest.corpus_mode is not CorpusMode.DOCUMENTS:
             raise ValueError(
@@ -248,9 +224,7 @@ class BenchmarkService:
         documents: Sequence[Document],
     ) -> int:
         """Create multiple atomic documents."""
-        manifest = await self.get_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_manifest(benchmark_id)
 
         if manifest.corpus_mode is not CorpusMode.DOCUMENTS:
             raise ValueError(
@@ -280,8 +254,7 @@ class BenchmarkService:
 
         if document is None:
             raise KeyError(
-                f"document {document_id} not found in "
-                f"benchmark {benchmark_id}"
+                f"document {document_id} not found in benchmark {benchmark_id}"
             )
 
         return document
@@ -293,9 +266,7 @@ class BenchmarkService:
         """Load only the documents of a benchmark."""
         await self.get_manifest(benchmark_id)
 
-        return await self._repository.list_documents(
-            benchmark_id
-        )
+        return await self._repository.list_documents(benchmark_id)
 
     async def delete_document(
         self,
@@ -313,8 +284,7 @@ class BenchmarkService:
 
         if not deleted:
             raise KeyError(
-                f"document {document_id} not found in "
-                f"benchmark {benchmark_id}"
+                f"document {document_id} not found in benchmark {benchmark_id}"
             )
 
     # ------------------------------------------------------------------
@@ -327,9 +297,7 @@ class BenchmarkService:
         chunk: Chunk,
     ) -> Chunk:
         """Create one canonical benchmark chunk."""
-        manifest = await self.get_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_manifest(benchmark_id)
 
         if manifest.corpus_mode is not CorpusMode.CHUNKS:
             raise ValueError(
@@ -351,9 +319,7 @@ class BenchmarkService:
         chunks: Sequence[Chunk],
     ) -> int:
         """Create multiple canonical benchmark chunks."""
-        manifest = await self.get_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_manifest(benchmark_id)
 
         if manifest.corpus_mode is not CorpusMode.CHUNKS:
             raise ValueError(
@@ -382,10 +348,7 @@ class BenchmarkService:
         )
 
         if chunk is None:
-            raise KeyError(
-                f"chunk {chunk_id} not found in "
-                f"benchmark {benchmark_id}"
-            )
+            raise KeyError(f"chunk {chunk_id} not found in benchmark {benchmark_id}")
 
         return chunk
 
@@ -396,9 +359,7 @@ class BenchmarkService:
         """Load only the chunks of a benchmark."""
         await self.get_manifest(benchmark_id)
 
-        return await self._repository.list_chunks(
-            benchmark_id
-        )
+        return await self._repository.list_chunks(benchmark_id)
 
     async def delete_chunk(
         self,
@@ -412,10 +373,7 @@ class BenchmarkService:
         )
 
         if not deleted:
-            raise KeyError(
-                f"chunk {chunk_id} not found in "
-                f"benchmark {benchmark_id}"
-            )
+            raise KeyError(f"chunk {chunk_id} not found in benchmark {benchmark_id}")
 
     # ------------------------------------------------------------------
     # Corpus mode transitions
@@ -441,44 +399,27 @@ class BenchmarkService:
 
         EXTERNAL transitions are deliberately not handled here.
         """
-        manifest = await self.get_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_manifest(benchmark_id)
 
         current = manifest.corpus_mode
 
         if current is mode:
             return await self.get(benchmark_id)
 
-        if (
-            current is CorpusMode.EXTERNAL
-            or mode is CorpusMode.EXTERNAL
-        ):
+        if current is CorpusMode.EXTERNAL or mode is CorpusMode.EXTERNAL:
             raise ValueError(
-                "automatic corpus conversion involving "
-                "EXTERNAL mode is not supported"
+                "automatic corpus conversion involving EXTERNAL mode is not supported"
             )
 
-        if (
-            current is CorpusMode.CHUNKS
-            and mode is CorpusMode.DOCUMENTS
-        ):
-            await self._chunks_to_documents(
-                benchmark_id
-            )
+        if current is CorpusMode.CHUNKS and mode is CorpusMode.DOCUMENTS:
+            await self._chunks_to_documents(benchmark_id)
 
-        elif (
-            current is CorpusMode.DOCUMENTS
-            and mode is CorpusMode.CHUNKS
-        ):
-            await self._documents_to_chunks(
-                benchmark_id
-            )
+        elif current is CorpusMode.DOCUMENTS and mode is CorpusMode.CHUNKS:
+            await self._documents_to_chunks(benchmark_id)
 
         else:
             raise ValueError(
-                f"unsupported corpus mode transition: "
-                f"{current.value} -> {mode.value}"
+                f"unsupported corpus mode transition: {current.value} -> {mode.value}"
             )
 
         return await self.get(benchmark_id)
@@ -488,11 +429,7 @@ class BenchmarkService:
         benchmark_id: str,
     ) -> None:
         """Convert normalized chunks into one atomic JSON document."""
-        chunks = list(
-            await self._repository.list_chunks(
-                benchmark_id
-            )
-        )
+        chunks = list(await self._repository.list_chunks(benchmark_id))
 
         if not chunks:
             await self._repository.set_corpus_mode(
@@ -504,10 +441,7 @@ class BenchmarkService:
         artifact_service = self._require_artifact_service()
 
         payload = json.dumps(
-            [
-                chunk.model_dump(mode="json")
-                for chunk in chunks
-            ],
+            [chunk.model_dump(mode="json") for chunk in chunks],
             ensure_ascii=False,
             indent=2,
         ).encode("utf-8")
@@ -563,11 +497,7 @@ class BenchmarkService:
         Every document is read and validated before any persistent benchmark
         content is changed.
         """
-        documents = list(
-            await self._repository.list_documents(
-                benchmark_id
-            )
-        )
+        documents = list(await self._repository.list_documents(benchmark_id))
 
         if not documents:
             await self._repository.set_corpus_mode(
@@ -589,9 +519,7 @@ class BenchmarkService:
                     "no artifact and cannot be converted to chunks"
                 )
 
-            content = await artifact_service.get(
-                document.artifact
-            )
+            content = await artifact_service.get(document.artifact)
 
             document_chunks = self._parse_chunks(
                 content,
@@ -601,9 +529,7 @@ class BenchmarkService:
 
             converted.extend(document_chunks)
 
-        self._validate_unique_chunk_ids(
-            converted
-        )
+        self._validate_unique_chunk_ids(converted)
 
         # Phase 2: persist the replacement representation.
         for chunk in converted:
@@ -635,9 +561,7 @@ class BenchmarkService:
         """Persist a complete canonical benchmark import."""
         benchmark_id = benchmark.manifest.benchmark_id
 
-        await self._repository.create_benchmark(
-            benchmark.manifest
-        )
+        await self._repository.create_benchmark(benchmark.manifest)
 
         for case in benchmark.cases:
             await self._repository.create_case(
@@ -645,20 +569,14 @@ class BenchmarkService:
                 case,
             )
 
-        if (
-            benchmark.manifest.corpus_mode
-            is CorpusMode.DOCUMENTS
-        ):
+        if benchmark.manifest.corpus_mode is CorpusMode.DOCUMENTS:
             for document in benchmark.documents:
                 await self._repository.create_document(
                     benchmark_id,
                     document,
                 )
 
-        elif (
-            benchmark.manifest.corpus_mode
-            is CorpusMode.CHUNKS
-        ):
+        elif benchmark.manifest.corpus_mode is CorpusMode.CHUNKS:
             for chunk in benchmark.chunks:
                 await self._repository.create_chunk(
                     benchmark_id,
@@ -676,8 +594,7 @@ class BenchmarkService:
     ) -> ArtifactService:
         if self._artifact_service is None:
             raise RuntimeError(
-                "ArtifactService is required for corpus "
-                "representation conversion"
+                "ArtifactService is required for corpus representation conversion"
             )
 
         return self._artifact_service
@@ -702,11 +619,7 @@ class BenchmarkService:
                 "cannot be converted to canonical chunks"
             ) from exc
 
-        suffix = (
-            Path(filename).suffix.lower()
-            if filename
-            else ""
-        )
+        suffix = Path(filename).suffix.lower() if filename else ""
 
         if suffix == ".jsonl":
             return BenchmarkService._parse_chunk_jsonl(
@@ -726,8 +639,7 @@ class BenchmarkService:
 
         if not isinstance(payload, list):
             raise ValueError(
-                f"document {document_id} must contain a JSON "
-                "array of canonical chunks"
+                f"document {document_id} must contain a JSON array of canonical chunks"
             )
 
         chunks: list[Chunk] = []
@@ -737,9 +649,7 @@ class BenchmarkService:
             start=1,
         ):
             try:
-                chunks.append(
-                    Chunk.model_validate(raw)
-                )
+                chunks.append(Chunk.model_validate(raw))
             except ValidationError as exc:
                 raise ValueError(
                     f"document {document_id} contains an "
@@ -766,9 +676,7 @@ class BenchmarkService:
 
             try:
                 raw = json.loads(line)
-                chunks.append(
-                    Chunk.model_validate(raw)
-                )
+                chunks.append(Chunk.model_validate(raw))
             except (
                 json.JSONDecodeError,
                 ValidationError,
@@ -780,9 +688,7 @@ class BenchmarkService:
                 ) from exc
 
         if not chunks:
-            raise ValueError(
-                f"document {document_id} contains no chunks"
-            )
+            raise ValueError(f"document {document_id} contains no chunks")
 
         return chunks
 
@@ -795,8 +701,7 @@ class BenchmarkService:
         for chunk in chunks:
             if chunk.chunk_id in seen:
                 raise ValueError(
-                    f"duplicate chunk_id during conversion: "
-                    f"{chunk.chunk_id}"
+                    f"duplicate chunk_id during conversion: {chunk.chunk_id}"
                 )
 
             seen.add(chunk.chunk_id)

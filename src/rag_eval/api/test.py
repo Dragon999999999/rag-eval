@@ -317,9 +317,7 @@ async def select_all_test_metrics(
     and metric requirements.
     """
     try:
-        info = await service.select_all_applicable_metrics(
-            test_id
-        )
+        info = await service.select_all_applicable_metrics(test_id)
     except KeyError as exc:
         raise _not_found(str(exc)) from exc
     except ValueError as exc:
@@ -348,21 +346,15 @@ async def import_test_metrics(
     service policy decides whether unset values are applied automatically and
     which conflicts require frontend confirmation.
     """
-    if file.filename and not file.filename.lower().endswith(
-        (".yaml", ".yml")
-    ):
-        raise _bad_request(
-            "metric configuration import must be a .yaml or .yml file"
-        )
+    if file.filename and not file.filename.lower().endswith((".yaml", ".yml")):
+        raise _bad_request("metric configuration import must be a .yaml or .yml file")
 
     content = await file.read()
 
     try:
         text = content.decode("utf-8")
     except UnicodeDecodeError as exc:
-        raise _bad_request(
-            "metric configuration YAML must be UTF-8"
-        ) from exc
+        raise _bad_request("metric configuration YAML must be UTF-8") from exc
 
     try:
         result = await service.import_test_yaml(
@@ -396,9 +388,7 @@ async def export_test_metrics(
         content=yaml_text,
         media_type="application/yaml",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="test-{test_id}.yaml"'
-            ),
+            "Content-Disposition": (f'attachment; filename="test-{test_id}.yaml"'),
         },
     )
 

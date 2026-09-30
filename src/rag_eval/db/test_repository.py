@@ -173,14 +173,11 @@ class TestRepository:
     ) -> Sequence[TestMetricSelectionRecord]:
         """List the explicitly stored metric selections for one test."""
         statement = select(TestMetricSelectionRecord).where(
-            TestMetricSelectionRecord.test_definition_id
-            == test_definition_id
+            TestMetricSelectionRecord.test_definition_id == test_definition_id
         )
 
         if enabled_only:
-            statement = statement.where(
-                TestMetricSelectionRecord.enabled.is_(True)
-            )
+            statement = statement.where(TestMetricSelectionRecord.enabled.is_(True))
 
         result = await self._session.scalars(
             statement.order_by(TestMetricSelectionRecord.metric_id)
@@ -201,8 +198,7 @@ class TestRepository:
 
         await self._session.execute(
             delete(TestMetricSelectionRecord).where(
-                TestMetricSelectionRecord.test_definition_id
-                == test_definition_id
+                TestMetricSelectionRecord.test_definition_id == test_definition_id
             )
         )
 
@@ -216,9 +212,7 @@ class TestRepository:
 
         await self._session.flush()
 
-        return await self.list_test_metric_selections(
-            test_definition_id
-        )
+        return await self.list_test_metric_selections(test_definition_id)
 
     async def clear_test_metric_selections(
         self,
@@ -229,8 +223,7 @@ class TestRepository:
 
         await self._session.execute(
             delete(TestMetricSelectionRecord).where(
-                TestMetricSelectionRecord.test_definition_id
-                == test_definition_id
+                TestMetricSelectionRecord.test_definition_id == test_definition_id
             )
         )
         await self._session.flush()
@@ -259,8 +252,7 @@ class TestRepository:
             self._session.add(snapshot)
         elif existing.canonical_config != dict(canonical_config):
             raise ValueError(
-                "config_hash already exists with a different "
-                "canonical configuration"
+                "config_hash already exists with a different canonical configuration"
             )
 
         self._session.add(run)
@@ -292,9 +284,7 @@ class TestRepository:
             )
 
         if statuses:
-            statement = statement.where(
-                RunRecord.status.in_(list(statuses))
-            )
+            statement = statement.where(RunRecord.status.in_(list(statuses)))
 
         result = await self._session.scalars(
             statement.order_by(
@@ -434,9 +424,7 @@ class TestRepository:
         )
 
         if statuses:
-            statement = statement.where(
-                CaseExecutionRecord.status.in_(list(statuses))
-            )
+            statement = statement.where(CaseExecutionRecord.status.in_(list(statuses)))
 
         result = await self._session.scalars(
             statement.order_by(CaseExecutionRecord.case_execution_id)
@@ -453,9 +441,7 @@ class TestRepository:
         clear_finished_at: bool = False,
     ) -> CaseExecutionRecord:
         """Update one logical case execution lifecycle state."""
-        record = await self._require_case_execution(
-            case_execution_id
-        )
+        record = await self._require_case_execution(case_execution_id)
 
         record.status = status
 
@@ -485,10 +471,7 @@ class TestRepository:
             .group_by(CaseExecutionRecord.status)
         )
 
-        return {
-            str(status): int(count)
-            for status, count in result.all()
-        }
+        return {str(status): int(count) for status, count in result.all()}
 
     # -------------------------------------------------------------------------
     # Attempts / recovery
@@ -499,9 +482,7 @@ class TestRepository:
         record: AttemptRecord,
     ) -> AttemptRecord:
         """Append a new execution attempt."""
-        await self._require_case_execution(
-            record.case_execution_id
-        )
+        await self._require_case_execution(record.case_execution_id)
         self._session.add(record)
         await self._session.flush()
         return record
@@ -523,9 +504,7 @@ class TestRepository:
         """List execution attempts in attempt-number order."""
         result = await self._session.scalars(
             select(AttemptRecord)
-            .where(
-                AttemptRecord.case_execution_id == case_execution_id
-            )
+            .where(AttemptRecord.case_execution_id == case_execution_id)
             .order_by(AttemptRecord.attempt_number)
         )
         return result.all()
@@ -537,9 +516,7 @@ class TestRepository:
         """Return the most recent attempt for recovery/retry decisions."""
         return await self._session.scalar(
             select(AttemptRecord)
-            .where(
-                AttemptRecord.case_execution_id == case_execution_id
-            )
+            .where(AttemptRecord.case_execution_id == case_execution_id)
             .order_by(AttemptRecord.attempt_number.desc())
             .limit(1)
         )
@@ -625,9 +602,7 @@ class TestRepository:
         )
 
         if record is None:
-            raise KeyError(
-                f"stage execution not found: {stage_execution_id}"
-            )
+            raise KeyError(f"stage execution not found: {stage_execution_id}")
 
         record.status = status
 
@@ -651,9 +626,7 @@ class TestRepository:
     ) -> MetricResultRecord:
         """Persist a canonical individual metric result."""
         if not metric.run_id:
-            raise ValueError(
-                "metric.run_id is required for durable metric persistence"
-            )
+            raise ValueError("metric.run_id is required for durable metric persistence")
 
         payload = metric.model_dump(mode="json")
 
@@ -728,9 +701,7 @@ class TestRepository:
         """List all aggregate metric results for a run."""
         result = await self._session.scalars(
             select(AggregateMetricResultRecord)
-            .where(
-                AggregateMetricResultRecord.run_id == run_id
-            )
+            .where(AggregateMetricResultRecord.run_id == run_id)
             .order_by(
                 AggregateMetricResultRecord.metric_id,
                 AggregateMetricResultRecord.aggregation,
@@ -786,9 +757,7 @@ class TestRepository:
             test_definition_id,
         )
         if record is None:
-            raise KeyError(
-                f"test definition not found: {test_definition_id}"
-            )
+            raise KeyError(f"test definition not found: {test_definition_id}")
         return record
 
     async def _require_run(
@@ -812,9 +781,7 @@ class TestRepository:
             case_execution_id,
         )
         if record is None:
-            raise KeyError(
-                f"case execution not found: {case_execution_id}"
-            )
+            raise KeyError(f"case execution not found: {case_execution_id}")
         return record
 
     async def _require_attempt(

@@ -206,9 +206,7 @@ class TargetConfigVersion(CanonicalModel):
     config_hash: str
     created_at: datetime
 
-    _validate_created_at = field_validator("created_at")(
-        validate_aware_timestamp
-    )
+    _validate_created_at = field_validator("created_at")(validate_aware_timestamp)
 
 
 class TargetAdapterDescriptor(CanonicalModel):
@@ -296,9 +294,7 @@ class TargetCapabilities(CanonicalModel):
     idempotency: bool = False
     request_recovery: bool = False
 
-    usage: UsageCapabilities = Field(
-        default_factory=UsageCapabilities
-    )
+    usage: UsageCapabilities = Field(default_factory=UsageCapabilities)
     retrieval_metadata: RetrievalMetadataCapabilities = Field(
         default_factory=RetrievalMetadataCapabilities
     )
@@ -339,9 +335,7 @@ class TargetConnectionState(CanonicalModel):
     # Human/debug-friendly normalized failure information.
     error: JsonDict | None = None
 
-    _validate_checked_at = field_validator("checked_at")(
-        validate_aware_timestamp
-    )
+    _validate_checked_at = field_validator("checked_at")(validate_aware_timestamp)
     _validate_last_successful_at = field_validator("last_successful_at")(
         validate_aware_timestamp
     )
@@ -355,13 +349,9 @@ class ManagedTarget(CanonicalModel):
 
     adapter_type: str | None = None
 
-    configuration_status: TargetConfigurationStatus = (
-        TargetConfigurationStatus.EMPTY
-    )
+    configuration_status: TargetConfigurationStatus = TargetConfigurationStatus.EMPTY
 
-    connection: TargetConnectionState = Field(
-        default_factory=TargetConnectionState
-    )
+    connection: TargetConnectionState = Field(default_factory=TargetConnectionState)
 
     current_config_version: int | None = Field(
         default=None,
@@ -379,16 +369,12 @@ class ManagedTarget(CanonicalModel):
 
     metadata: JsonDict = Field(default_factory=dict)
 
-    _validate_capabilities_checked_at = field_validator(
-        "capabilities_checked_at"
-    )(validate_aware_timestamp)
+    _validate_capabilities_checked_at = field_validator("capabilities_checked_at")(
+        validate_aware_timestamp
+    )
 
-    _validate_created_at = field_validator("created_at")(
-        validate_aware_timestamp
-    )
-    _validate_updated_at = field_validator("updated_at")(
-        validate_aware_timestamp
-    )
+    _validate_created_at = field_validator("created_at")(validate_aware_timestamp)
+    _validate_updated_at = field_validator("updated_at")(validate_aware_timestamp)
 
 
 # ---------------------------------------------------------------------------
@@ -406,9 +392,7 @@ class AnswerSpan(CanonicalModel):
     def validate_span(self) -> "AnswerSpan":
         """Ensure the end boundary is not before the start boundary."""
         if self.end_char < self.start_char:
-            raise ValueError(
-                "end_char must be greater than or equal to start_char"
-            )
+            raise ValueError("end_char must be greater than or equal to start_char")
         return self
 
 
@@ -441,9 +425,7 @@ class ConfidenceSignal(CanonicalModel):
                 raise ValueError("minimum must not exceed maximum")
 
             if not self.minimum <= self.value <= self.maximum:
-                raise ValueError(
-                    "value must be within the documented confidence range"
-                )
+                raise ValueError("value must be within the documented confidence range")
 
         return self
 
@@ -475,12 +457,8 @@ class TraceSpan(CanonicalModel):
 
     attributes: JsonDict = Field(default_factory=dict)
 
-    _validate_started_at = field_validator("started_at")(
-        validate_aware_timestamp
-    )
-    _validate_ended_at = field_validator("ended_at")(
-        validate_aware_timestamp
-    )
+    _validate_started_at = field_validator("started_at")(validate_aware_timestamp)
+    _validate_ended_at = field_validator("ended_at")(validate_aware_timestamp)
 
 
 class Trace(CanonicalModel):
@@ -548,9 +526,7 @@ class ErrorRecord(CanonicalModel):
 
     details: JsonDict = Field(default_factory=dict)
 
-    _validate_timestamp = field_validator("timestamp")(
-        validate_aware_timestamp
-    )
+    _validate_timestamp = field_validator("timestamp")(validate_aware_timestamp)
 
 
 class OperationProgress(CanonicalModel):
@@ -589,12 +565,8 @@ class Operation(CanonicalModel):
     result: JsonDict | None = None
     error: ErrorRecord | None = None
 
-    _validate_started_at = field_validator("started_at")(
-        validate_aware_timestamp
-    )
-    _validate_finished_at = field_validator("finished_at")(
-        validate_aware_timestamp
-    )
+    _validate_started_at = field_validator("started_at")(validate_aware_timestamp)
+    _validate_finished_at = field_validator("finished_at")(validate_aware_timestamp)
 
 
 class Configuration(CanonicalModel):
@@ -648,9 +620,7 @@ class RetrieveRequest(CanonicalModel):
     parameters: JsonDict = Field(default_factory=dict)
     filters: JsonDict = Field(default_factory=dict)
 
-    include: RetrieveInclude = Field(
-        default_factory=RetrieveInclude
-    )
+    include: RetrieveInclude = Field(default_factory=RetrieveInclude)
 
 
 class RetrieveResponse(CanonicalModel):
@@ -696,9 +666,7 @@ class QueryRequest(CanonicalModel):
 
     parameters: JsonDict = Field(default_factory=dict)
 
-    include: QueryInclude = Field(
-        default_factory=QueryInclude
-    )
+    include: QueryInclude = Field(default_factory=QueryInclude)
 
     stream: bool = False
 
@@ -708,14 +676,10 @@ class QueryRequest(CanonicalModel):
 
         if self.context_policy is ContextPolicy.SUPPLIED_CONTEXT:
             if self.supplied_contexts is None:
-                raise ValueError(
-                    "SUPPLIED_CONTEXT requires supplied_contexts"
-                )
+                raise ValueError("SUPPLIED_CONTEXT requires supplied_contexts")
 
         elif self.supplied_contexts is not None:
-            raise ValueError(
-                "supplied_contexts requires SUPPLIED_CONTEXT policy"
-            )
+            raise ValueError("supplied_contexts requires SUPPLIED_CONTEXT policy")
 
         return self
 
@@ -731,9 +695,7 @@ class QueryResponse(CanonicalModel):
     answer: Answer | None = None
     retrieval: RetrievalResult | None = None
 
-    confidence: list[ConfidenceSignal] = Field(
-        default_factory=list
-    )
+    confidence: list[ConfidenceSignal] = Field(default_factory=list)
 
     trace: Trace | None = None
     usage: Usage | None = None
@@ -756,9 +718,7 @@ class QueryEvent(CanonicalModel):
 
     data: JsonDict = Field(default_factory=dict)
 
-    _validate_timestamp = field_validator("timestamp")(
-        validate_aware_timestamp
-    )
+    _validate_timestamp = field_validator("timestamp")(validate_aware_timestamp)
 
 
 class RequestRecoveryResult(CanonicalModel):
@@ -781,9 +741,7 @@ class TargetObservation(CanonicalModel):
     answer: Answer | None = None
     retrieval: RetrievalResult | None = None
 
-    confidence: list[ConfidenceSignal] = Field(
-        default_factory=list
-    )
+    confidence: list[ConfidenceSignal] = Field(default_factory=list)
 
     trace: Trace | None = None
     usage: Usage | None = None
@@ -791,9 +749,7 @@ class TargetObservation(CanonicalModel):
     warnings: list[WarningRecord] = Field(default_factory=list)
     errors: list[ErrorRecord] = Field(default_factory=list)
 
-    configuration: Configuration = Field(
-        default_factory=Configuration
-    )
+    configuration: Configuration = Field(default_factory=Configuration)
 
     raw_request_artifact: ArtifactRef | None = None
     raw_response_artifact: ArtifactRef | None = None
@@ -804,6 +760,4 @@ class TargetObservation(CanonicalModel):
 
     metadata: JsonDict = Field(default_factory=dict)
 
-    _validate_created_at = field_validator("created_at")(
-        validate_aware_timestamp
-    )
+    _validate_created_at = field_validator("created_at")(validate_aware_timestamp)

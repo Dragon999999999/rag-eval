@@ -88,9 +88,7 @@ class GenericHttpTargetAdapter:
         connection = config.connection
 
         if connection is None or connection.base_url is None:
-            raise ValueError(
-                "generic_http adapter requires connection.base_url."
-            )
+            raise ValueError("generic_http adapter requires connection.base_url.")
 
         self._config = config
         self._protocol = dict(config.protocol)
@@ -106,21 +104,13 @@ class GenericHttpTargetAdapter:
         headers.update(credentials.headers)
 
         if credentials.bearer_token is not None:
-            headers["Authorization"] = (
-                f"Bearer {credentials.bearer_token}"
-            )
+            headers["Authorization"] = f"Bearer {credentials.bearer_token}"
 
         elif credentials.api_key is not None:
-            headers[
-                credentials.api_key_header
-            ] = credentials.api_key
+            headers[credentials.api_key_header] = credentials.api_key
 
         timeout = connection.timeout_seconds or 60.0
-        verify_tls = (
-            True
-            if connection.verify_tls is None
-            else connection.verify_tls
-        )
+        verify_tls = True if connection.verify_tls is None else connection.verify_tls
 
         self._client = client or httpx.AsyncClient(
             base_url=str(connection.base_url).rstrip("/") + "/",
@@ -152,17 +142,11 @@ class GenericHttpTargetAdapter:
 
         target = self._target_info()
 
-        query_spec = self._operation_spec(
-            "query"
-        )
+        query_spec = self._operation_spec("query")
 
-        retrieve_spec = self._operation_spec(
-            "retrieve"
-        )
+        retrieve_spec = self._operation_spec("retrieve")
 
-        configured = self._protocol.get(
-            "capabilities"
-        )
+        configured = self._protocol.get("capabilities")
 
         payload: dict[str, Any] = {
             "protocol_version": "1.0",
@@ -181,9 +165,7 @@ class GenericHttpTargetAdapter:
             "document_ingestion": False,
             "chunk_ingestion": False,
             "context_injection": False,
-            "citations": self._query_response_has(
-                "citations_path"
-            ),
+            "citations": self._query_response_has("citations_path"),
             "confidence": False,
             "target_trace": False,
             "effective_configuration": False,
@@ -192,9 +174,7 @@ class GenericHttpTargetAdapter:
         }
 
         if isinstance(configured, Mapping):
-            payload.update(
-                dict(configured)
-            )
+            payload.update(dict(configured))
 
             payload.setdefault(
                 "target",
@@ -202,9 +182,7 @@ class GenericHttpTargetAdapter:
             )
 
         try:
-            return TargetCapabilities.model_validate(
-                payload
-            )
+            return TargetCapabilities.model_validate(payload)
 
         except ValidationError as exc:
             raise TargetProtocolError(
@@ -222,16 +200,12 @@ class GenericHttpTargetAdapter:
         Absence of protocol.health means health cannot be verified.
         """
 
-        spec = self._operation_spec(
-            "health"
-        )
+        spec = self._operation_spec("health")
 
         if spec is None:
             return None
 
-        method = self._method(
-            spec
-        )
+        method = self._method(spec)
 
         endpoint = self._endpoint(
             "health",
@@ -244,15 +218,11 @@ class GenericHttpTargetAdapter:
             endpoint,
         )
 
-        response_spec = self._response_spec(
-            spec
-        )
+        response_spec = self._response_spec(spec)
 
         # A configured status_path allows semantic validation rather than
         # treating every HTTP 2xx response as healthy.
-        status_path = response_spec.get(
-            "status_path"
-        )
+        status_path = response_spec.get("status_path")
 
         if isinstance(status_path, str):
             status = self._extract_path(
@@ -267,8 +237,7 @@ class GenericHttpTargetAdapter:
 
             if status not in healthy_values:
                 raise TargetProtocolError(
-                    "Generic HTTP health endpoint returned a non-healthy "
-                    "status value.",
+                    "Generic HTTP health endpoint returned a non-healthy status value.",
                     operation="health",
                     details={
                         "status": status,
@@ -278,11 +247,7 @@ class GenericHttpTargetAdapter:
         return HealthStatus(
             status=HealthState.READY,
             target=self._target_info(),
-            details=(
-                payload
-                if isinstance(payload, dict)
-                else {"response": payload}
-            ),
+            details=(payload if isinstance(payload, dict) else {"response": payload}),
         )
 
     # ------------------------------------------------------------------
@@ -295,9 +260,7 @@ class GenericHttpTargetAdapter:
     ) -> QueryResponse:
         """Execute one declaratively mapped generation request."""
 
-        spec = self._require_operation(
-            "query"
-        )
+        spec = self._require_operation("query")
 
         request_payload = request.model_dump(
             mode="json",
@@ -316,17 +279,11 @@ class GenericHttpTargetAdapter:
             json_body=body,
         )
 
-        response_spec = self._response_spec(
-            spec
-        )
+        response_spec = self._response_spec(spec)
 
-        if response_spec.get(
-            "canonical"
-        ) is True:
+        if response_spec.get("canonical") is True:
             try:
-                return QueryResponse.model_validate(
-                    payload
-                )
+                return QueryResponse.model_validate(payload)
             except ValidationError as exc:
                 raise TargetProtocolError(
                     "Generic HTTP query response is not a valid "
@@ -334,9 +291,7 @@ class GenericHttpTargetAdapter:
                     operation="query",
                 ) from exc
 
-        answer_path = response_spec.get(
-            "answer_path"
-        )
+        answer_path = response_spec.get("answer_path")
 
         if not isinstance(answer_path, str):
             raise TargetProtocolError(
@@ -398,9 +353,7 @@ class GenericHttpTargetAdapter:
     ) -> RetrieveResponse:
         """Execute one declaratively mapped retrieval request."""
 
-        spec = self._require_operation(
-            "retrieve"
-        )
+        spec = self._require_operation("retrieve")
 
         request_payload = request.model_dump(
             mode="json",
@@ -419,17 +372,11 @@ class GenericHttpTargetAdapter:
             json_body=body,
         )
 
-        response_spec = self._response_spec(
-            spec
-        )
+        response_spec = self._response_spec(spec)
 
-        if response_spec.get(
-            "canonical"
-        ) is True:
+        if response_spec.get("canonical") is True:
             try:
-                return RetrieveResponse.model_validate(
-                    payload
-                )
+                return RetrieveResponse.model_validate(payload)
             except ValidationError as exc:
                 raise TargetProtocolError(
                     "Generic HTTP retrieval response is not a valid "
@@ -437,9 +384,7 @@ class GenericHttpTargetAdapter:
                     operation="retrieve",
                 ) from exc
 
-        retrieval_path = response_spec.get(
-            "retrieval_path"
-        )
+        retrieval_path = response_spec.get("retrieval_path")
 
         if not isinstance(retrieval_path, str):
             raise TargetProtocolError(
@@ -454,9 +399,7 @@ class GenericHttpTargetAdapter:
         )
 
         try:
-            retrieval = RetrievalResult.model_validate(
-                retrieval_value
-            )
+            retrieval = RetrievalResult.model_validate(retrieval_value)
         except ValidationError as exc:
             raise TargetProtocolError(
                 "Configured retrieval_path does not contain a valid "
@@ -588,21 +531,15 @@ class GenericHttpTargetAdapter:
     ) -> dict[str, Any] | None:
         """Render one configured request body against canonical request data."""
 
-        request_spec = spec.get(
-            "request"
-        )
+        request_spec = spec.get("request")
 
         if request_spec is None:
             return dict(request)
 
         if not isinstance(request_spec, Mapping):
-            raise ValueError(
-                "operation.request must be a mapping."
-            )
+            raise ValueError("operation.request must be a mapping.")
 
-        body_template = request_spec.get(
-            "body"
-        )
+        body_template = request_spec.get("body")
 
         if body_template is None:
             return dict(request)
@@ -613,9 +550,7 @@ class GenericHttpTargetAdapter:
         )
 
         if not isinstance(rendered, dict):
-            raise ValueError(
-                "operation.request.body must render to an object."
-            )
+            raise ValueError("operation.request.body must render to an object.")
 
         return rendered
 
@@ -630,12 +565,10 @@ class GenericHttpTargetAdapter:
             if value == "$request":
                 return dict(request)
 
-            if value.startswith(
-                "$request."
-            ):
+            if value.startswith("$request."):
                 return self._extract_path(
                     request,
-                    value[len("$request."):],
+                    value[len("$request.") :],
                 )
 
             return value
@@ -709,8 +642,7 @@ class GenericHttpTargetAdapter:
                     index = int(segment)
                 except ValueError as exc:
                     raise TargetProtocolError(
-                        f"Response path '{path}' expected a numeric "
-                        "list index.",
+                        f"Response path '{path}' expected a numeric list index.",
                         operation="response_mapping",
                     ) from exc
 
@@ -718,8 +650,7 @@ class GenericHttpTargetAdapter:
                     current = current[index]
                 except IndexError as exc:
                     raise TargetProtocolError(
-                        f"Response path '{path}' contains an out-of-range "
-                        "list index.",
+                        f"Response path '{path}' contains an out-of-range list index.",
                         operation="response_mapping",
                     ) from exc
 
@@ -739,9 +670,7 @@ class GenericHttpTargetAdapter:
     ) -> list[Citation]:
         """Normalize optional canonical citation objects."""
 
-        path = response_spec.get(
-            "citations_path"
-        )
+        path = response_spec.get("citations_path")
 
         if not isinstance(path, str):
             return []
@@ -758,15 +687,11 @@ class GenericHttpTargetAdapter:
             )
 
         try:
-            return [
-                Citation.model_validate(item)
-                for item in value
-            ]
+            return [Citation.model_validate(item) for item in value]
 
         except ValidationError as exc:
             raise TargetProtocolError(
-                "Configured citations are not valid canonical Citation "
-                "objects.",
+                "Configured citations are not valid canonical Citation objects.",
                 operation="query",
             ) from exc
 
@@ -788,14 +713,11 @@ class GenericHttpTargetAdapter:
         )
 
         try:
-            return model_type.model_validate(
-                value
-            )
+            return model_type.model_validate(value)
 
         except ValidationError as exc:
             raise TargetProtocolError(
-                f"Response path '{path}' is not valid "
-                f"{model_type.__name__}.",
+                f"Response path '{path}' is not valid {model_type.__name__}.",
                 operation=operation,
             ) from exc
 
@@ -809,17 +731,13 @@ class GenericHttpTargetAdapter:
     ) -> dict[str, Any] | None:
         """Return one configured operation specification."""
 
-        value = self._protocol.get(
-            name
-        )
+        value = self._protocol.get(name)
 
         if value is None:
             return None
 
         if not isinstance(value, Mapping):
-            raise ValueError(
-                f"protocol.{name} must be a mapping."
-            )
+            raise ValueError(f"protocol.{name} must be a mapping.")
 
         return dict(value)
 
@@ -829,9 +747,7 @@ class GenericHttpTargetAdapter:
     ) -> dict[str, Any]:
         """Return a configured operation or raise an unsupported error."""
 
-        spec = self._operation_spec(
-            name
-        )
+        spec = self._operation_spec(name)
 
         if spec is None:
             raise UnsupportedCapabilityError(
@@ -853,9 +769,7 @@ class GenericHttpTargetAdapter:
         )
 
         if not isinstance(value, str) or not value:
-            raise ValueError(
-                "operation.method must be a non-empty string."
-            )
+            raise ValueError("operation.method must be a non-empty string.")
 
         return value.upper()
 
@@ -866,14 +780,10 @@ class GenericHttpTargetAdapter:
     ) -> str:
         """Return configured operation endpoint."""
 
-        value = spec.get(
-            "endpoint"
-        )
+        value = spec.get("endpoint")
 
         if not isinstance(value, str) or not value:
-            raise ValueError(
-                f"protocol.{operation}.endpoint is required."
-            )
+            raise ValueError(f"protocol.{operation}.endpoint is required.")
 
         return value
 
@@ -889,9 +799,7 @@ class GenericHttpTargetAdapter:
         )
 
         if not isinstance(value, Mapping):
-            raise ValueError(
-                "operation.response must be a mapping."
-            )
+            raise ValueError("operation.response must be a mapping.")
 
         return dict(value)
 
@@ -901,16 +809,12 @@ class GenericHttpTargetAdapter:
     ) -> bool:
         """Return whether query response mapping declares one feature."""
 
-        query = self._operation_spec(
-            "query"
-        )
+        query = self._operation_spec("query")
 
         if query is None:
             return False
 
-        return field in self._response_spec(
-            query
-        )
+        return field in self._response_spec(query)
 
     @staticmethod
     def _template_references(
@@ -952,33 +856,17 @@ class GenericHttpTargetAdapter:
     def _target_info(self) -> TargetInfo:
         """Build evaluator-normalized target identity."""
 
-        name = self._config.metadata.get(
-            "target_name"
-        )
+        name = self._config.metadata.get("target_name")
 
-        version = self._config.metadata.get(
-            "version"
-        )
+        version = self._config.metadata.get("version")
 
-        implementation = self._config.metadata.get(
-            "implementation"
-        )
+        implementation = self._config.metadata.get("implementation")
 
         return TargetInfo(
-            name=(
-                name
-                if isinstance(name, str)
-                else "Generic HTTP target"
-            ),
-            version=(
-                version
-                if isinstance(version, str)
-                else None
-            ),
+            name=(name if isinstance(name, str) else "Generic HTTP target"),
+            version=(version if isinstance(version, str) else None),
             implementation=(
-                implementation
-                if isinstance(implementation, str)
-                else "generic-http"
+                implementation if isinstance(implementation, str) else "generic-http"
             ),
         )
 
@@ -1033,13 +921,10 @@ class GenericHttpTargetAdapter:
             raise TargetAdapterError(
                 f"Generic HTTP target returned HTTP "
                 f"{response.status_code} during '{operation}'.",
-                category=self._status_category(
-                    response.status_code
-                ),
+                category=self._status_category(response.status_code),
                 code=f"HTTP_{response.status_code}",
                 stage=operation,
-                retryable=response.status_code
-                in {429, 502, 503, 504},
+                retryable=response.status_code in {429, 502, 503, 504},
                 http_status=response.status_code,
                 details={
                     "response_body": response.text,
@@ -1054,8 +939,7 @@ class GenericHttpTargetAdapter:
 
         except ValueError as exc:
             raise TargetProtocolError(
-                f"Generic HTTP target returned invalid JSON "
-                f"during '{operation}'.",
+                f"Generic HTTP target returned invalid JSON during '{operation}'.",
                 operation=operation,
             ) from exc
 

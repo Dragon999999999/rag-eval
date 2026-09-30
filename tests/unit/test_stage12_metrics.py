@@ -51,6 +51,7 @@ from rag_eval.models.target import AnswerSpan
 # Test Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def case_with_reference():
     """Create a benchmark case with reference answer."""
@@ -66,7 +67,7 @@ def case_with_reference():
 def case_with_gold_evidence():
     """Create a benchmark case with gold evidence."""
     from rag_eval.models import EvidenceSpan
-    
+
     gold = EvidenceSpan(
         evidence_id="gold-1",
         document_id="doc1",
@@ -75,7 +76,7 @@ def case_with_gold_evidence():
         end_char=100,
         text="Evidence about Paris",
     )
-    
+
     return BenchmarkCase(
         case_id="test-case-2",
         query="What is the capital of France?",
@@ -112,7 +113,7 @@ def observation_with_answer_and_citations():
             end_char=50,
         ),
     )
-    
+
     return TargetObservation(
         observation_id="obs-2",
         case_id="test-case-1",
@@ -126,7 +127,7 @@ def observation_with_answer_and_citations():
 def observation_with_retrieval():
     """Create an observation with retrieval results."""
     from rag_eval.models import RetrievalResult
-    
+
     item = RetrievedItem(
         retrieval_id="retrieval-1",
         rank=1,
@@ -141,17 +142,17 @@ def observation_with_retrieval():
             type="similarity",
         ),
     )
-    
+
     stage = RetrievalStage(
         stage_id="stage-1",
         type=RetrievalStageType.CANDIDATE_RETRIEVAL,
         items=[item],
     )
-    
+
     retrieval = RetrievalResult(
         stages=[stage],
     )
-    
+
     return TargetObservation(
         observation_id="obs-3",
         case_id="test-case-1",
@@ -166,7 +167,7 @@ def observation_with_retrieval():
 def observation_with_trace():
     """Create an observation with execution trace."""
     from datetime import timedelta
-    
+
     now = datetime.now(UTC)
     trace = Trace(
         trace_id="trace-1",
@@ -187,7 +188,7 @@ def observation_with_trace():
             ),
         ],
     )
-    
+
     return TargetObservation(
         observation_id="obs-4",
         case_id="test-case-1",
@@ -205,7 +206,7 @@ def observation_with_usage():
         tokens={"input": 100, "output": 50, "total": 150},
         cost={"total": 0.002, "currency": "USD"},
     )
-    
+
     return TargetObservation(
         observation_id="obs-5",
         case_id="test-case-1",
@@ -220,17 +221,24 @@ def observation_with_usage():
 # Answer Metrics Tests
 # ============================================================================
 
+
 class TestExactMatch:
     """Test exact match metric."""
 
     @pytest.mark.asyncio
-    async def test_exact_match_perfect(self, case_with_reference, observation_with_answer) -> None:
+    async def test_exact_match_perfect(
+        self, case_with_reference, observation_with_answer
+    ) -> None:
         """Exact match should return 1.0 for identical answers."""
         metric = ExactMatch()
-        context = MetricContext(case=case_with_reference, observation=observation_with_answer, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference,
+            observation=observation_with_answer,
+            run_id="run-1",
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
         assert result.metric_id == "answer.exact_match"
@@ -246,12 +254,14 @@ class TestExactMatch:
             answer=Answer(text="London"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = ExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 0.0
 
@@ -265,12 +275,14 @@ class TestExactMatch:
             answer=Answer(text="Paris "),  # trailing space
             created_at=datetime.now(UTC),
         )
-        
+
         metric = ExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs1, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs1, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 0.0  # Whitespace matters
 
@@ -284,12 +296,14 @@ class TestExactMatch:
             answer=None,
             created_at=datetime.now(UTC),
         )
-        
+
         metric = ExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
     @pytest.mark.asyncio
@@ -300,12 +314,14 @@ class TestExactMatch:
             query="Q",
             reference_answer=None,
         )
-        
+
         metric = ExactMatch()
-        context = MetricContext(case=case, observation=observation_with_answer, run_id="run-1")
-        
+        context = MetricContext(
+            case=case, observation=observation_with_answer, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
 
@@ -322,12 +338,14 @@ class TestNormalizedExactMatch:
             answer=Answer(text="paris"),  # lowercase
             created_at=datetime.now(UTC),
         )
-        
+
         metric = NormalizedExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -341,12 +359,14 @@ class TestNormalizedExactMatch:
             answer=Answer(text="Paris!"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = NormalizedExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -360,12 +380,14 @@ class TestNormalizedExactMatch:
             answer=Answer(text="  Paris  "),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = NormalizedExactMatch()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -383,12 +405,14 @@ class TestTokenMetrics:
             answer=Answer(text="Paris"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TokenF1()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -407,12 +431,12 @@ class TestTokenMetrics:
             answer=Answer(text="Paris is the capital"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TokenF1()
         context = MetricContext(case=case, observation=obs, run_id="run-1")
-        
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         # All tokens match, just reordered - should be 1.0
         assert result.value == 1.0
@@ -427,12 +451,14 @@ class TestTokenMetrics:
             answer=Answer(text=""),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TokenPrecision()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
     @pytest.mark.asyncio
@@ -450,12 +476,12 @@ class TestTokenMetrics:
             answer=Answer(text="Paris"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TokenRecall()
         context = MetricContext(case=case, observation=obs, run_id="run-1")
-        
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
 
@@ -463,17 +489,24 @@ class TestTokenMetrics:
 # Retrieval Metrics Tests
 # ============================================================================
 
+
 class TestHitAtK:
     """Test Hit@K metric."""
 
     @pytest.mark.asyncio
-    async def test_hit_at_k_success(self, case_with_gold_evidence, observation_with_retrieval) -> None:
+    async def test_hit_at_k_success(
+        self, case_with_gold_evidence, observation_with_retrieval
+    ) -> None:
         """Hit@K should return 1.0 when gold is retrieved."""
         metric = HitAtK(k=5)
-        context = MetricContext(case=case_with_gold_evidence, observation=observation_with_retrieval, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_gold_evidence,
+            observation=observation_with_retrieval,
+            run_id="run-1",
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0  # doc1 is in both gold and retrieval
 
@@ -482,17 +515,21 @@ class TestHitAtK:
         """Hit@K should return 0.0 when gold not retrieved."""
         # Create retrieval with different document
         from rag_eval.models import RetrievalResult
-        
+
         item = RetrievedItem(
             retrieval_id="retrieval-1",
             rank=1,
-            source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
+            source=SourceLocation(
+                document_id="doc2", page=1, start_char=0, end_char=100
+            ),
             score=RetrievalScore(
-            value=0.9,
-            type="similarity",
-        ),
+                value=0.9,
+                type="similarity",
+            ),
         )
-        stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item])
+        stage = RetrievalStage(
+            stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item]
+        )
         retrieval = RetrievalResult(stages=[stage])
 
         obs = TargetObservation(
@@ -505,7 +542,9 @@ class TestHitAtK:
         )
 
         metric = HitAtK(k=5)
-        context = MetricContext(case=case_with_gold_evidence, observation=obs, run_id="run-1")
+        context = MetricContext(
+            case=case_with_gold_evidence, observation=obs, run_id="run-1"
+        )
 
         result = await metric.compute(context)
 
@@ -518,7 +557,9 @@ class TestHitAtK:
         case = BenchmarkCase(case_id="test", query="Q", gold_evidence=[])
 
         metric = HitAtK(k=5)
-        context = MetricContext(case=case, observation=observation_with_retrieval, run_id="run-1")
+        context = MetricContext(
+            case=case, observation=observation_with_retrieval, run_id="run-1"
+        )
 
         result = await metric.compute(context)
 
@@ -533,11 +574,13 @@ class TestMRR:
         """MRR should be 1.0 when relevant item is first."""
         # Create retrieval with relevant item first
         from rag_eval.models import RetrievalResult
-        
+
         item1 = RetrievedItem(
             retrieval_id="retrieval-1",
             rank=1,
-            source=SourceLocation(document_id="doc1", page=1, start_char=0, end_char=100),
+            source=SourceLocation(
+                document_id="doc1", page=1, start_char=0, end_char=100
+            ),
             score=RetrievalScore(
                 value=0.9,
                 type="similarity",
@@ -546,15 +589,21 @@ class TestMRR:
         item2 = RetrievedItem(
             retrieval_id="retrieval-2",
             rank=2,
-            source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
+            source=SourceLocation(
+                document_id="doc2", page=1, start_char=0, end_char=100
+            ),
             score=RetrievalScore(
                 value=0.8,
                 type="similarity",
             ),
         )
-        stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item1, item2])
+        stage = RetrievalStage(
+            stage_id="s1",
+            type=RetrievalStageType.CANDIDATE_RETRIEVAL,
+            items=[item1, item2],
+        )
         retrieval = RetrievalResult(stages=[stage])
-        
+
         obs = TargetObservation(
             observation_id="obs",
             case_id="test",
@@ -563,12 +612,14 @@ class TestMRR:
             retrieval=retrieval,
             created_at=datetime.now(UTC),
         )
-        
+
         metric = MRR()
-        context = MetricContext(case=case_with_gold_evidence, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_gold_evidence, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0  # 1/1 = 1.0
 
@@ -577,11 +628,13 @@ class TestMRR:
         """MRR should be 0.5 when relevant item is second."""
         # Create retrieval with relevant item second
         from rag_eval.models import RetrievalResult
-        
+
         item1 = RetrievedItem(
             retrieval_id="retrieval-1",
             rank=1,
-            source=SourceLocation(document_id="doc2", page=1, start_char=0, end_char=100),
+            source=SourceLocation(
+                document_id="doc2", page=1, start_char=0, end_char=100
+            ),
             score=RetrievalScore(
                 value=0.8,
                 type="similarity",
@@ -590,13 +643,19 @@ class TestMRR:
         item2 = RetrievedItem(
             retrieval_id="retrieval-2",
             rank=2,
-            source=SourceLocation(document_id="doc1", page=1, start_char=0, end_char=100),
+            source=SourceLocation(
+                document_id="doc1", page=1, start_char=0, end_char=100
+            ),
             score=RetrievalScore(
                 value=0.8,
                 type="similarity",
             ),
         )
-        stage = RetrievalStage(stage_id="s1", type=RetrievalStageType.CANDIDATE_RETRIEVAL, items=[item1, item2])
+        stage = RetrievalStage(
+            stage_id="s1",
+            type=RetrievalStageType.CANDIDATE_RETRIEVAL,
+            items=[item1, item2],
+        )
         retrieval = RetrievalResult(stages=[stage])
 
         obs = TargetObservation(
@@ -609,7 +668,9 @@ class TestMRR:
         )
 
         metric = MRR()
-        context = MetricContext(case=case_with_gold_evidence, observation=obs, run_id="run-1")
+        context = MetricContext(
+            case=case_with_gold_evidence, observation=obs, run_id="run-1"
+        )
 
         result = await metric.compute(context)
 
@@ -621,17 +682,22 @@ class TestMRR:
 # Performance Metrics Tests
 # ============================================================================
 
+
 class TestTotalLatency:
     """Test total latency metric."""
 
     @pytest.mark.asyncio
-    async def test_total_latency_from_trace(self, case_with_reference, observation_with_trace) -> None:
+    async def test_total_latency_from_trace(
+        self, case_with_reference, observation_with_trace
+    ) -> None:
         """Total latency should extract timing from trace."""
         metric = TotalLatency()
-        context = MetricContext(case=case_with_reference, observation=observation_with_trace, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=observation_with_trace, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 150.5
         assert result.metric_id == "performance.total_latency_ms"
@@ -646,12 +712,14 @@ class TestTotalLatency:
             answer=Answer(text="Paris"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TotalLatency()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
 
@@ -659,17 +727,22 @@ class TestTotalLatency:
 # Usage Metrics Tests
 # ============================================================================
 
+
 class TestTotalTokens:
     """Test total tokens metric."""
 
     @pytest.mark.asyncio
-    async def test_total_tokens(self, case_with_reference, observation_with_usage) -> None:
+    async def test_total_tokens(
+        self, case_with_reference, observation_with_usage
+    ) -> None:
         """Total tokens should sum input and output."""
         metric = TotalTokens()
-        context = MetricContext(case=case_with_reference, observation=observation_with_usage, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=observation_with_usage, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 150
         assert result.metric_id == "usage.total_tokens"
@@ -684,12 +757,14 @@ class TestTotalTokens:
             answer=Answer(text="Paris"),
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TotalTokens()
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
 
@@ -697,13 +772,17 @@ class TestTotalCost:
     """Test total cost metric."""
 
     @pytest.mark.asyncio
-    async def test_total_cost(self, case_with_reference, observation_with_usage) -> None:
+    async def test_total_cost(
+        self, case_with_reference, observation_with_usage
+    ) -> None:
         """Total cost should extract cost from usage."""
         metric = TotalCost(currency="USD")
-        context = MetricContext(case=case_with_reference, observation=observation_with_usage, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=observation_with_usage, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 0.002
         assert result.metric_id == "cost.total"
@@ -722,12 +801,14 @@ class TestTotalCost:
             usage=usage,
             created_at=datetime.now(UTC),
         )
-        
+
         metric = TotalCost(currency="USD")
-        context = MetricContext(case=case_with_reference, observation=obs, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=obs, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.UNAVAILABLE_MISSING_INPUT
 
 
@@ -735,17 +816,24 @@ class TestTotalCost:
 # Reliability Metrics Tests
 # ============================================================================
 
+
 class TestSuccessRate:
     """Test success rate metric."""
 
     @pytest.mark.asyncio
-    async def test_success_rate_with_observation(self, case_with_reference, observation_with_answer) -> None:
+    async def test_success_rate_with_observation(
+        self, case_with_reference, observation_with_answer
+    ) -> None:
         """Success rate should return 1.0 when observation exists."""
         metric = SuccessRate()
-        context = MetricContext(case=case_with_reference, observation=observation_with_answer, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference,
+            observation=observation_with_answer,
+            run_id="run-1",
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -753,10 +841,12 @@ class TestSuccessRate:
     async def test_success_rate_no_observation(self, case_with_reference) -> None:
         """Success rate should return 0.0 without observation."""
         metric = SuccessRate()
-        context = MetricContext(case=case_with_reference, observation=None, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=None, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 0.0
 
@@ -765,13 +855,19 @@ class TestAvailability:
     """Test availability metric."""
 
     @pytest.mark.asyncio
-    async def test_availability_with_observation(self, case_with_reference, observation_with_answer) -> None:
+    async def test_availability_with_observation(
+        self, case_with_reference, observation_with_answer
+    ) -> None:
         """Availability should return 1.0 when observation exists."""
         metric = Availability()
-        context = MetricContext(case=case_with_reference, observation=observation_with_answer, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference,
+            observation=observation_with_answer,
+            run_id="run-1",
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 1.0
 
@@ -779,10 +875,12 @@ class TestAvailability:
     async def test_availability_no_observation(self, case_with_reference) -> None:
         """Availability should return 0.0 without observation."""
         metric = Availability()
-        context = MetricContext(case=case_with_reference, observation=None, run_id="run-1")
-        
+        context = MetricContext(
+            case=case_with_reference, observation=None, run_id="run-1"
+        )
+
         result = await metric.compute(context)
-        
+
         assert result.status == MetricStatus.COMPUTED
         assert result.value == 0.0
 
@@ -791,18 +889,19 @@ class TestAvailability:
 # Stage 12 Catalog Tests
 # ============================================================================
 
+
 class TestStage12Catalog:
     """Test Stage 12 metric catalog registration."""
 
     def test_register_stage12_metrics(self) -> None:
         """Should register all Stage 12 metrics."""
         from rag_eval.metrics.stage12 import get_stage12_catalog
-        
+
         registry = get_stage12_catalog()
-        
+
         # Should have metrics registered
         assert len(registry) > 20
-        
+
         # Check specific metrics exist
         assert registry.get("answer.exact_match", "1") is not None
         assert registry.get("retrieval.hit_at_k", "1") is not None
@@ -815,9 +914,9 @@ class TestStage12Catalog:
     def test_metric_ids_are_stable(self) -> None:
         """Metric IDs should be stable and versioned."""
         from rag_eval.metrics.stage12 import get_stage12_catalog
-        
+
         registry = get_stage12_catalog()
-        
+
         # Check versioned access
         em = registry.get("answer.exact_match", "1")
         assert em is not None

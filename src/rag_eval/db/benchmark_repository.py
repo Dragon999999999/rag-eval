@@ -48,9 +48,7 @@ class BenchmarkRepository:
         )
 
         if existing is not None:
-            raise ValueError(
-                f"benchmark already exists: {manifest.benchmark_id}"
-            )
+            raise ValueError(f"benchmark already exists: {manifest.benchmark_id}")
 
         record = BenchmarkRecord(
             benchmark_id=manifest.benchmark_id,
@@ -93,9 +91,7 @@ class BenchmarkRepository:
         benchmark_id: str,
     ) -> Benchmark | None:
         """Load the full benchmark aggregate."""
-        manifest = await self.get_benchmark_manifest(
-            benchmark_id
-        )
+        manifest = await self.get_benchmark_manifest(benchmark_id)
 
         if manifest is None:
             return None
@@ -140,9 +136,7 @@ class BenchmarkRepository:
         )
 
         if record is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
         record.corpus_mode = mode.value
 
@@ -192,27 +186,19 @@ class BenchmarkRepository:
         )
 
         if existing is not None:
-            raise ValueError(
-                f"benchmark case already exists: {case.case_id}"
-            )
+            raise ValueError(f"benchmark case already exists: {case.case_id}")
 
         record = BenchmarkCaseRecord(
             case_id=case.case_id,
             benchmark_id=benchmark_id,
             query=case.query,
-            history=[
-                message.model_dump(mode="json")
-                for message in case.history
-            ],
+            history=[message.model_dump(mode="json") for message in case.history],
             reference_answer=case.reference_answer,
             gold_evidence=[
-                evidence.model_dump(mode="json")
-                for evidence in case.gold_evidence
+                evidence.model_dump(mode="json") for evidence in case.gold_evidence
             ],
             answerability=(
-                case.answerability.value
-                if case.answerability is not None
-                else None
+                case.answerability.value if case.answerability is not None else None
             ),
             tags=case.tags,
             metadata_json={
@@ -238,10 +224,7 @@ class BenchmarkRepository:
             case_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return None
 
         return self._case_from_record(record)
@@ -253,17 +236,11 @@ class BenchmarkRepository:
         """Load only the cases belonging to a benchmark."""
         result = await self._session.scalars(
             select(BenchmarkCaseRecord)
-            .where(
-                BenchmarkCaseRecord.benchmark_id
-                == benchmark_id
-            )
+            .where(BenchmarkCaseRecord.benchmark_id == benchmark_id)
             .order_by(BenchmarkCaseRecord.case_id)
         )
 
-        return [
-            self._case_from_record(record)
-            for record in result.all()
-        ]
+        return [self._case_from_record(record) for record in result.all()]
 
     async def delete_case(
         self,
@@ -276,10 +253,7 @@ class BenchmarkRepository:
             case_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return False
 
         await self._session.delete(record)
@@ -306,8 +280,7 @@ class BenchmarkRepository:
 
         if existing is not None:
             raise ValueError(
-                f"benchmark document already exists: "
-                f"{document.document_id}"
+                f"benchmark document already exists: {document.document_id}"
             )
 
         record = BenchmarkDocumentRecord(
@@ -318,9 +291,7 @@ class BenchmarkRepository:
             sha256=document.sha256,
             size_bytes=document.size_bytes,
             artifact_id=(
-                document.artifact.artifact_id
-                if document.artifact is not None
-                else None
+                document.artifact.artifact_id if document.artifact is not None else None
             ),
             metadata_json=document.metadata,
         )
@@ -341,10 +312,7 @@ class BenchmarkRepository:
             document_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return None
 
         return await self._document_from_record(record)
@@ -356,21 +324,14 @@ class BenchmarkRepository:
         """Load only the documents belonging to a benchmark."""
         result = await self._session.scalars(
             select(BenchmarkDocumentRecord)
-            .where(
-                BenchmarkDocumentRecord.benchmark_id
-                == benchmark_id
-            )
-            .order_by(
-                BenchmarkDocumentRecord.document_id
-            )
+            .where(BenchmarkDocumentRecord.benchmark_id == benchmark_id)
+            .order_by(BenchmarkDocumentRecord.document_id)
         )
 
         documents: list[Document] = []
 
         for record in result.all():
-            documents.append(
-                await self._document_from_record(record)
-            )
+            documents.append(await self._document_from_record(record))
 
         return documents
 
@@ -389,10 +350,7 @@ class BenchmarkRepository:
             document_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return False
 
         await self._session.delete(record)
@@ -421,10 +379,7 @@ class BenchmarkRepository:
         )
 
         if existing is not None:
-            raise ValueError(
-                f"benchmark chunk already exists: "
-                f"{chunk.chunk_id}"
-            )
+            raise ValueError(f"benchmark chunk already exists: {chunk.chunk_id}")
 
         record = BenchmarkChunkRecord(
             chunk_id=chunk.chunk_id,
@@ -455,10 +410,7 @@ class BenchmarkRepository:
             chunk_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return None
 
         return self._chunk_from_record(record)
@@ -470,17 +422,11 @@ class BenchmarkRepository:
         """Load only the chunks belonging to a benchmark."""
         result = await self._session.scalars(
             select(BenchmarkChunkRecord)
-            .where(
-                BenchmarkChunkRecord.benchmark_id
-                == benchmark_id
-            )
+            .where(BenchmarkChunkRecord.benchmark_id == benchmark_id)
             .order_by(BenchmarkChunkRecord.chunk_id)
         )
 
-        return [
-            self._chunk_from_record(record)
-            for record in result.all()
-        ]
+        return [self._chunk_from_record(record) for record in result.all()]
 
     async def delete_chunk(
         self,
@@ -493,10 +439,7 @@ class BenchmarkRepository:
             chunk_id,
         )
 
-        if (
-            record is None
-            or record.benchmark_id != benchmark_id
-        ):
+        if record is None or record.benchmark_id != benchmark_id:
             return False
 
         await self._session.delete(record)
@@ -518,9 +461,7 @@ class BenchmarkRepository:
         )
 
         if record is None:
-            raise KeyError(
-                f"benchmark not found: {benchmark_id}"
-            )
+            raise KeyError(f"benchmark not found: {benchmark_id}")
 
         return record
 
@@ -598,9 +539,7 @@ class BenchmarkRepository:
                 size_bytes=artifact_record.size_bytes,
                 content_type=artifact_record.content_type,
                 created_at=artifact_record.created_at,
-                metadata=dict(
-                    artifact_record.metadata_json or {}
-                ),
+                metadata=dict(artifact_record.metadata_json or {}),
             )
 
         return Document(
@@ -623,8 +562,6 @@ class BenchmarkRepository:
                 "document_id": record.document_id,
                 "text": record.text,
                 "location": record.location,
-                "metadata": dict(
-                    record.metadata_json or {}
-                ),
+                "metadata": dict(record.metadata_json or {}),
             }
         )

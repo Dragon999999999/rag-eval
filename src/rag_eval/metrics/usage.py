@@ -67,9 +67,7 @@ def _extract_usage_values(usage: dict[str, Any]) -> UsageValues:
         if explicit_total is not None:
             values["total_tokens"] = explicit_total
         else:
-            values["total_tokens"] = (
-                values["input_tokens"] + values["output_tokens"]
-            )
+            values["total_tokens"] = values["input_tokens"] + values["output_tokens"]
 
     cost_data = usage.get("cost", {})
     if isinstance(cost_data, dict):
@@ -84,6 +82,7 @@ def _extract_usage_values(usage: dict[str, Any]) -> UsageValues:
         values["currency"] = currency if isinstance(currency, str) else "USD"
 
     return values
+
 
 @dataclass
 class TotalTokensResult(MetricResult):

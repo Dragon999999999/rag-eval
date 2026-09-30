@@ -18,9 +18,7 @@ from rag_eval.models import Benchmark, CorpusMode, Document
 from rag_eval.services import BenchmarkService
 
 
-app = typer.Typer(
-    help="Create and manage evaluation benchmarks."
-)
+app = typer.Typer(help="Create and manage evaluation benchmarks.")
 
 
 # ============================================================================
@@ -42,55 +40,30 @@ def create_benchmark(
     cases: list[Path] = typer.Option(
         [],
         "--cases",
-        help=(
-            "JSON/JSONL case file. "
-            "May be specified multiple times."
-        ),
+        help=("JSON/JSONL case file. May be specified multiple times."),
     ),
     docs: list[Path] = typer.Option(
         [],
         "--docs",
-        help=(
-            "Document file. "
-            "May be specified multiple times."
-        ),
+        help=("Document file. May be specified multiple times."),
     ),
     chunks: list[Path] = typer.Option(
         [],
         "--chunks",
-        help=(
-            "JSON/JSONL chunk file. "
-            "May be specified multiple times."
-        ),
+        help=("JSON/JSONL chunk file. May be specified multiple times."),
     ),
 ) -> None:
     """Create a benchmark and optionally import contents."""
 
-    if (
-        corpus_mode is CorpusMode.DOCUMENTS
-        and chunks
-    ):
-        raise typer.BadParameter(
-            "--chunks cannot be used with "
-            "--corpus-mode DOCUMENTS"
-        )
+    if corpus_mode is CorpusMode.DOCUMENTS and chunks:
+        raise typer.BadParameter("--chunks cannot be used with --corpus-mode DOCUMENTS")
 
-    if (
-        corpus_mode is CorpusMode.CHUNKS
-        and docs
-    ):
-        raise typer.BadParameter(
-            "--docs cannot be used with "
-            "--corpus-mode CHUNKS"
-        )
+    if corpus_mode is CorpusMode.CHUNKS and docs:
+        raise typer.BadParameter("--docs cannot be used with --corpus-mode CHUNKS")
 
-    if (
-        corpus_mode is CorpusMode.EXTERNAL
-        and (docs or chunks)
-    ):
+    if corpus_mode is CorpusMode.EXTERNAL and (docs or chunks):
         raise typer.BadParameter(
-            "EXTERNAL benchmarks cannot contain "
-            "documents or chunks"
+            "EXTERNAL benchmarks cannot contain documents or chunks"
         )
 
     benchmark_id = asyncio.run(
@@ -109,9 +82,7 @@ def create_benchmark(
 @app.command("list")
 def list_benchmarks() -> None:
     """List all persisted benchmarks."""
-    benchmarks = asyncio.run(
-        _list_benchmarks()
-    )
+    benchmarks = asyncio.run(_list_benchmarks())
 
     if not benchmarks:
         typer.echo("No benchmarks found.")
@@ -133,38 +104,18 @@ def show_benchmark(
     benchmark_id: str = typer.Argument(...),
 ) -> None:
     """Show benchmark metadata and content counts."""
-    benchmark = asyncio.run(
-        _get_benchmark(benchmark_id)
-    )
+    benchmark = asyncio.run(_get_benchmark(benchmark_id))
 
-    typer.echo(
-        f"Benchmark: {benchmark.manifest.name}"
-    )
-    typer.echo(
-        f"ID: {benchmark.manifest.benchmark_id}"
-    )
-    typer.echo(
-        "Corpus mode: "
-        f"{benchmark.manifest.corpus_mode.value}"
-    )
-    typer.echo(
-        f"Cases: {benchmark.case_count}"
-    )
-    typer.echo(
-        f"Documents: {benchmark.document_count}"
-    )
-    typer.echo(
-        f"Chunks: {benchmark.chunk_count}"
-    )
+    typer.echo(f"Benchmark: {benchmark.manifest.name}")
+    typer.echo(f"ID: {benchmark.manifest.benchmark_id}")
+    typer.echo(f"Corpus mode: {benchmark.manifest.corpus_mode.value}")
+    typer.echo(f"Cases: {benchmark.case_count}")
+    typer.echo(f"Documents: {benchmark.document_count}")
+    typer.echo(f"Chunks: {benchmark.chunk_count}")
 
-    modes = ", ".join(
-        mode.value
-        for mode in benchmark.available_corpus_modes
-    )
+    modes = ", ".join(mode.value for mode in benchmark.available_corpus_modes)
 
-    typer.echo(
-        f"Available modes: {modes or 'none'}"
-    )
+    typer.echo(f"Available modes: {modes or 'none'}")
 
 
 @app.command("add-cases")
@@ -180,9 +131,7 @@ def add_cases(
         )
     )
 
-    typer.echo(
-        f"Added {count} cases to {benchmark_id}"
-    )
+    typer.echo(f"Added {count} cases to {benchmark_id}")
 
 
 @app.command("add-documents")
@@ -198,9 +147,7 @@ def add_documents(
         )
     )
 
-    typer.echo(
-        f"Added {count} documents to {benchmark_id}"
-    )
+    typer.echo(f"Added {count} documents to {benchmark_id}")
 
 
 @app.command("add-chunks")
@@ -216,9 +163,7 @@ def add_chunks(
         )
     )
 
-    typer.echo(
-        f"Added {count} chunks to {benchmark_id}"
-    )
+    typer.echo(f"Added {count} chunks to {benchmark_id}")
 
 
 @app.command("set-corpus-mode")
@@ -235,9 +180,7 @@ def set_corpus_mode(
             )
         )
     except ValueError as exc:
-        raise typer.BadParameter(
-            str(exc)
-        ) from exc
+        raise typer.BadParameter(str(exc)) from exc
 
     typer.echo(
         f"{benchmark.manifest.benchmark_id}: "
@@ -258,22 +201,14 @@ def delete_benchmark(
 ) -> None:
     """Delete a benchmark."""
     if not yes:
-        confirmed = typer.confirm(
-            f"Delete benchmark {benchmark_id}?"
-        )
+        confirmed = typer.confirm(f"Delete benchmark {benchmark_id}?")
 
         if not confirmed:
             raise typer.Abort()
 
-    asyncio.run(
-        _delete_benchmark(
-            benchmark_id
-        )
-    )
+    asyncio.run(_delete_benchmark(benchmark_id))
 
-    typer.echo(
-        f"Deleted {benchmark_id}"
-    )
+    typer.echo(f"Deleted {benchmark_id}")
 
 
 # ============================================================================
@@ -289,29 +224,21 @@ async def _create_benchmark(
     document_files: list[Path],
     chunk_files: list[Path],
 ) -> str:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, artifact_service = (
-                    _build_services(session)
-                )
+                service, artifact_service = _build_services(session)
 
                 benchmark = await service.create(
                     name=name,
                     corpus_mode=corpus_mode,
                 )
 
-                benchmark_id = (
-                    benchmark.manifest.benchmark_id
-                )
+                benchmark_id = benchmark.manifest.benchmark_id
 
                 for path in case_files:
                     await service.add_cases(
@@ -320,11 +247,9 @@ async def _create_benchmark(
                     )
 
                 for path in document_files:
-                    document = (
-                        await _store_document(
-                            artifact_service,
-                            path,
-                        )
+                    document = await _store_document(
+                        artifact_service,
+                        path,
                     )
 
                     await service.create_document(
@@ -344,34 +269,21 @@ async def _create_benchmark(
         await engine.dispose()
 
 
-async def _list_benchmarks(
-) -> list[Benchmark]:
-    engine = create_async_engine(
-        get_settings()
-    )
+async def _list_benchmarks() -> list[Benchmark]:
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
-            service, _ = _build_services(
-                session
-            )
+            service, _ = _build_services(session)
 
-            records = (
-                await service.list_benchmarks()
-            )
+            records = await service.list_benchmarks()
 
             result: list[Benchmark] = []
 
             for record in records:
-                result.append(
-                    await service.get(
-                        record.benchmark_id
-                    )
-                )
+                result.append(await service.get(record.benchmark_id))
 
             return result
 
@@ -382,23 +294,15 @@ async def _list_benchmarks(
 async def _get_benchmark(
     benchmark_id: str,
 ) -> Benchmark:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
-            service, _ = _build_services(
-                session
-            )
+            service, _ = _build_services(session)
 
-            return await service.get(
-                benchmark_id
-            )
+            return await service.get(benchmark_id)
 
     finally:
         await engine.dispose()
@@ -408,20 +312,14 @@ async def _add_cases(
     benchmark_id: str,
     files: list[Path],
 ) -> int:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, _ = _build_services(
-                    session
-                )
+                service, _ = _build_services(session)
 
                 count = 0
 
@@ -443,29 +341,21 @@ async def _add_documents(
     benchmark_id: str,
     files: list[Path],
 ) -> int:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, artifact_service = (
-                    _build_services(session)
-                )
+                service, artifact_service = _build_services(session)
 
                 count = 0
 
                 for path in files:
-                    document = (
-                        await _store_document(
-                            artifact_service,
-                            path,
-                        )
+                    document = await _store_document(
+                        artifact_service,
+                        path,
                     )
 
                     await service.create_document(
@@ -485,27 +375,19 @@ async def _add_chunks(
     benchmark_id: str,
     files: list[Path],
 ) -> int:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, _ = _build_services(
-                    session
-                )
+                service, _ = _build_services(session)
 
                 count = 0
 
                 for path in files:
-                    chunks = load_chunks(
-                        path
-                    )
+                    chunks = load_chunks(path)
 
                     count += await service.add_chunks(
                         benchmark_id,
@@ -522,26 +404,18 @@ async def _set_corpus_mode(
     benchmark_id: str,
     corpus_mode: CorpusMode,
 ) -> Benchmark:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, _ = _build_services(
-                    session
-                )
+                service, _ = _build_services(session)
 
-                return (
-                    await service.set_corpus_mode(
-                        benchmark_id,
-                        corpus_mode,
-                    )
+                return await service.set_corpus_mode(
+                    benchmark_id,
+                    corpus_mode,
                 )
 
     finally:
@@ -551,24 +425,16 @@ async def _set_corpus_mode(
 async def _delete_benchmark(
     benchmark_id: str,
 ) -> None:
-    engine = create_async_engine(
-        get_settings()
-    )
+    engine = create_async_engine(get_settings())
 
     try:
-        session_factory = create_session_factory(
-            engine
-        )
+        session_factory = create_session_factory(engine)
 
         async with session_factory() as session:
             async with session.begin():
-                service, _ = _build_services(
-                    session
-                )
+                service, _ = _build_services(session)
 
-                await service.delete(
-                    benchmark_id
-                )
+                await service.delete(benchmark_id)
 
     finally:
         await engine.dispose()
@@ -586,17 +452,11 @@ def _build_services(
     ArtifactService,
 ]:
     """Build transaction-scoped services."""
-    benchmark_repository = (
-        BenchmarkRepository(session)
-    )
+    benchmark_repository = BenchmarkRepository(session)
 
-    persistence_repository = (
-        PersistenceRepository(session)
-    )
+    persistence_repository = PersistenceRepository(session)
 
-    store = LocalArtifactStore(
-        root=Path("./data")
-    )
+    store = LocalArtifactStore(root=Path("./data"))
 
     artifact_service = ArtifactService(
         store,
@@ -619,9 +479,7 @@ async def _store_document(
     path: Path,
 ) -> Document:
     """Persist one document artifact and build its canonical model."""
-    mime_type = mimetypes.guess_type(
-        path.name
-    )[0]
+    mime_type = mimetypes.guess_type(path.name)[0]
 
     artifact = await artifact_service.put(
         path,

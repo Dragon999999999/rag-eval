@@ -440,9 +440,7 @@ class ResilientCaseWorker:
                     case_execution_id,
                 )
                 if case_execution is not None:
-                    case_execution.status = (
-                        CaseExecutionStatus.TARGET_COMPLETE.value
-                    )
+                    case_execution.status = CaseExecutionStatus.TARGET_COMPLETE.value
                     await self._session.flush()
 
             return observation

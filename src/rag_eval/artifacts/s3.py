@@ -67,9 +67,7 @@ class S3ArtifactStore(ArtifactStore):
         sha256 = hashlib.sha256(data).hexdigest()
 
         if expected_sha256 is not None and sha256 != expected_sha256:
-            raise ValueError(
-                "artifact SHA-256 does not match expected_sha256"
-            )
+            raise ValueError("artifact SHA-256 does not match expected_sha256")
 
         key = f"artifacts/{sha256[:2]}/{sha256}"
 

@@ -50,6 +50,7 @@ class MetricRequirement(Enum):
     # Metadata requirements
     RUN_METADATA = auto()
 
+
 BENCHMARK_REQUIREMENTS = frozenset(
     {
         MetricRequirement.QUERY,
