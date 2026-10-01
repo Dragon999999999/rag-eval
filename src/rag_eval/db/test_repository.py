@@ -9,10 +9,10 @@ Transactions remain caller-managed.
 """
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rag_eval.db.test_models import (
@@ -30,6 +30,10 @@ from rag_eval.db.test_models import (
 )
 from rag_eval.models import ErrorRecord, MetricResult
 from rag_eval.models.metrics import AggregateMetricResult
+
+
+class RunClaimError(RuntimeError):
+    """Raised when another executor already owns a run claim."""
 
 
 class TestRepository:
@@ -363,6 +367,43 @@ class TestRepository:
         await self._session.refresh(run)
         return run
 
+    async def claim_run_running(
+        self,
+        run_id: str,
+        *,
+        allowed_statuses: Sequence[str],
+        running_status: str = "RUNNING",
+    ) -> None:
+        """Atomically claim a run for one executor.
+
+        A claim succeeds only while the run is in one of the supplied
+        re-entry states. A concurrent executor observes zero updated rows and
+        cannot start a second worker pool for the same run.
+        """
+        now = datetime.now(UTC)
+        result = await self._session.execute(
+            update(RunRecord)
+            .where(
+                RunRecord.run_id == run_id,
+                RunRecord.status.in_(list(allowed_statuses)),
+            )
+            .values(
+                status=running_status,
+                started_at=func.coalesce(RunRecord.started_at, now),
+                finished_at=None,
+                status_reason=None,
+            )
+        )
+        if result.rowcount != 1:
+            run = await self.get_run(run_id)
+            if run is None:
+                raise KeyError(f"run not found: {run_id}")
+            raise RunClaimError(
+                f"run {run_id} cannot be claimed from state {run.status}"
+            )
+
+        await self._session.flush()
+
     async def append_run_event(
         self,
         event: RunEventRecord,
@@ -644,6 +685,20 @@ class TestRepository:
             payload=payload,
         )
 
+        existing = await self._session.get(
+            MetricResultRecord,
+            metric.metric_result_id,
+        )
+        if existing is not None:
+            existing.case_execution_id = case_execution_id
+            existing.value = metric.value
+            existing.status = metric.status.value
+            existing.reason = metric.reason
+            existing.details = metric.details
+            existing.payload = payload
+            await self._session.flush()
+            return existing
+
         self._session.add(record)
         await self._session.flush()
         return record
@@ -708,6 +763,15 @@ class TestRepository:
             )
         )
         return result.all()
+
+    async def delete_aggregates(self, run_id: str) -> None:
+        """Remove derived aggregates before rebuilding them from case results."""
+        await self._session.execute(
+            delete(AggregateMetricResultRecord).where(
+                AggregateMetricResultRecord.run_id == run_id
+            )
+        )
+        await self._session.flush()
 
     # -------------------------------------------------------------------------
     # Errors

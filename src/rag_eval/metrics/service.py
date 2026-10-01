@@ -202,6 +202,66 @@ class ScoringService:
             aggregates_persisted=aggregates_persisted,
         )
 
+    async def score_case(
+        self,
+        *,
+        run_id: str,
+        case_execution_id: str,
+        case: BenchmarkCase,
+        observation: TargetObservation | None,
+        run_metadata: dict[str, Any] | None = None,
+        judge: Any | None = None,
+    ) -> list[Any]:
+        """Score and persist one case using the caller's transaction.
+
+        The method intentionally does not open or commit a session. Callers
+        can therefore persist the observation, metric results, and case
+        lifecycle transition atomically.
+
+        Args:
+            run_id: Durable run identifier.
+            case_execution_id: Durable logical case execution identifier.
+            case: Benchmark truth used by the metrics.
+            observation: Persisted or newly normalized target observation.
+            run_metadata: Immutable run snapshot supplied to metrics.
+            judge: Optional judge adapter for semantic metrics.
+
+        Returns:
+            Metric results produced for the case.
+        """
+        return await self._engine.score_case(
+            case=case,
+            observation=observation,
+            run_id=run_id,
+            run_metadata=run_metadata,
+            judge=judge,
+            case_execution_id=case_execution_id,
+        )
+
+    async def aggregate_run(self, run_id: str) -> int:
+        """Rebuild run aggregates from already persisted case results.
+
+        This operation does not execute metrics or load target observations. It
+        is safe to run after each execution batch and after a retry because the
+        derived aggregate rows are replaced from the durable per-case rows.
+        """
+        metric_values: dict[
+            tuple[str, str], list[tuple[float | int | None, MetricStatus]]
+        ] = {}
+        for result in await self._test_repository.list_metric_results(run_id):
+            key = (result.metric_id, result.metric_version)
+            status = MetricStatus(result.status)
+            value = (
+                result.value
+                if status == MetricStatus.COMPUTED
+                and isinstance(result.value, (int, float))
+                else None
+            )
+            metric_values.setdefault(key, []).append((value, status))
+
+        await self._test_repository.delete_aggregates(run_id)
+        return await self._aggregate_and_persist(run_id, metric_values)
+
     async def _load_observation(
         self, case_execution_id: str
     ) -> TargetObservation | None:

@@ -83,6 +83,7 @@ class MetricExecutionEngine:
         run_id: str,
         run_metadata: dict[str, Any] | None = None,
         judge: Any | None = None,
+        case_execution_id: str | None = None,
     ) -> list[MetricResult]:
         """Score one case with all applicable metrics.
 
@@ -92,6 +93,8 @@ class MetricExecutionEngine:
             run_id: Run identifier for result persistence.
             run_metadata: Optional run-level metadata.
             judge: Optional judge adapter for semantic metrics.
+            case_execution_id: Durable case execution identifier to associate
+                with persisted metric results.
 
         Returns:
             List of metric results (computed, unavailable, failed, etc.).
@@ -115,7 +118,11 @@ class MetricExecutionEngine:
             results.append(result)
 
             # Persist result
-            await self._persist_result(result, case.case_id)
+            await self._persist_result(
+                result,
+                case.case_id,
+                case_execution_id=case_execution_id,
+            )
 
         return results
 
@@ -308,7 +315,13 @@ class MetricExecutionEngine:
         """
         return True
 
-    async def _persist_result(self, result: MetricResult, case_id: str) -> None:
+    async def _persist_result(
+        self,
+        result: MetricResult,
+        case_id: str,
+        *,
+        case_execution_id: str | None = None,
+    ) -> None:
         """Persist metric result to database.
 
         Args:
@@ -340,7 +353,13 @@ class MetricExecutionEngine:
         )
 
         try:
-            await self._repository.persist_metric(canonical_result)
+            if case_execution_id is None:
+                await self._repository.persist_metric(canonical_result)
+            else:
+                await self._repository.persist_metric(
+                    canonical_result,
+                    case_execution_id=case_execution_id,
+                )
         except Exception as exc:
             logger.error(
                 "Failed to persist metric result %s: %s",

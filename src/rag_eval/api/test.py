@@ -576,6 +576,7 @@ async def pause_run(
 async def resume_run(
     run_id: str,
     service: TestServiceDep,
+    background_tasks: BackgroundTasks,
 ) -> RunDetail:
     """Resume an intentionally paused run from its immutable run snapshot."""
     try:
@@ -584,6 +585,8 @@ async def resume_run(
         raise _not_found(str(exc)) from exc
     except RuntimeError as exc:
         raise _conflict(str(exc)) from exc
+
+    background_tasks.add_task(service.execute_run, run_id)
 
     return RunDetail.model_validate(
         run,
@@ -599,6 +602,7 @@ async def resume_run(
 async def recover_run(
     run_id: str,
     service: TestServiceDep,
+    background_tasks: BackgroundTasks,
 ) -> RunDetail:
     """Attempt recovery of an interrupted run.
 
@@ -612,6 +616,33 @@ async def recover_run(
     except RuntimeError as exc:
         raise _conflict(str(exc)) from exc
 
+    background_tasks.add_task(service.execute_run, run_id)
+
+    return RunDetail.model_validate(
+        run,
+        from_attributes=True,
+    )
+
+
+@router.post(
+    "/runs/{run_id}/retry-failed",
+    response_model=RunDetail,
+    summary="Retry failed cases",
+)
+async def retry_failed_cases(
+    run_id: str,
+    service: TestServiceDep,
+    background_tasks: BackgroundTasks,
+) -> RunDetail:
+    """Re-execute only failed cases while preserving completed cases."""
+    try:
+        run = await service.retry_failed_cases(run_id)
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+    except RuntimeError as exc:
+        raise _conflict(str(exc)) from exc
+
+    background_tasks.add_task(service.execute_run, run_id)
     return RunDetail.model_validate(
         run,
         from_attributes=True,

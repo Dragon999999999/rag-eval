@@ -6,10 +6,12 @@ import type { RunStatus, RunStatusResponse } from "../test-types";
 
 export const terminalRunStatuses = new Set([
   "COMPLETE",
+  "COMPLETED_WITH_ERRORS",
   "COMPLETED",
   "FAILED",
   "CANCELLED",
   "complete",
+  "completed_with_errors",
   "completed",
   "failed",
   "cancelled",
@@ -44,6 +46,11 @@ function badgeStatus(
     status === "completed"
   )
     return "success";
+  if (
+    status === "COMPLETED_WITH_ERRORS" ||
+    status === "completed_with_errors"
+  )
+    return "warning";
   if (status === "FAILED" || status === "failed") return "error";
   if (
     status === "PAUSED" ||

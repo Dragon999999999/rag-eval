@@ -149,10 +149,7 @@ class CaseRecoveryService:
         # Terminal target state
         # ------------------------------------------------------------------
 
-        if status in {
-            CaseExecutionStatus.COMPLETE.value,
-            CaseExecutionStatus.TARGET_COMPLETE.value,
-        }:
+        if status == CaseExecutionStatus.COMPLETE.value:
             return RecoveryDecision(
                 action=RecoveryAction.SKIP,
                 reason=f"Case already {status}",

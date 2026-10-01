@@ -41,7 +41,7 @@ from rag_eval.db.test_models import (
     TestDefinitionRecord,
     TestMetricSelectionRecord,
 )
-from rag_eval.db.test_repository import TestRepository
+from rag_eval.db.test_repository import RunClaimError, TestRepository
 from rag_eval.execution.engine import BenchmarkExecutor, ExecutionConfig
 from rag_eval.metrics import ScoringConfig, ScoringService
 from rag_eval.metrics.base import (
@@ -66,10 +66,12 @@ RUN_PAUSED = "PAUSED"
 RUN_INTERRUPTED = "INTERRUPTED"
 RUN_COMPLETED = "COMPLETE"
 RUN_FAILED = "FAILED"
+RUN_COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS"
 RUN_CANCELLED = "CANCELLED"
 
 TERMINAL_RUN_STATES = {
     RUN_COMPLETED,
+    RUN_COMPLETED_WITH_ERRORS,
     RUN_FAILED,
     RUN_CANCELLED,
 }
@@ -903,8 +905,9 @@ class TestService:
     async def execute_run(
         self,
         run_id: str,
+        case_execution_ids: set[str] | None = None,
     ) -> dict[str, Any]:
-        """Execute a previously persisted PENDING run.
+        """Execute selected durable cases from a persisted run.
 
         The run and its CaseExecutionRecords must already be committed before this
         method is called, because BenchmarkExecutor uses independent database
@@ -927,7 +930,13 @@ class TestService:
                 run = await repository.get_run(run_id)
                 if run is None:
                     raise KeyError(f"run not found: {run_id}")
-                if run.status != RUN_PENDING:
+                if run.status not in {
+                    RUN_PENDING,
+                    RUN_FAILED,
+                    RUN_RUNNING,
+                    RUN_INTERRUPTED,
+                    RUN_COMPLETED_WITH_ERRORS,
+                }:
                     raise RuntimeError(
                         f"run {run_id} cannot be executed from state {run.status}"
                     )
@@ -1009,6 +1018,25 @@ class TestService:
                     raise ValueError("run target parameters must be a mapping")
 
             execution_config = ExecutionConfig.from_mapping(execution_snapshot)
+            metrics_snapshot = snapshot.get("metrics", {})
+            resolved_metrics = (
+                metrics_snapshot.get("resolved", [])
+                if isinstance(metrics_snapshot, Mapping)
+                else []
+            )
+            scoring_config = ScoringConfig(
+                mode="explicit",
+                selected_metrics=[
+                    str(item["metric_id"])
+                    for item in resolved_metrics
+                    if isinstance(item, Mapping) and item.get("metric_id")
+                ],
+                metric_versions={
+                    str(item["metric_id"]): str(item.get("version", "1"))
+                    for item in resolved_metrics
+                    if isinstance(item, Mapping) and item.get("metric_id")
+                },
+            )
             executor = BenchmarkExecutor(
                 execution_config=execution_config,
                 adapter=adapter,
@@ -1016,10 +1044,20 @@ class TestService:
                 session_factory=self._session_factory,
                 corpus_id=benchmark_snapshot.get("corpus_id"),
                 target_parameters=dict(parameters_raw),
+                case_execution_ids=case_execution_ids,
+                metric_registry=self._metric_registry,
+                scoring_config=scoring_config,
+                run_metadata=snapshot,
             )
 
-            await executor.execute(run_id, benchmark)
-            await self._score_run(run_id, snapshot)
+            await executor.execute(
+                run_id,
+                benchmark,
+                case_execution_ids=case_execution_ids,
+            )
+            await self._aggregate_run(run_id)
+        except RunClaimError:
+            raise
         except Exception as exc:
             await self._mark_run_failed(run_id, exc)
             raise
@@ -1059,7 +1097,7 @@ class TestService:
         run_id: str,
         snapshot: Mapping[str, Any],
     ) -> None:
-        """Score target observations and finalize completed case records."""
+        """Repair cases left at TARGET_COMPLETE by an older or crashed run."""
         if self._session_factory is None:
             raise RuntimeError("session_factory is required for run scoring")
 
@@ -1096,18 +1134,53 @@ class TestService:
                         metric_versions=metric_versions,
                     ),
                 )
-                await scorer.score_run(
-                    run_id,
-                    run_metadata=dict(snapshot),
-                )
+                run = await test_repository.get_run(run_id)
+                if run is None:
+                    raise KeyError(f"run not found: {run_id}")
 
-                for case in await test_repository.list_case_executions(run_id):
-                    if case.status == "TARGET_COMPLETE":
-                        await test_repository.update_case_execution_status(
-                            case.case_execution_id,
-                            "COMPLETE",
-                            finished_at=datetime.now(UTC),
-                        )
+                for case_execution in await test_repository.list_case_executions(
+                    run_id,
+                    statuses=["TARGET_COMPLETE"],
+                ):
+                    case = await benchmark_repository.get_case(
+                        run.benchmark_id,
+                        case_execution.case_id,
+                    )
+                    if case is None:
+                        continue
+                    observation = await scorer._load_observation(
+                        case_execution.case_execution_id
+                    )
+                    if observation is None:
+                        continue
+                    await scorer.score_case(
+                        run_id=run_id,
+                        case_execution_id=case_execution.case_execution_id,
+                        case=case,
+                        observation=observation,
+                        run_metadata=dict(snapshot),
+                    )
+                    await test_repository.update_case_execution_status(
+                        case_execution.case_execution_id,
+                        "COMPLETE",
+                        finished_at=datetime.now(UTC),
+                    )
+
+    async def _aggregate_run(self, run_id: str) -> None:
+        """Rebuild derived run aggregates from committed case results."""
+        if self._session_factory is None:
+            raise RuntimeError("session_factory is required for run aggregation")
+
+        async with self._session_factory() as session:
+            async with session.begin():
+                test_repository = TestRepository(session)
+                target_repository = TargetRepository(session)
+                scorer = ScoringService(
+                    self._metric_registry,
+                    test_repository,
+                    target_repository,
+                )
+                await scorer.aggregate_run(run_id)
 
     async def _run_detail_from_factory(self, run_id: str) -> dict[str, Any]:
         """Load run details through a fresh session after background execution."""
@@ -1280,6 +1353,53 @@ class TestService:
             run_id,
             "RUN_RESUMED",
             {},
+        )
+
+        return await self._run_detail(run_id)
+
+    async def retry_failed_cases(
+        self,
+        run_id: str,
+    ) -> dict[str, Any]:
+        """Reset failed cases and return the run for re-execution.
+
+        Existing attempts, observations, and errors are retained. Only the
+        failed case lifecycle is moved back to ``PENDING`` so the executor can
+        append a new attempt and leave already complete cases untouched.
+        """
+        run = await self._require_run(run_id)
+        if run.status not in {
+            RUN_FAILED,
+            RUN_COMPLETED_WITH_ERRORS,
+        }:
+            raise RuntimeError(
+                f"failed cases cannot be retried from state {run.status}"
+            )
+
+        cases = await self._repository.list_case_executions(
+            run_id,
+            statuses=["FAILED"],
+        )
+        if not cases:
+            raise RuntimeError(f"run {run_id} has no failed cases to retry")
+
+        for case in cases:
+            await self._repository.update_case_execution_status(
+                case.case_execution_id,
+                RUN_PENDING,
+                clear_finished_at=True,
+            )
+
+        await self._repository.update_run_lifecycle(
+            run_id,
+            status=RUN_PENDING,
+            clear_finished_at=True,
+            clear_status_reason=True,
+        )
+        await self._append_event(
+            run_id,
+            "FAILED_CASES_RETRY_REQUESTED",
+            {"case_execution_count": len(cases)},
         )
 
         return await self._run_detail(run_id)
