@@ -124,7 +124,7 @@ async def get_db_session(
             raise
 
 
-DbSession = Annotated[
+SessionDep = Annotated[
     AsyncSession,
     Depends(get_db_session),
 ]
@@ -136,7 +136,7 @@ DbSession = Annotated[
 
 
 def get_repository(
-    session: DbSession,
+    session: SessionDep,
 ) -> PersistenceRepository:
     """Provide general persistence for the current transaction."""
     return PersistenceRepository(session)
@@ -149,7 +149,7 @@ RepositoryDep = Annotated[
 
 
 def get_benchmark_repository(
-    session: DbSession,
+    session: SessionDep,
 ) -> BenchmarkRepository:
     """Provide benchmark-specific persistence."""
     return BenchmarkRepository(session)
@@ -162,7 +162,7 @@ BenchmarkRepositoryDep = Annotated[
 
 
 def get_target_repository(
-    session: DbSession,
+    session: SessionDep,
 ) -> TargetRepository:
     """Provide target-specific persistence."""
 
@@ -176,7 +176,7 @@ TargetRepositoryDep = Annotated[
 
 
 def get_test_repository(
-    session: DbSession,
+    session: SessionDep,
 ) -> TestRepository:
     """Provide test/run-specific persistence."""
     return TestRepository(session)

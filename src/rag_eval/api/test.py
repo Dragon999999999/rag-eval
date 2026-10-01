@@ -28,6 +28,7 @@ from fastapi.responses import PlainTextResponse
 
 from rag_eval.api.dependencies import (
     MetricRegistryDep,
+    SessionDep,
     TestServiceDep,
     verify_api_key,
 )
@@ -437,7 +438,8 @@ async def validate_test(
 async def start_test_run(
     test_id: str,
     service: TestServiceDep,
-    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
+    session: SessionDep,
+    background_tasks: BackgroundTasks,
 ) -> RunDetail:
     """Create and start a run from the test's current configuration.
 
@@ -447,18 +449,25 @@ async def start_test_run(
     """
     try:
         run = await service.start_run(test_id)
-        if background_tasks is not None:
-            background_tasks.add_task(
-                service.execute_run,
-                run["run_id"],
-            )
+        await session.commit()
+
     except KeyError as exc:
+        await session.rollback()
         raise _not_found(str(exc)) from exc
     except ValueError as exc:
+        await session.rollback()
         raise _unprocessable(str(exc)) from exc
     except RuntimeError as exc:
+        await session.rollback()
         raise _conflict(str(exc)) from exc
+    except Exception:
+        await session.rollback()
+        raise
 
+    background_tasks.add_task(
+        service.execute_run,
+        run["run_id"],
+    )
     return RunDetail.model_validate(
         run,
         from_attributes=True,

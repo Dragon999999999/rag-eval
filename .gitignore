@@ -9,6 +9,7 @@ dist/
 build/
 *.egg-info/
 .qwen/
+.rag-eval/
 
 # Frontend
 frontend/dist/

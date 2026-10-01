@@ -790,6 +790,22 @@ class TargetRepository:
 
         return TargetObservation.model_validate(record.payload)
 
+    async def get_observation_for_attempt(
+        self,
+        attempt_id: str,
+    ) -> TargetObservation | None:
+        """Reload the normalized observation belonging to one attempt."""
+        result = await self._session.scalar(
+            select(TargetObservationRecord).where(
+                TargetObservationRecord.attempt_id == attempt_id
+            )
+        )
+
+        if result is None:
+            return None
+
+        return TargetObservation.model_validate(result.payload)
+
     # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------

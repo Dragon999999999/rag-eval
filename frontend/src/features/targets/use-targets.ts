@@ -1,4 +1,5 @@
 /** TanStack Query hooks for the target-management API. */
+import { useEffect, useRef } from "react";
 import {
   useMutation,
   useQuery,
@@ -35,14 +36,86 @@ export const targetQueryKeys = {
     [...targetQueryKeys.detail(id), "capabilities"] as const,
 };
 
-export function useTargetList(
-  options?: Omit<UseQueryOptions<TargetSummary[]>, "queryKey" | "queryFn">
-) {
-  return useQuery({
+/**
+ * How often, while a target-health view is mounted, to re-run live connection
+ * checks. The persisted connection state can go stale (e.g. after a target's
+ * endpoint changes or goes down weeks after the last manual test), so the
+ * health lights are refreshed periodically without hammering endpoints.
+ */
+const DEFAULT_HEALTH_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+
+interface UseTargetListOptions
+  extends Omit<UseQueryOptions<TargetSummary[]>, "queryKey" | "queryFn"> {
+  /**
+   * Re-run live connection health checks when targets first load and then on
+   * `healthRefreshMs` while the view stays mounted. Defaults to true.
+   */
+  autoHealthCheck?: boolean;
+  /** Interval between automatic connection checks while mounted. */
+  healthRefreshMs?: number;
+}
+
+/**
+ * Whether a target can meaningfully be health-checked: it must be enabled and
+ * have a saved configuration version to build an adapter from.
+ */
+function healthCheckable(target: TargetSummary): boolean {
+  return target.enabled && target.current_config_version != null;
+}
+
+export function useTargetList(options?: UseTargetListOptions) {
+  const client = useQueryClient();
+  const query = useQuery<TargetSummary[]>({
     queryKey: targetQueryKeys.list(),
     queryFn: () => TargetService.listTargets(),
-    ...options,
+    ...(options as UseQueryOptions<TargetSummary[]>),
   });
+
+  const autoHealthCheck = options?.autoHealthCheck ?? true;
+  const healthRefreshMs = options?.healthRefreshMs ?? DEFAULT_HEALTH_REFRESH_MS;
+
+  // Keep the latest list reachable from the refresh effect without re-running
+  // it on every refetch, which would otherwise trigger a check loop.
+  const targetsRef = useRef<TargetSummary[] | undefined>(undefined);
+  targetsRef.current = query.data;
+
+  // Guards the on-mount check so it fires once even if the effect re-runs when
+  // the refetched list arrives (React StrictMode re-invokes effects in dev).
+  const mountChecked = useRef(false);
+
+  useEffect(() => {
+    if (!autoHealthCheck) return;
+
+    const recheck = () => {
+      const checkable = (targetsRef.current ?? []).filter(healthCheckable);
+      if (!checkable.length) return;
+
+      void Promise.all(
+        checkable.map((target) =>
+          TargetService.testConnection(target.target_id).catch(() => undefined)
+        )
+      ).then(() => {
+        // Persisted states were refreshed server-side; refetch so the status
+        // lights reflect the new results.
+        void client.invalidateQueries({ queryKey: targetQueryKeys.list() });
+      });
+    };
+
+    // Fresh check on page load: once targets are available, replace the stale
+    // persisted light with current connectivity before the interval fires.
+    if (
+      !mountChecked.current &&
+      (targetsRef.current ?? []).some(healthCheckable)
+    ) {
+      mountChecked.current = true;
+      recheck();
+    }
+
+    const handle = window.setInterval(recheck, healthRefreshMs);
+    return () => window.clearInterval(handle);
+  }, [autoHealthCheck, healthRefreshMs, client, query.data]);
+
+  return query;
 }
 
 export function useTarget(

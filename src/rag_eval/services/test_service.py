@@ -1704,14 +1704,22 @@ class TestService:
 
             missing = requirements - available
 
-            if missing and test.target_id is None and self._has_requirement_kind(
-                definition,
-                "capability",
+            if (
+                missing
+                and test.target_id is None
+                and self._has_requirement_kind(
+                    definition,
+                    "capability",
+                )
             ):
                 reason = "no target selected"
-            elif missing and test.benchmark_id is None and self._has_requirement_kind(
-                definition,
-                "benchmark_field",
+            elif (
+                missing
+                and test.benchmark_id is None
+                and self._has_requirement_kind(
+                    definition,
+                    "benchmark_field",
+                )
             ):
                 reason = "no benchmark selected"
             elif missing:
