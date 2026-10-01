@@ -44,8 +44,10 @@ export const targetQueryKeys = {
  */
 const DEFAULT_HEALTH_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 
-interface UseTargetListOptions
-  extends Omit<UseQueryOptions<TargetSummary[]>, "queryKey" | "queryFn"> {
+interface UseTargetListOptions extends Omit<
+  UseQueryOptions<TargetSummary[]>,
+  "queryKey" | "queryFn"
+> {
   /**
    * Re-run live connection health checks when targets first load and then on
    * `healthRefreshMs` while the view stays mounted. Defaults to true.
@@ -65,14 +67,15 @@ function healthCheckable(target: TargetSummary): boolean {
 
 export function useTargetList(options?: UseTargetListOptions) {
   const client = useQueryClient();
+  const { autoHealthCheck, healthRefreshMs, ...queryOptions } = options ?? {};
   const query = useQuery<TargetSummary[]>({
     queryKey: targetQueryKeys.list(),
     queryFn: () => TargetService.listTargets(),
-    ...(options as UseQueryOptions<TargetSummary[]>),
+    ...queryOptions,
   });
 
-  const autoHealthCheck = options?.autoHealthCheck ?? true;
-  const healthRefreshMs = options?.healthRefreshMs ?? DEFAULT_HEALTH_REFRESH_MS;
+  const shouldAutoHealthCheck = autoHealthCheck ?? true;
+  const refreshIntervalMs = healthRefreshMs ?? DEFAULT_HEALTH_REFRESH_MS;
 
   // Keep the latest list reachable from the refresh effect without re-running
   // it on every refetch, which would otherwise trigger a check loop.
@@ -84,7 +87,7 @@ export function useTargetList(options?: UseTargetListOptions) {
   const mountChecked = useRef(false);
 
   useEffect(() => {
-    if (!autoHealthCheck) return;
+    if (!shouldAutoHealthCheck) return;
 
     const recheck = () => {
       const checkable = (targetsRef.current ?? []).filter(healthCheckable);
@@ -103,17 +106,16 @@ export function useTargetList(options?: UseTargetListOptions) {
 
     // Fresh check on page load: once targets are available, replace the stale
     // persisted light with current connectivity before the interval fires.
-    if (
-      !mountChecked.current &&
-      (targetsRef.current ?? []).some(healthCheckable)
-    ) {
+    if (!mountChecked.current && (targetsRef.current ?? []).some(healthCheckable)) {
       mountChecked.current = true;
       recheck();
     }
 
-    const handle = window.setInterval(recheck, healthRefreshMs);
-    return () => window.clearInterval(handle);
-  }, [autoHealthCheck, healthRefreshMs, client, query.data]);
+    const handle = window.setInterval(recheck, refreshIntervalMs);
+    return () => {
+      window.clearInterval(handle);
+    };
+  }, [shouldAutoHealthCheck, refreshIntervalMs, client, query.data]);
 
   return query;
 }

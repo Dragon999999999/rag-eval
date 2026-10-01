@@ -6,19 +6,66 @@
 
 /** Run status - canonical backend values */
 export type RunStatus =
-  "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
+  | "PENDING"
+  | "CREATED"
+  | "RUNNING"
+  | "COMPLETE"
+  | "COMPLETED_WITH_ERRORS"
+  | "FAILED"
+  | "CANCELLED"
+  | "INTERRUPTED"
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | (string & {});
 
 /** Case execution status */
 export type CaseStatus =
-  "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
+  | "PENDING"
+  | "RUNNING"
+  | "TARGET_COMPLETE"
+  | "COMPLETE"
+  | "FAILED"
+  | "CANCELLED"
+  | "INTERRUPTED"
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | (string & {});
 
 /** Attempt status */
 export type AttemptStatus =
-  "running" | "completed" | "failed" | "cancelled" | "timeout" | "unknown";
+  | "CREATED"
+  | "RUNNING"
+  | "RESPONSE_RECEIVED"
+  | "SUCCEEDED"
+  | "PERMANENT_FAILURE"
+  | "RETRYABLE_FAILURE"
+  | "CANCELLED"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled"
+  | "timeout"
+  | (string & {});
 
 /** Metric result status */
 export type MetricStatus =
-  "computed" | "unavailable_missing_input" | "not_applicable" | "failed" | "skipped";
+  | "COMPUTED"
+  | "UNAVAILABLE_MISSING_INPUT"
+  | "NOT_APPLICABLE"
+  | "FAILED"
+  | "SKIPPED"
+  | "computed"
+  | "unavailable_missing_input"
+  | "not_applicable"
+  | "failed"
+  | "skipped"
+  | (string & {});
 
 /** Run summary for listing */
 export interface RunSummary {
@@ -27,6 +74,7 @@ export interface RunSummary {
   status: RunStatus;
   config_hash: string;
   target_id: string | null;
+  benchmark_id?: string | null;
   test_definition_id: string | null;
   started_at: string | null;
   finished_at: string | null;
@@ -44,6 +92,8 @@ export interface RunDetail {
   run_id: string;
   name: string;
   status: RunStatus;
+  status_reason?: string | null;
+  benchmark_id?: string | null;
   config_hash: string;
   target_id: string | null;
   test_definition_id: string | null;
@@ -75,6 +125,7 @@ export interface RunProgress {
   started_at: string | null;
   finished_at: string | null;
   elapsed_seconds: number | null;
+  status_reason?: string | null;
 }
 
 /** Case execution summary for listing */
@@ -85,6 +136,10 @@ export interface CaseExecutionSummary {
   started_at: string | null;
   finished_at: string | null;
   attempt_count: number | null;
+  query?: string | null;
+  reference_answer?: string | null;
+  answerability?: string | null;
+  tags?: string[];
 }
 
 /** Detailed case execution information */
@@ -101,6 +156,7 @@ export interface CaseExecutionDetail {
   reference_answer: string | null;
   answerability: string | null;
   tags: string[];
+  attempt_count?: number | null;
 }
 
 /** Attempt summary for listing */
@@ -127,6 +183,8 @@ export interface AttemptDetail {
   started_at: string | null;
   finished_at: string | null;
   metadata: Record<string, unknown>;
+  retryable: boolean | null;
+  error_summary: string | null;
 }
 
 /** Target observation summary */

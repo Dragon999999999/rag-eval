@@ -44,6 +44,7 @@ export {
   useObservation,
   useCaseMetrics,
   useRunAggregates,
+  useRunResults,
   useRunReport,
   useRunComparison,
   useExportRun,

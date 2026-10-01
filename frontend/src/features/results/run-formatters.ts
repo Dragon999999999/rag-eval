@@ -14,20 +14,10 @@ import type {
  * Format run status for display.
  */
 export function formatRunStatus(status: RunStatus): string {
-  switch (status) {
-    case "queued":
-      return "Queued";
-    case "running":
-      return "Running";
-    case "completed":
-      return "Completed";
-    case "failed":
-      return "Failed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return "Unknown";
-  }
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/^./, (value) => value.toUpperCase());
 }
 
 /**
@@ -36,37 +26,51 @@ export function formatRunStatus(status: RunStatus): string {
 export function getRunStatusVariant(
   status: RunStatus
 ): "success" | "warning" | "error" | "info" | "neutral" {
-  switch (status) {
-    case "completed":
+  switch (status.toUpperCase()) {
+    case "COMPLETE":
+    case "COMPLETED":
       return "success";
-    case "running":
+    case "COMPLETED_WITH_ERRORS":
+      return "warning";
+    case "RUNNING":
+    case "PENDING":
+    case "PAUSING":
+    case "PAUSED":
       return "info";
-    case "failed":
+    case "FAILED":
       return "error";
-    case "cancelled":
+    case "CANCELLED":
       return "neutral";
     default:
       return "neutral";
   }
 }
 
-/**
- * Format case status for display.
- */
+/** Format a backend case lifecycle value. */
 export function formatCaseStatus(status: CaseStatus): string {
-  switch (status) {
-    case "queued":
-      return "Queued";
-    case "running":
-      return "Running";
-    case "completed":
-      return "Completed";
-    case "failed":
-      return "Failed";
-    case "cancelled":
-      return "Cancelled";
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/^./, (value) => value.toUpperCase());
+}
+
+/** Get the badge variant for a case lifecycle value. */
+export function getCaseStatusVariant(
+  status: CaseStatus
+): "success" | "warning" | "error" | "info" | "neutral" {
+  switch (status.toUpperCase()) {
+    case "COMPLETE":
+      return "success";
+    case "RUNNING":
+    case "PENDING":
+      return "info";
+    case "FAILED":
+      return "error";
+    case "TARGET_COMPLETE":
+    case "INTERRUPTED":
+      return "warning";
     default:
-      return "Unknown";
+      return "neutral";
   }
 }
 
@@ -74,36 +78,26 @@ export function formatCaseStatus(status: CaseStatus): string {
  * Format attempt status for display.
  */
 export function formatAttemptStatus(status: AttemptStatus): string {
-  switch (status) {
-    case "running":
-      return "Running";
-    case "completed":
-      return "Completed";
-    case "failed":
-      return "Failed";
-    case "cancelled":
-      return "Cancelled";
-    case "timeout":
-      return "Timeout";
-    default:
-      return "Unknown";
-  }
+  return status
+    .replaceAll("_", " ")
+    .toLowerCase()
+    .replace(/^./, (value) => value.toUpperCase());
 }
 
 /**
  * Format metric status for display.
  */
 export function formatMetricStatus(status: MetricStatus): string {
-  switch (status) {
-    case "computed":
+  switch (status.toUpperCase()) {
+    case "COMPUTED":
       return "Computed";
-    case "unavailable_missing_input":
+    case "UNAVAILABLE_MISSING_INPUT":
       return "Unavailable";
-    case "not_applicable":
+    case "NOT_APPLICABLE":
       return "N/A";
-    case "failed":
+    case "FAILED":
       return "Failed";
-    case "skipped":
+    case "SKIPPED":
       return "Skipped";
     default:
       return "Unknown";

@@ -68,7 +68,9 @@ describe("useTargetList automatic connection checks", () => {
 
     renderList();
 
-    await waitFor(() => expect(check).toHaveBeenCalledWith("t1"));
+    await waitFor(() => {
+      expect(check).toHaveBeenCalledWith("t1");
+    });
 
     // Unconfigured and disabled targets should not be health-checked.
     expect(check).not.toHaveBeenCalledWith("t2");
@@ -86,9 +88,9 @@ describe("useTargetList automatic connection checks", () => {
 
     renderList({ autoHealthCheck: false });
 
-    await waitFor(() =>
-      expect(check).not.toHaveBeenCalled()
-    );
+    await waitFor(() => {
+      expect(check).not.toHaveBeenCalled();
+    });
 
     // Give the mount effect a moment; no live checks should ever fire.
     await new Promise((resolve) => setTimeout(resolve, 25));

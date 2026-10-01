@@ -27,6 +27,7 @@ export const runKeys = {
   metrics: (runId: string, caseId: string) =>
     [...runKeys.case(runId, caseId), "metrics"] as const,
   aggregates: (runId: string) => [...runKeys.detail(runId), "aggregates"] as const,
+  results: (runId: string) => [...runKeys.detail(runId), "results"] as const,
   report: (runId: string) => [...runKeys.detail(runId), "report"] as const,
   comparison: (runAId: string, runBId: string) =>
     [...runKeys.all, "comparison", runAId, runBId] as const,
@@ -39,6 +40,7 @@ export function useRunList(filters?: {
   test_definition_id?: string;
   target_id?: string;
   benchmark_id?: string;
+  search?: string;
   limit?: number;
   offset?: number;
 }) {
@@ -148,6 +150,15 @@ export function useRunAggregates(runId: string) {
   return useQuery({
     queryKey: runKeys.aggregates(runId),
     queryFn: () => RunService.getRunAggregates(runId),
+    enabled: !!runId,
+  });
+}
+
+/** Load the flat case-by-metric results and authoritative run aggregates. */
+export function useRunResults(runId: string) {
+  return useQuery({
+    queryKey: runKeys.results(runId),
+    queryFn: () => RunService.getRunResults(runId),
     enabled: !!runId,
   });
 }

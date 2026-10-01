@@ -26,11 +26,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pause, Download, GitCompare, Trash2 } from "lucide-react";
-import type { AggregateResultSummary, CaseExecutionSummary } from "../run-types";
+import type { CaseExecutionSummary } from "../run-types";
+import { MetricResultsMatrix } from "../components/metric-results-matrix";
 import {
   useRun,
   useRunProgress,
-  useRunAggregates,
+  useRunResults,
   useRunCases,
   useCancelRun,
 } from "../use-runs";
@@ -46,15 +47,20 @@ export function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"overview" | "cases" | "metrics">(
-    "overview"
+    "metrics"
   );
 
   const { data: run, isLoading: runLoading, error: runError } = useRun(runId || "");
   const { data: progress, isLoading: progressLoading } = useRunProgress(runId || "", {
-    refetchInterval: run?.status === "running" ? 3000 : false,
+    refetchInterval:
+      run && ["PENDING", "RUNNING", "PAUSING"].includes(run.status) ? 3000 : false,
   });
-  const { data: aggregates } = useRunAggregates(runId || "");
-  const { data: casesData } = useRunCases(runId || "", { limit: 10 });
+  const {
+    data: results,
+    isLoading: resultsLoading,
+    error: resultsError,
+  } = useRunResults(runId || "");
+  const { data: casesData, isLoading: casesLoading } = useRunCases(runId || "");
   const cancelRun = useCancelRun();
 
   const handleCancel = async () => {
@@ -93,8 +99,11 @@ export function RunDetailPage() {
     );
   }
 
-  const isRunning = run.status === "running" || run.status === "queued";
-  const isCompleted = run.status === "completed";
+  const isRunning = ["PENDING", "RUNNING", "PAUSING", "PAUSED"].includes(run.status);
+  const isCompleted = ["COMPLETE", "COMPLETED_WITH_ERRORS", "completed"].includes(
+    run.status
+  );
+  const aggregates = results?.aggregates ?? [];
 
   return (
     <Page>
@@ -192,19 +201,22 @@ export function RunDetailPage() {
           )}
 
           {/* Aggregate metrics for completed runs */}
-          {isCompleted && aggregates && aggregates.length > 0 && (
+          {aggregates.length > 0 && (
             <Surface className="p-6">
               <h3 className="mb-4 text-sm font-medium text-text-primary">
                 Key Metrics
               </h3>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                {aggregates.map((agg: AggregateResultSummary) => (
-                  <div key={agg.metric_id} className="space-y-1">
+                {aggregates.map((agg) => (
+                  <div
+                    key={`${agg.metric_id}:${agg.metric_version}:${agg.aggregation}`}
+                    className="space-y-1"
+                  >
                     <div className="text-xs text-text-tertiary">
                       {agg.metric_id.split(".").pop()}
                     </div>
                     <div className="text-lg font-semibold text-text-primary">
-                      {formatMetricValue(agg.value_summary, agg.metric_id)}
+                      {formatMetricValue(agg.value, agg.metric_id)}
                     </div>
                   </div>
                 ))}
@@ -220,7 +232,9 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => { setActiveTab("overview"); }}
+              onClick={() => {
+                setActiveTab("overview");
+              }}
             >
               Overview
             </button>
@@ -230,7 +244,9 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => { setActiveTab("cases"); }}
+              onClick={() => {
+                setActiveTab("cases");
+              }}
             >
               Cases
             </button>
@@ -240,7 +256,9 @@ export function RunDetailPage() {
                   ? "text-accent-foreground border-b-2 border-accent"
                   : "text-text-tertiary hover:text-text-secondary"
               }`}
-              onClick={() => { setActiveTab("metrics"); }}
+              onClick={() => {
+                setActiveTab("metrics");
+              }}
             >
               Metrics
             </button>
@@ -342,9 +360,9 @@ export function RunDetailPage() {
                         <TableCell>
                           <StatusBadge
                             status={
-                              caseExec.status === "completed"
+                              caseExec.status === "COMPLETE"
                                 ? "success"
-                                : caseExec.status === "failed"
+                                : caseExec.status === "FAILED"
                                   ? "error"
                                   : "neutral"
                             }
@@ -365,7 +383,9 @@ export function RunDetailPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="sm" asChild>
-                            <Link to={`/runs/${String(runId)}/cases/${caseExec.case_id}`}>
+                            <Link
+                              to={`/runs/${String(runId)}/cases/${caseExec.case_id}`}
+                            >
                               View
                             </Link>
                           </Button>
@@ -388,31 +408,22 @@ export function RunDetailPage() {
               <h3 className="mb-4 text-sm font-medium text-text-primary">
                 Metric Results
               </h3>
-              {aggregates && aggregates.length > 0 ? (
-                <div className="space-y-4">
-                  {aggregates.map((agg: AggregateResultSummary) => (
-                    <div
-                      key={agg.metric_id}
-                      className="border-border flex items-center justify-between border-b pb-3"
-                    >
-                      <div>
-                        <div className="font-medium text-text-primary">
-                          {agg.metric_id}
-                        </div>
-                        <div className="text-xs text-text-tertiary">
-                          v{agg.metric_version} · {agg.aggregation}
-                        </div>
-                      </div>
-                      <div className="text-lg font-semibold text-text-primary">
-                        {formatMetricValue(agg.value_summary, agg.metric_id)}
-                      </div>
-                    </div>
-                  ))}
+              {resultsLoading || casesLoading ? (
+                <div className="flex justify-center py-10">
+                  <Spinner />
                 </div>
+              ) : resultsError ? (
+                <Alert variant="error">
+                  <AlertDescription>
+                    Metric results could not be loaded.
+                  </AlertDescription>
+                </Alert>
               ) : (
-                <EmptyState
-                  title="No metrics"
-                  description="No metric results available for this run."
+                <MetricResultsMatrix
+                  runId={runId || ""}
+                  cases={casesData?.cases ?? []}
+                  metrics={results?.metrics ?? []}
+                  aggregates={aggregates}
                 />
               )}
             </Surface>

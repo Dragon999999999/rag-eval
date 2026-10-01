@@ -57,6 +57,7 @@ export function ResultsPage() {
     status: statusFilter || undefined,
     test_definition_id: testFilter || undefined,
     target_id: targetFilter || undefined,
+    search: search || undefined,
     limit,
     offset,
   });
@@ -185,10 +186,13 @@ export function ResultsPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="running">Running</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
+                <SelectItem value="RUNNING">Running</SelectItem>
+                <SelectItem value="COMPLETE">Completed</SelectItem>
+                <SelectItem value="COMPLETED_WITH_ERRORS">
+                  Completed with errors
+                </SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -262,14 +266,17 @@ function RunRow({ run }: RunRowProps) {
 
   // Get a representative metric value
   const keyResult =
-    run.status === "completed" && run.progress_percent !== undefined
+    ["COMPLETE", "COMPLETED", "COMPLETED_WITH_ERRORS"].includes(run.status) &&
+    run.progress_percent !== undefined
       ? `${run.progress_percent.toFixed(0)}% complete`
       : "—";
 
   return (
     <TableRow
       className="cursor-pointer transition-colors hover:bg-surface-hover"
-      onClick={() => {}}
+      onClick={() => {
+        window.location.href = `/runs/${encodeURIComponent(run.run_id)}`;
+      }}
     >
       <TableCell>
         <div>
