@@ -90,6 +90,26 @@ export function useCancelRun() {
   });
 }
 
+/** Retry only failed cases while preserving completed cases in the run. */
+export function useRetryFailedCases() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) => RunService.retryFailedCases(runId),
+    onSuccess: (_, runId) => {
+      void queryClient.invalidateQueries({ queryKey: runKeys.detail(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.progress(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.cases(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.results(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.aggregates(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.report(runId) });
+      void queryClient.invalidateQueries({ queryKey: runKeys.lists() });
+      void queryClient.invalidateQueries({ queryKey: ["tests"] });
+      void queryClient.invalidateQueries({ queryKey: ["test-runs", runId] });
+    },
+  });
+}
+
 /** Hook to get cases for a run */
 export function useRunCases(
   runId: string,

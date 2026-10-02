@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Surface } from "@/components/layout/surface";
 import { Textarea } from "@/components/ui/textarea";
 import { useBenchmarkList } from "@/features/datasets/use-datasets";
 import type { BenchmarkInfo } from "@/features/datasets/dataset-types";
+import { RetryFailedCasesButton } from "@/features/results/components/retry-failed-cases-button";
 import { useTargetList } from "@/features/targets/use-targets";
 import type { TargetSummary } from "@/features/targets/target-types";
 import {
@@ -478,9 +479,21 @@ export function TestEditor({ testId }: TestEditorProps) {
                   {run.name}{" "}
                   <span className="text-xs text-text-tertiary">{run.run_id}</span>
                 </span>
-                <span className="text-xs capitalize text-text-tertiary">
-                  {run.status.toLowerCase()}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <RetryFailedCasesButton
+                    runId={run.run_id}
+                    status={run.status}
+                    failedCases={run.failed_cases}
+                    label="Re-run failures"
+                    variant="secondary"
+                  />
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link to={`/runs/${run.run_id}`}>View results</Link>
+                  </Button>
+                  <span className="text-xs capitalize text-text-tertiary">
+                    {run.status.toLowerCase()}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -507,7 +520,7 @@ export function TestEditor({ testId }: TestEditorProps) {
 interface RunPanelProps {
   testId: string;
   testName: string;
-  run: { run_id: string; status: RunStatus };
+  run: { run_id: string; status: RunStatus; failed_cases?: number | null };
   status?: RunStatusResponse;
   runsLoading: boolean;
 }
@@ -519,6 +532,7 @@ function RunPanel({ testId, testName, run, status, runsLoading }: RunPanelProps)
   const cancel = useCancelRun(run.run_id, testId);
   const busy =
     pause.isPending || resume.isPending || recover.isPending || cancel.isPending;
+  const failedCases = status?.failed_cases ?? run.failed_cases;
 
   return (
     <Surface className="p-4">
@@ -529,7 +543,19 @@ function RunPanel({ testId, testName, run, status, runsLoading }: RunPanelProps)
             {testName} · {run.run_id}
           </p>
         </div>
-        {runsLoading && <Spinner size="sm" />}
+        <div className="flex flex-wrap items-center gap-2">
+          <RetryFailedCasesButton
+            runId={run.run_id}
+            status={status?.status ?? run.status}
+            failedCases={failedCases}
+            label="Re-run failures"
+            variant="secondary"
+          />
+          <Button variant="ghost" size="sm" asChild>
+            <Link to={`/runs/${run.run_id}`}>View results</Link>
+          </Button>
+          {runsLoading && <Spinner size="sm" />}
+        </div>
       </div>
       <RunProgress
         status={run.status}

@@ -37,6 +37,7 @@ export {
   useRunList,
   useRun,
   useRunProgress,
+  useRetryFailedCases,
   useCancelRun,
   useRunCases,
   useRunCase,

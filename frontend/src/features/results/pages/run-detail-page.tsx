@@ -35,6 +35,7 @@ import {
   useRunCases,
   useCancelRun,
 } from "../use-runs";
+import { RetryFailedCasesButton } from "../components/retry-failed-cases-button";
 import {
   getRunStatusVariant,
   formatRunStatus,
@@ -153,9 +154,16 @@ export function RunDetailPage() {
   }
 
   const isRunning = ["PENDING", "RUNNING", "PAUSING", "PAUSED"].includes(run.status);
-  const isCompleted = ["COMPLETE", "COMPLETED_WITH_ERRORS", "completed"].includes(
-    run.status
-  );
+  const isCompleted = [
+    "COMPLETE",
+    "COMPLETED",
+    "COMPLETED_WITH_ERRORS",
+    "FAILED",
+    "complete",
+    "completed",
+    "completed_with_errors",
+    "failed",
+  ].includes(run.status);
 
   return (
     <Page>
@@ -173,6 +181,11 @@ export function RunDetailPage() {
             )}
             {isCompleted && (
               <>
+                <RetryFailedCasesButton
+                  runId={run.run_id}
+                  status={run.status}
+                  failedCases={progress?.failed_cases ?? run.failed_cases}
+                />
                 <Button variant="secondary">
                   <GitCompare className="mr-2 h-4 w-4" />
                   Compare
