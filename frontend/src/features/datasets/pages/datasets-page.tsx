@@ -1,6 +1,6 @@
 /** Benchmark list page and benchmark creation dialog. */
 import { useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/layout/surface";
@@ -130,12 +130,26 @@ interface BenchmarkRowProps {
 }
 
 function BenchmarkRow({ benchmark }: BenchmarkRowProps) {
+  const navigate = useNavigate();
+  const href = `/benchmarks/${encodeURIComponent(benchmark.benchmark_id)}`;
   const corpusCount =
     benchmark.corpus_mode === "CHUNKS"
       ? `${String(benchmark.chunk_count)} chunks`
       : `${String(benchmark.document_count)} documents`;
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer"
+      onClick={() => {
+        navigate(href);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(href);
+        }
+      }}
+      tabIndex={0}
+    >
       <TableCell>
         <div className="font-medium text-text-primary">{benchmark.name}</div>
         {benchmark.version && (
@@ -152,7 +166,7 @@ function BenchmarkRow({ benchmark }: BenchmarkRowProps) {
       </TableCell>
       <TableCell className="text-right">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={`/benchmarks/${benchmark.benchmark_id}`}>Open</Link>
+          <Link to={href}>Open</Link>
         </Button>
       </TableCell>
     </TableRow>

@@ -1,9 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { DashboardPage } from "./dashboard-page";
+import * as dashboardService from "./dashboard-service";
+import { getMockDashboardSummary } from "./mocks";
 
 function renderDashboard(ui: React.ReactElement) {
   return render(
@@ -14,13 +16,24 @@ function renderDashboard(ui: React.ReactElement) {
 }
 
 describe("DashboardPage", () => {
+  beforeEach(() => {
+    queryClient.clear();
+    vi.spyOn(dashboardService, "getDashboardSummary").mockResolvedValue(
+      getMockDashboardSummary()
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders loading skeleton initially", () => {
     renderDashboard(<DashboardPage />);
     // Skeleton should appear while data loads
     expect(screen.getByRole("main")).toBeInTheDocument();
   });
 
-  it("renders operational dashboard with mock data", async () => {
+  it("renders the operational dashboard data shape", async () => {
     renderDashboard(<DashboardPage />);
 
     // Wait for data to load

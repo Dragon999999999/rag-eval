@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FlaskConical, Plus } from "lucide-react";
 import { Page } from "@/components/layout/page-layout";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -114,14 +114,25 @@ export function TestsPage() {
 }
 
 function TestRow({ test }: { test: TestDefinitionInfo }) {
+  const navigate = useNavigate();
+  const href = `/tests/${encodeURIComponent(test.test_definition_id)}`;
   const ready = test.configuration_status === "READY";
   return (
-    <tr className="hover:bg-surface-hover">
+    <tr
+      className="cursor-pointer hover:bg-surface-hover"
+      onClick={() => {
+        navigate(href);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(href);
+        }
+      }}
+      tabIndex={0}
+    >
       <td className="px-4 py-4">
-        <Link
-          className="font-medium text-text-primary hover:text-accent"
-          to={`/tests/${test.test_definition_id}`}
-        >
+        <Link className="font-medium text-text-primary hover:text-accent" to={href}>
           {test.name}
         </Link>
         <div className="mt-1 text-xs text-text-tertiary">{test.test_definition_id}</div>
@@ -139,7 +150,7 @@ function TestRow({ test }: { test: TestDefinitionInfo }) {
       </td>
       <td className="px-4 py-4 text-right">
         <Button size="sm" variant="secondary" asChild>
-          <Link to={`/tests/${test.test_definition_id}`}>Open</Link>
+          <Link to={href}>Open</Link>
         </Button>
       </td>
     </tr>

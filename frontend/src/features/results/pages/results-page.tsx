@@ -5,7 +5,6 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/layout/surface";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SearchInput } from "@/components/ui/search-input";
@@ -27,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { FlaskConical } from "lucide-react";
 import { useRunList } from "../use-runs";
+import { useTargetList } from "@/features/targets/use-targets";
 import {
   getRunStatusVariant,
   formatElapsedTime,
@@ -61,6 +61,11 @@ export function ResultsPage() {
     limit,
     offset,
   });
+  const { data: targets } = useTargetList({ autoHealthCheck: false });
+  const targetNames = new Map(
+    (targets ?? []).map((target) => [target.target_id, target.name])
+  );
+  const displayRuns = runs ?? [];
 
   const handleStatusChange = (value: string) => {
     const newParams = new URLSearchParams(searchParams);
@@ -132,33 +137,6 @@ export function ResultsPage() {
     );
   }
 
-  if (!runs || runs.length === 0) {
-    return (
-      <Page>
-        <Page.Header
-          title="Results"
-          description="Inspect completed evaluations and compare system performance."
-        />
-        <Page.Content>
-          <EmptyState
-            icon={<FlaskConical className="h-8 w-8" />}
-            title="No evaluation results"
-            description="Run evaluations to see results and analysis here."
-            action={
-              <Button
-                onClick={() => {
-                  navigate("/tests/new");
-                }}
-              >
-                Create Test
-              </Button>
-            }
-          />
-        </Page.Content>
-      </Page>
-    );
-  }
-
   return (
     <Page>
       <Page.Header
@@ -213,9 +191,41 @@ export function ResultsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {runs.map((run: RunSummary) => (
-                  <RunRow key={run.run_id} run={run} />
-                ))}
+                {displayRuns.length > 0 ? (
+                  displayRuns.map((run: RunSummary) => (
+                    <RunRow
+                      key={run.run_id}
+                      run={run}
+                      targetName={
+                        run.target_id ? targetNames.get(run.target_id) : undefined
+                      }
+                    />
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-12 text-center">
+                      <div className="space-y-3">
+                        <FlaskConical className="mx-auto h-8 w-8 text-text-tertiary" />
+                        <div>
+                          <p className="font-medium text-text-primary">
+                            No evaluation results found
+                          </p>
+                          <p className="text-sm text-text-tertiary">
+                            Try another filter or create a test to start a run.
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            navigate("/tests/new");
+                          }}
+                        >
+                          Create Test
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </Surface>
@@ -223,8 +233,9 @@ export function ResultsPage() {
           {/* Pagination */}
           <div className="flex items-center justify-between">
             <div className="text-sm text-text-tertiary">
-              Showing {offset + 1}-{Math.min(offset + limit, runs.length)} of{" "}
-              {runs.length} runs
+              {displayRuns.length > 0
+                ? `Showing ${String(offset + 1)}-${String(offset + displayRuns.length)} runs`
+                : "Showing 0 runs"}
             </div>
             <div className="flex gap-2">
               <Button
@@ -240,7 +251,7 @@ export function ResultsPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                disabled={runs.length < limit}
+                disabled={displayRuns.length < limit}
                 onClick={() => {
                   handlePageChange(page + 1);
                 }}
@@ -257,9 +268,11 @@ export function ResultsPage() {
 
 interface RunRowProps {
   run: RunSummary;
+  targetName?: string;
 }
 
-function RunRow({ run }: RunRowProps) {
+function RunRow({ run, targetName }: RunRowProps) {
+  const navigate = useNavigate();
   const started = run.started_at ? new Date(run.started_at).getTime() : Date.now();
   const finished = run.finished_at ? new Date(run.finished_at).getTime() : Date.now();
   const duration = run.finished_at ? (finished - started) / 1000 : null;
@@ -275,8 +288,15 @@ function RunRow({ run }: RunRowProps) {
     <TableRow
       className="cursor-pointer transition-colors hover:bg-surface-hover"
       onClick={() => {
-        window.location.href = `/runs/${encodeURIComponent(run.run_id)}`;
+        navigate(`/runs/${encodeURIComponent(run.run_id)}`);
       }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(`/runs/${encodeURIComponent(run.run_id)}`);
+        }
+      }}
+      tabIndex={0}
     >
       <TableCell>
         <div>
@@ -287,7 +307,12 @@ function RunRow({ run }: RunRowProps) {
         </div>
       </TableCell>
       <TableCell>
-        <div className="text-sm text-text-secondary">{run.target_id ?? "—"}</div>
+        <div>
+          <div className="font-medium text-text-primary">{targetName ?? "—"}</div>
+          {run.target_id && (
+            <div className="text-xs text-text-tertiary">{run.target_id}</div>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <div className="text-sm text-text-secondary">Dataset</div>

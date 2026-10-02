@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -100,8 +100,23 @@ export function TargetList() {
 }
 
 function TargetRow({ target }: { target: TargetSummary }) {
+  const navigate = useNavigate();
+  const href = `/targets/${encodeURIComponent(target.target_id)}`;
+
   return (
-    <TableRow>
+    <TableRow
+      className="cursor-pointer"
+      onClick={() => {
+        navigate(href);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(href);
+        }
+      }}
+      tabIndex={0}
+    >
       <TableCell>
         <div className="font-medium text-text-primary">{target.name}</div>
         <div className="text-xs text-text-tertiary">{target.target_id}</div>
@@ -124,7 +139,7 @@ function TargetRow({ target }: { target: TargetSummary }) {
       </TableCell>
       <TableCell className="text-right">
         <Button variant="ghost" size="sm" asChild>
-          <Link to={`/targets/${encodeURIComponent(target.target_id)}`}>Open</Link>
+          <Link to={href}>Open</Link>
         </Button>
       </TableCell>
     </TableRow>
