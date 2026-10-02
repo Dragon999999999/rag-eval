@@ -139,6 +139,7 @@ export interface CaseExecutionSummary {
   query?: string | null;
   reference_answer?: string | null;
   answerability?: string | null;
+  gold_evidence?: Array<Record<string, unknown>>;
   tags?: string[];
 }
 
@@ -155,6 +156,7 @@ export interface CaseExecutionDetail {
   query: string | null;
   reference_answer: string | null;
   answerability: string | null;
+  gold_evidence: Array<Record<string, unknown>>;
   tags: string[];
   attempt_count?: number | null;
 }

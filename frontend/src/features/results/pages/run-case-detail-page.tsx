@@ -113,7 +113,9 @@ export function RunCaseDetailPage() {
               </h3>
               {observation?.answer ? (
                 <div className="whitespace-pre-wrap text-sm text-text-secondary">
-                  {JSON.stringify(observation.answer, null, 2)}
+                  {typeof observation.answer.text === "string"
+                    ? observation.answer.text
+                    : JSON.stringify(observation.answer, null, 2)}
                 </div>
               ) : (
                 <div className="text-sm text-text-tertiary">No answer generated</div>
@@ -133,6 +135,30 @@ export function RunCaseDetailPage() {
               )}
             </Surface>
           </div>
+
+          {caseExec.gold_evidence.length > 0 && (
+            <Surface className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-primary">
+                Gold Evidence
+              </h3>
+              <div className="space-y-2">
+                {caseExec.gold_evidence.map((evidence, index) => (
+                  <div
+                    key={
+                      typeof evidence.evidence_id === "string"
+                        ? evidence.evidence_id
+                        : index
+                    }
+                    className="border-border rounded border bg-surface p-3 text-sm text-text-secondary"
+                  >
+                    {typeof evidence.text === "string"
+                      ? evidence.text
+                      : JSON.stringify(evidence)}
+                  </div>
+                ))}
+              </div>
+            </Surface>
+          )}
 
           {/* Evidence */}
           {observation && observation.retrieval && (

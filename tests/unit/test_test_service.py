@@ -16,7 +16,13 @@ from rag_eval.db.test_models import (
 )
 from rag_eval.metrics.base import MetricDefinition, MetricScope
 from rag_eval.metrics.registry import MetricRegistry
-from rag_eval.models import BenchmarkCase, EffectiveTargetConfig
+from rag_eval.models import (
+    Answer,
+    BenchmarkCase,
+    EffectiveTargetConfig,
+    TargetObservation,
+)
+from rag_eval.models.enums import Answerability
 from rag_eval.services.test_service import (
     ALL_AVAILABLE,
     EXPLICIT,
@@ -707,3 +713,66 @@ async def test_start_run_narrows_nullable_ids_and_persists_immutable_snapshot() 
         "RUN_CREATED",
         "RUN_QUEUED",
     ]
+
+
+@pytest.mark.asyncio
+async def test_list_run_cases_includes_benchmark_truth() -> None:
+    """Run case listings include query and available benchmark truth fields."""
+    benchmark_case = BenchmarkCase(
+        case_id="case-1",
+        query="What is the answer?",
+        reference_answer="The golden answer.",
+        answerability=Answerability.ANSWERABLE,
+        tags=["regression"],
+    )
+    service, repository, _, _ = service_fixture(cases=[benchmark_case])
+    test_id = await ready_test(service, repository)
+    run = await service.start_run(test_id)
+
+    cases = await service.list_run_cases(run["run_id"])
+
+    assert cases[0]["query"] == "What is the answer?"
+    assert cases[0]["reference_answer"] == "The golden answer."
+    assert cases[0]["answerability"] == "ANSWERABLE"
+    assert cases[0]["tags"] == ["regression"]
+
+
+@pytest.mark.asyncio
+async def test_get_case_observation_returns_latest_observed_attempt() -> None:
+    """Observation lookup selects the newest attempt with durable output."""
+    service, repository, target_repository, _ = service_fixture()
+    test_id = await ready_test(service, repository)
+    run = await service.start_run(test_id)
+    case_execution_id = next(iter(repository.case_executions))
+    attempts = [
+        SimpleNamespace(attempt_id="attempt-1", attempt_number=1),
+        SimpleNamespace(attempt_id="attempt-2", attempt_number=2),
+    ]
+    observation = TargetObservation(
+        observation_id="observation-2",
+        case_id="case-1",
+        request_id="request-2",
+        answer=Answer(text="Generated answer"),
+        created_at=NOW,
+    )
+
+    async def list_attempts(case_id: str) -> list[Any]:
+        assert case_id == case_execution_id
+        return attempts
+
+    async def get_observation_for_attempt(attempt_id: str) -> Any:
+        return observation if attempt_id == "attempt-2" else None
+
+    repository.list_attempts = list_attempts  # type: ignore[method-assign]
+    target_repository.get_observation_for_attempt = (  # type: ignore[attr-defined]
+        get_observation_for_attempt
+    )
+
+    result = await service.get_case_observation(
+        run["run_id"],
+        case_execution_id,
+    )
+
+    assert result is not None
+    assert result["attempt_id"] == "attempt-2"
+    assert result["answer"]["text"] == "Generated answer"

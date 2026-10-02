@@ -18,7 +18,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # ============================================================================
 # Metric registry
 # ============================================================================
@@ -355,6 +354,7 @@ class CaseExecutionDetail(BaseModel):
     query: str | None = None
     reference_answer: str | None = None
     answerability: str | None = None
+    gold_evidence: list[dict[str, Any]] = Field(default_factory=list)
 
     tags: list[str] = Field(default_factory=list)
 

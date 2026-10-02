@@ -1519,12 +1519,22 @@ class TestService:
         run_id: str,
     ) -> list[dict[str, Any]]:
         """List persisted logical case executions."""
-        await self._require_run(run_id)
+        run = await self._require_run(run_id)
         cases = await self._repository.list_case_executions(run_id)
+
+        benchmark_cases: dict[str, Any] = {}
+        if run.benchmark_id is not None:
+            benchmark_cases = {
+                benchmark_case.case_id: benchmark_case
+                for benchmark_case in await self._benchmark_repository.list_cases(
+                    run.benchmark_id
+                )
+            }
 
         result: list[dict[str, Any]] = []
         for case in cases:
             attempts = await self._repository.list_attempts(case.case_execution_id)
+            benchmark_case = benchmark_cases.get(case.case_id)
 
             result.append(
                 {
@@ -1535,17 +1545,91 @@ class TestService:
                     "started_at": case.started_at,
                     "finished_at": case.finished_at,
                     "metadata": dict(case.metadata_json or {}),
-                    # Benchmark detail enrichment can be added here once the
-                    # BenchmarkRepository exposes get_case(case_id).
-                    "query": None,
-                    "reference_answer": None,
-                    "answerability": None,
-                    "tags": [],
+                    "query": benchmark_case.query if benchmark_case else None,
+                    "reference_answer": (
+                        benchmark_case.reference_answer if benchmark_case else None
+                    ),
+                    "answerability": (
+                        benchmark_case.answerability.value
+                        if benchmark_case and benchmark_case.answerability is not None
+                        else None
+                    ),
+                    "gold_evidence": (
+                        [
+                            evidence.model_dump(mode="json")
+                            for evidence in benchmark_case.gold_evidence
+                        ]
+                        if benchmark_case
+                        else []
+                    ),
+                    "tags": list(benchmark_case.tags) if benchmark_case else [],
                     "attempt_count": len(attempts),
                 }
             )
 
         return result
+
+    async def get_case_observation(
+        self,
+        run_id: str,
+        case_execution_id: str,
+        *,
+        attempt_id: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Return a persisted normalized observation for a run case.
+
+        Observations belong to attempts, so retryable cases can have more than
+        one observation.  The default selection is the newest attempt with an
+        observation; callers can request a specific attempt for audit views.
+        """
+        await self._require_run(run_id)
+        case = await self._repository.get_case_execution(case_execution_id)
+        if case is None or case.run_id != run_id:
+            raise KeyError(f"case execution not found in run: {case_execution_id}")
+
+        attempts = list(await self._repository.list_attempts(case_execution_id))
+        attempts_by_id = {attempt.attempt_id: attempt for attempt in attempts}
+
+        if attempt_id is not None:
+            attempt = attempts_by_id.get(attempt_id)
+            if attempt is None:
+                raise KeyError(f"attempt not found in case execution: {attempt_id}")
+            candidate_attempts = [attempt]
+        else:
+            candidate_attempts = sorted(
+                attempts,
+                key=lambda item: item.attempt_number,
+                reverse=True,
+            )
+
+        for attempt in candidate_attempts:
+            observation = await self._target_repository.get_observation_for_attempt(
+                attempt.attempt_id
+            )
+            if observation is None:
+                continue
+
+            payload = observation.model_dump(mode="json")
+            answer = payload.get("answer")
+            citations = answer.get("citations", []) if isinstance(answer, dict) else []
+            return {
+                "observation_id": observation.observation_id,
+                "request_id": observation.request_id,
+                "case_execution_id": case_execution_id,
+                "attempt_id": attempt.attempt_id,
+                "answer": answer,
+                "retrieval": payload.get("retrieval"),
+                "citations": citations,
+                "confidence": payload.get("confidence", []),
+                "trace": payload.get("trace"),
+                "usage": payload.get("usage"),
+                "errors": payload.get("errors", []),
+                "warnings": payload.get("warnings", []),
+                "normalization_version": observation.normalization_version,
+                "created_at": observation.created_at,
+            }
+
+        return None
 
     async def list_case_attempts(
         self,

@@ -221,13 +221,18 @@ export const RunService = {
     return attempts.map(toAttemptSummary);
   },
 
-  /** The current backend does not expose observations from the run API yet. */
-  getObservation(
-    _runId: string,
-    _caseId: string,
-    _attemptId?: string
+  async getObservation(
+    runId: string,
+    caseId: string,
+    attemptId?: string
   ): Promise<TargetObservationDetail | null> {
-    return Promise.resolve(null);
+    const item = findCase(await getCases(runId), caseId);
+    if (!item) return null;
+
+    const query = attemptId ? `?attempt_id=${encodeURIComponent(attemptId)}` : "";
+    return apiRequest<TargetObservationDetail | null>(
+      `${runPath(runId)}/cases/${encodeURIComponent(item.case_execution_id)}/observation${query}`
+    );
   },
 
   async getCaseMetrics(runId: string, caseId: string): Promise<MetricResultSummary[]> {

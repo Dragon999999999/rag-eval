@@ -41,6 +41,7 @@ from rag_eval.api.test_schemas import (
     RunEventInfo,
     RunResultsResponse,
     RunStatus,
+    TargetObservationDetail,
     TestCreate,
     TestDetail,
     TestMetricSelectionUpdate,
@@ -723,6 +724,39 @@ async def list_run_cases(
         )
         for case in cases
     ]
+
+
+@router.get(
+    "/runs/{run_id}/cases/{case_execution_id}/observation",
+    response_model=TargetObservationDetail | None,
+    summary="Get case target observation",
+)
+async def get_case_observation(
+    run_id: str,
+    case_execution_id: str,
+    service: TestServiceDep,
+    attempt_id: str | None = None,
+) -> TargetObservationDetail | None:
+    """Return the latest persisted target observation for one case.
+
+    A case may have multiple attempts after retries or recovery.  Without an
+    explicit ``attempt_id``, the service selects the newest attempt that has a
+    persisted normalized observation.  Cases that have not produced an
+    observation yet return ``null`` rather than an error.
+    """
+    try:
+        observation = await service.get_case_observation(
+            run_id,
+            case_execution_id,
+            attempt_id=attempt_id,
+        )
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+
+    if observation is None:
+        return None
+
+    return TargetObservationDetail.model_validate(observation)
 
 
 @router.get(

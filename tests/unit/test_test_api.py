@@ -193,3 +193,45 @@ async def test_start_run_queues_execution_after_run_creation() -> None:
     assert len(background_tasks.tasks) == 1
     await background_tasks()
     assert executed == ["run-1"]
+
+
+@pytest.mark.asyncio
+async def test_case_observation_endpoint_returns_detail() -> None:
+    """The run API exposes a persisted observation for a case execution."""
+
+    class Service:
+        async def get_case_observation(
+            self,
+            run_id: str,
+            case_execution_id: str,
+            *,
+            attempt_id: str | None = None,
+        ) -> dict[str, object]:
+            assert run_id == "run-1"
+            assert case_execution_id == "case-exec-1"
+            assert attempt_id is None
+            return {
+                "observation_id": "observation-1",
+                "request_id": "request-1",
+                "case_execution_id": "case-exec-1",
+                "attempt_id": "attempt-1",
+                "answer": {"text": "Generated answer"},
+                "retrieval": None,
+                "citations": [],
+                "confidence": [],
+                "trace": None,
+                "usage": None,
+                "errors": [],
+                "warnings": [],
+                "normalization_version": "1.0",
+                "created_at": NOW,
+            }
+
+    result = await test_api.get_case_observation(
+        "run-1",
+        "case-exec-1",
+        Service(),
+    )
+
+    assert result is not None
+    assert result.answer == {"text": "Generated answer"}
