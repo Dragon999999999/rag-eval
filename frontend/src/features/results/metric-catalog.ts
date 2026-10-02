@@ -395,7 +395,7 @@ export function formatCatalogMetricValue(
       case "currency":
         return `$${value.toLocaleString(undefined, {
           minimumFractionDigits: 2,
-          maximumFractionDigits: 6,
+          maximumFractionDigits: 2,
         })}`;
       case "count":
         return formatNumber(value, 0);

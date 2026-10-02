@@ -15,12 +15,14 @@ export function formatPercent(value: number, decimals = 1): string {
  * Format duration in seconds to human-readable string.
  */
 export function formatDuration(seconds: number): string {
-  if (seconds < 60) {
-    return `${seconds.toString()}s`;
+  const roundedSeconds = Math.max(0, Math.round(seconds));
+
+  if (roundedSeconds < 60) {
+    return `${String(roundedSeconds)}s`;
   }
 
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainingSeconds = roundedSeconds % 60;
 
   if (minutes < 60) {
     return remainingSeconds > 0

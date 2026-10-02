@@ -514,6 +514,40 @@ class TestRepository:
 
         return {str(status): int(count) for status, count in result.all()}
 
+    async def get_run_attempt_duration_seconds(self, run_id: str) -> float:
+        """Sum elapsed time for every persisted attempt in a run.
+
+        Completed and failed attempts use their persisted finish time. An
+        active attempt uses the current UTC time so status displays remain
+        useful while a run is still executing. Summing attempts avoids counting
+        pause gaps as execution time and preserves time spent across retries.
+        """
+        result = await self._session.execute(
+            select(AttemptRecord.started_at, AttemptRecord.finished_at)
+            .join(
+                CaseExecutionRecord,
+                CaseExecutionRecord.case_execution_id
+                == AttemptRecord.case_execution_id,
+            )
+            .where(CaseExecutionRecord.run_id == run_id)
+        )
+        now = datetime.now(UTC)
+        duration = 0.0
+        for started_at, finished_at in result.all():
+            if started_at is None:
+                continue
+            started = (
+                started_at.replace(tzinfo=UTC)
+                if started_at.tzinfo is None
+                else started_at
+            )
+            finished = finished_at or now
+            finished = (
+                finished.replace(tzinfo=UTC) if finished.tzinfo is None else finished
+            )
+            duration += max((finished - started).total_seconds(), 0.0)
+        return duration
+
     # -------------------------------------------------------------------------
     # Attempts / recovery
     # -------------------------------------------------------------------------

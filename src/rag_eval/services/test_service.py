@@ -1202,7 +1202,8 @@ class TestService:
             if run is None:
                 raise KeyError(f"run not found: {run_id}")
             counts = await repository.get_run_case_counts(run_id)
-            return self._run_detail_payload(run, counts)
+            duration_seconds = await repository.get_run_attempt_duration_seconds(run_id)
+            return self._run_detail_payload(run, counts, duration_seconds)
 
     async def _mark_run_failed(self, run_id: str, error: Exception) -> None:
         """Persist a terminal failure when background execution aborts."""
@@ -1269,13 +1270,9 @@ class TestService:
         done = complete + failed
         progress = (done / total) * 100.0 if total else 0.0
 
-        elapsed_seconds: float | None = None
-        if run.started_at is not None:
-            end = run.finished_at or datetime.now(UTC)
-            elapsed_seconds = max(
-                0.0,
-                (end - run.started_at).total_seconds(),
-            )
+        elapsed_seconds = await self._repository.get_run_attempt_duration_seconds(
+            run_id
+        )
 
         return {
             "run_id": run.run_id,
@@ -2101,13 +2098,17 @@ class TestService:
     ) -> dict[str, Any]:
         run = await self._require_run(run_id)
         counts = await self._repository.get_run_case_counts(run_id)
+        duration_seconds = await self._repository.get_run_attempt_duration_seconds(
+            run_id
+        )
 
-        return self._run_detail_payload(run, counts)
+        return self._run_detail_payload(run, counts, duration_seconds)
 
     @staticmethod
     def _run_detail_payload(
         run: RunRecord,
         counts: Mapping[str, int],
+        duration_seconds: float | None = None,
     ) -> dict[str, Any]:
         """Build the API representation of a persisted run and its counts."""
 
@@ -2130,6 +2131,7 @@ class TestService:
             "metadata": dict(run.metadata_json or {}),
             "created_at": run.created_at,
             "updated_at": run.updated_at,
+            "duration_seconds": duration_seconds,
             "total_cases": sum(counts.values()),
             "complete_cases": counts.get(
                 RUN_COMPLETED,

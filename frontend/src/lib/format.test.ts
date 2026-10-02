@@ -27,6 +27,10 @@ describe("formatDuration", () => {
     expect(formatDuration(45)).toBe("45s");
   });
 
+  it("rounds fractional seconds instead of exposing excessive precision", () => {
+    expect(formatDuration(12.987654321)).toBe("13s");
+  });
+
   it("formats minutes and seconds", () => {
     expect(formatDuration(125)).toBe("2m 5s");
   });

@@ -98,6 +98,7 @@ function runProgress(run: RunSummary): {
 }
 
 function runDuration(run: RunSummary): number | undefined {
+  if (run.duration_seconds != null) return run.duration_seconds;
   if (!run.started_at) return undefined;
   const end = run.finished_at ? new Date(run.finished_at) : new Date();
   return Math.max((end.getTime() - new Date(run.started_at).getTime()) / 1000, 0);

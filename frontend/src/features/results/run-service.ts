@@ -257,10 +257,7 @@ export const RunService = {
       this.getRunProgress(runId),
       getResults(runId),
     ]);
-    const started = run.started_at ? new Date(run.started_at).getTime() : null;
-    const finished = run.finished_at ? new Date(run.finished_at).getTime() : null;
-    const duration =
-      started !== null ? ((finished ?? Date.now()) - started) / 1000 : null;
+    const duration = run.duration_seconds ?? progress.elapsed_seconds;
     const grouped: Record<string, Record<string, unknown>> = {};
     for (const aggregate of results.aggregates) {
       const family = aggregate.metric_id.split(".")[0] ?? "other";

@@ -26,4 +26,8 @@ describe("metric catalog", () => {
       "1,952 ms"
     );
   });
+
+  it("caps currency precision at two decimal places", () => {
+    expect(formatMetricValue(12.345678, "cost.total", "sum")).toBe("$12.35");
+  });
 });

@@ -12,6 +12,7 @@ Critical: Uses persisted data only, no target calls.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from rag_eval.db.test_repository import TestRepository
@@ -130,22 +131,30 @@ class ReportGenerator:
                     value, metric_id
                 )
 
-        # Compute duration
-        duration = None
-        if run.started_at and run.finished_at:
-            from datetime import timezone
-
-            started = (
-                run.started_at.replace(tzinfo=timezone.utc)
-                if run.started_at.tzinfo is None
-                else run.started_at
-            )
-            finished = (
-                run.finished_at.replace(tzinfo=timezone.utc)
-                if run.finished_at.tzinfo is None
-                else run.finished_at
-            )
-            duration = (finished - started).total_seconds()
+        # Sum attempt durations so pauses and retries do not inflate runtime.
+        duration = 0.0
+        now = datetime.now(UTC)
+        for case_execution in case_executions:
+            for attempt in await self._repository.list_attempts(
+                case_execution.case_execution_id
+            ):
+                if attempt.started_at is None:
+                    continue
+                started_at = (
+                    attempt.started_at.replace(tzinfo=UTC)
+                    if attempt.started_at.tzinfo is None
+                    else attempt.started_at
+                )
+                finished_at = attempt.finished_at or now
+                finished_at = (
+                    finished_at.replace(tzinfo=UTC)
+                    if finished_at.tzinfo is None
+                    else finished_at
+                )
+                duration += max(
+                    (finished_at - started_at).total_seconds(),
+                    0.0,
+                )
 
         return RunReport(
             run_id=run.run_id,

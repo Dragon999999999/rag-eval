@@ -247,6 +247,7 @@ class RunSummary(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+    duration_seconds: float | None = None
 
 
 class RunDetail(BaseModel):
@@ -283,6 +284,7 @@ class RunDetail(BaseModel):
     failed_cases: int | None = None
     pending_cases: int | None = None
     running_cases: int | None = None
+    duration_seconds: float | None = None
 
 
 class RunStatus(BaseModel):

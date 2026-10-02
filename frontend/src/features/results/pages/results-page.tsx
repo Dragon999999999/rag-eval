@@ -275,7 +275,8 @@ function RunRow({ run, targetName }: RunRowProps) {
   const navigate = useNavigate();
   const started = run.started_at ? new Date(run.started_at).getTime() : Date.now();
   const finished = run.finished_at ? new Date(run.finished_at).getTime() : Date.now();
-  const duration = run.finished_at ? (finished - started) / 1000 : null;
+  const duration =
+    run.duration_seconds ?? (run.finished_at ? (finished - started) / 1000 : null);
 
   // Get a representative metric value
   const keyResult =

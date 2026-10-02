@@ -79,6 +79,7 @@ export interface RunSummary {
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
+  duration_seconds?: number | null;
   // Computed progress fields
   total_cases?: number;
   complete_cases?: number;
@@ -105,6 +106,7 @@ export interface RunDetail {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  duration_seconds?: number | null;
   // Computed fields
   total_cases?: number;
   complete_cases?: number;

@@ -249,6 +249,10 @@ class MemoryTestRepository:
             counts[case.status] = counts.get(case.status, 0) + 1
         return counts
 
+    async def get_run_attempt_duration_seconds(self, run_id: str) -> float:
+        del run_id
+        return 0.0
+
     async def list_attempts(self, case_execution_id: str) -> list[Any]:
         return []
 
