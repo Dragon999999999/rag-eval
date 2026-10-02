@@ -555,3 +555,25 @@ async def test_metric_and_aggregate_persistence_requires_real_run_id(
     assert [row.metric_id for row in await repository.list_aggregates("run-1")] == [
         "metric-a"
     ]
+
+
+@pytest.mark.asyncio
+async def test_metric_persistence_rejects_cross_run_id_reuse(
+    repository: TestRepository,
+) -> None:
+    """A metric result ID cannot be silently reassigned to another run."""
+    await repository.create_run(run_record("run-1"), {})
+    await repository.create_run(run_record("run-2"), {})
+    metric = MetricResult(
+        metric_result_id="shared-metric-result",
+        metric_id="metric-a",
+        metric_version="1",
+        run_id="run-1",
+        case_id="case-1",
+        status=MetricStatus.COMPUTED,
+        value=1.0,
+    )
+    await repository.persist_metric(metric)
+
+    with pytest.raises(ValueError, match="belongs to another run"):
+        await repository.persist_metric(metric.model_copy(update={"run_id": "run-2"}))

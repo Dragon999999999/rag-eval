@@ -258,6 +258,31 @@ class TestMetricExecution:
         assert result.value == 1.0
 
     @pytest.mark.asyncio
+    async def test_persisted_metric_identity_is_run_scoped(self) -> None:
+        """The same case and metric receive distinct IDs in different runs."""
+        registry = MetricRegistry()
+        registry.register(AlwaysOneMetric())
+
+        class CapturingRepository:
+            def __init__(self) -> None:
+                self.metrics = []
+
+            async def persist_metric(self, metric):
+                self.metrics.append(metric)
+
+        repository = CapturingRepository()
+        engine = MetricExecutionEngine(registry, repository)  # type: ignore[arg-type]
+        case = BenchmarkCase(case_id="test", query="Q")
+
+        await engine.score_case(case, None, "run-1")
+        await engine.score_case(case, None, "run-2")
+
+        assert [metric.metric_result_id for metric in repository.metrics] == [
+            "mr-run-1-test.always_one-test-1",
+            "mr-run-2-test.always_one-test-1",
+        ]
+
+    @pytest.mark.asyncio
     async def test_failure_isolation(self) -> None:
         """One metric failure should not abort others."""
         from rag_eval.metrics.engine import MetricExecutionEngine

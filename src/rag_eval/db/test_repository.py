@@ -690,7 +690,15 @@ class TestRepository:
             metric.metric_result_id,
         )
         if existing is not None:
+            if existing.run_id != metric.run_id:
+                raise ValueError(
+                    "metric_result_id already belongs to another run: "
+                    f"{metric.metric_result_id}"
+                )
+
+            existing.run_id = metric.run_id
             existing.case_execution_id = case_execution_id
+            existing.case_id = metric.case_id
             existing.value = metric.value
             existing.status = metric.status.value
             existing.reason = metric.reason

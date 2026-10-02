@@ -341,7 +341,10 @@ class MetricExecutionEngine:
 
         # Convert to canonical model
         canonical_result = MetricResultModel(
-            metric_result_id=f"mr-{result.metric_id}-{case_id}-{result.metric_version}",
+            metric_result_id=(
+                f"mr-{result.run_id}-{result.metric_id}-"
+                f"{case_id}-{result.metric_version}"
+            ),
             metric_id=result.metric_id,
             metric_version=result.metric_version,
             status=result.status,
