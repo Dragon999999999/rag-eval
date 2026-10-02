@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -75,6 +76,14 @@ TERMINAL_RUN_STATES = {
     RUN_FAILED,
     RUN_CANCELLED,
 }
+
+
+@dataclass(frozen=True, slots=True)
+class RetryFailedCasesResult:
+    """Describe a retry transition and the cases it authorized for execution."""
+
+    run: dict[str, Any]
+    case_execution_ids: set[str]
 
 
 class TestService:
@@ -1360,7 +1369,7 @@ class TestService:
     async def retry_failed_cases(
         self,
         run_id: str,
-    ) -> dict[str, Any]:
+    ) -> RetryFailedCasesResult:
         """Reset failed cases and return the run for re-execution.
 
         Existing attempts, observations, and errors are retained. Only the
@@ -1383,6 +1392,8 @@ class TestService:
         if not cases:
             raise RuntimeError(f"run {run_id} has no failed cases to retry")
 
+        case_execution_ids = {case.case_execution_id for case in cases}
+
         for case in cases:
             await self._repository.update_case_execution_status(
                 case.case_execution_id,
@@ -1402,7 +1413,10 @@ class TestService:
             {"case_execution_count": len(cases)},
         )
 
-        return await self._run_detail(run_id)
+        return RetryFailedCasesResult(
+            run=await self._run_detail(run_id),
+            case_execution_ids=case_execution_ids,
+        )
 
     async def recover_run(
         self,

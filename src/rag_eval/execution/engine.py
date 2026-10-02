@@ -223,14 +223,15 @@ class BenchmarkExecutor:
             self._capabilities.retrieval,
         )
 
+        requested_case_execution_ids = (
+            self._case_execution_ids
+            if case_execution_ids is None
+            else case_execution_ids
+        )
         case_execution_ids = await self._load_case_execution_ids(
             run_id,
             benchmark,
-            requested_case_execution_ids=(
-                self._case_execution_ids
-                if case_execution_ids is None
-                else case_execution_ids
-            ),
+            requested_case_execution_ids=requested_case_execution_ids,
         )
 
         await self._set_run_running(run_id)
@@ -239,6 +240,7 @@ class BenchmarkExecutor:
             run_id,
             benchmark,
             case_execution_ids,
+            only_pending=requested_case_execution_ids is not None,
         )
 
         await self._finish_run(
@@ -313,8 +315,16 @@ class BenchmarkExecutor:
         run_id: str,
         benchmark: Benchmark,
         case_execution_ids: Mapping[str, str],
+        *,
+        only_pending: bool = False,
     ) -> bool:
-        """Execute cases using a bounded worker pool."""
+        """Execute eligible cases using a bounded worker pool.
+
+        Explicit case subsets, such as failed-case retries, are restricted to
+        PENDING records. Recovery runs without a subset retain their broader
+        non-complete selection so the recovery coordinator can inspect stale
+        or interrupted cases.
+        """
         queue: asyncio.Queue[tuple[BenchmarkCase, str] | None] = asyncio.Queue()
 
         async with self._session_factory() as session:
@@ -326,8 +336,13 @@ class BenchmarkExecutor:
             case
             for case in benchmark.cases
             if case.case_id in case_execution_ids
-            and statuses.get(case_execution_ids[case.case_id])
-            != CaseExecutionStatus.COMPLETE.value
+            and (
+                statuses.get(case_execution_ids[case.case_id])
+                == CaseExecutionStatus.PENDING.value
+                if only_pending
+                else statuses.get(case_execution_ids[case.case_id])
+                != CaseExecutionStatus.COMPLETE.value
+            )
         ]
 
         for case in selected_cases:
@@ -439,6 +454,8 @@ class BenchmarkExecutor:
                     attempt_id,
                     attempt_number,
                 )
+                if request is None:
+                    return
 
                 observation = await self._execute_target_call(
                     case,
@@ -553,6 +570,11 @@ class BenchmarkExecutor:
                 case_execution = await repository.get_case_execution(case_execution_id)
                 if case_execution is None:
                     raise KeyError(f"case execution not found: {case_execution_id}")
+                if case_execution.status in {
+                    CaseExecutionStatus.PENDING.value,
+                    CaseExecutionStatus.COMPLETE.value,
+                }:
+                    return
                 if case_execution.status != CaseExecutionStatus.PENDING.value:
                     await repository.update_case_execution_status(
                         case_execution_id,
@@ -567,8 +589,8 @@ class BenchmarkExecutor:
         case_execution_id: str,
         attempt_id: str,
         attempt_number: int = 1,
-    ) -> QueryRequest | RetrieveRequest:
-        """Persist RUNNING case/attempt state before target I/O."""
+    ) -> QueryRequest | RetrieveRequest | None:
+        """Persist RUNNING state, skipping cases no longer in PENDING state."""
         base_request = self._build_request(case)
 
         identity = self._request_identity.generate(
@@ -608,12 +630,12 @@ class BenchmarkExecutor:
                     )
 
                 if case_execution.status != CaseExecutionStatus.PENDING.value:
-                    raise RuntimeError(
-                        f"case execution "
-                        f"{case_execution_id} "
-                        "cannot start from state "
-                        f"{case_execution.status}"
+                    logger.info(
+                        "Skipping case execution %s because it is already %s",
+                        case_execution_id,
+                        case_execution.status,
                     )
+                    return None
 
                 now = datetime.now(UTC)
 

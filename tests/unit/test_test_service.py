@@ -28,6 +28,7 @@ from rag_eval.services.test_service import (
     EXPLICIT,
     INCOMPLETE,
     READY,
+    RetryFailedCasesResult,
     TestService,
 )
 
@@ -713,6 +714,34 @@ async def test_start_run_narrows_nullable_ids_and_persists_immutable_snapshot() 
         "RUN_CREATED",
         "RUN_QUEUED",
     ]
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_cases_returns_only_reset_case_ids() -> None:
+    """Retry resets failed cases while leaving completed cases untouched."""
+    service, repository, _, _ = service_fixture(
+        cases=[
+            BenchmarkCase(case_id="case-1", query="First"),
+            BenchmarkCase(case_id="case-2", query="Second"),
+        ]
+    )
+    test_id = await ready_test(service, repository)
+    run = await service.start_run(test_id)
+    stored_run = repository.runs[run["run_id"]]
+    case_records = list(repository.case_executions.values())
+    failed_case = case_records[0]
+    completed_case = case_records[1]
+    failed_case.status = "FAILED"
+    completed_case.status = "COMPLETE"
+    stored_run.status = "COMPLETED_WITH_ERRORS"
+
+    retry = await service.retry_failed_cases(run["run_id"])
+
+    assert isinstance(retry, RetryFailedCasesResult)
+    assert retry.case_execution_ids == {failed_case.case_execution_id}
+    assert failed_case.status == "PENDING"
+    assert completed_case.status == "COMPLETE"
+    assert retry.run["status"] == "PENDING"
 
 
 @pytest.mark.asyncio

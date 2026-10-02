@@ -633,19 +633,30 @@ async def recover_run(
 async def retry_failed_cases(
     run_id: str,
     service: TestServiceDep,
+    session: SessionDep,
     background_tasks: BackgroundTasks,
 ) -> RunDetail:
-    """Re-execute only failed cases while preserving completed cases."""
+    """Commit and queue only the failed cases reset by the retry transition."""
     try:
-        run = await service.retry_failed_cases(run_id)
+        retry = await service.retry_failed_cases(run_id)
+        await session.commit()
     except KeyError as exc:
+        await session.rollback()
         raise _not_found(str(exc)) from exc
     except RuntimeError as exc:
+        await session.rollback()
         raise _conflict(str(exc)) from exc
+    except Exception:
+        await session.rollback()
+        raise
 
-    background_tasks.add_task(service.execute_run, run_id)
+    background_tasks.add_task(
+        service.execute_run,
+        run_id,
+        case_execution_ids=retry.case_execution_ids,
+    )
     return RunDetail.model_validate(
-        run,
+        retry.run,
         from_attributes=True,
     )
 

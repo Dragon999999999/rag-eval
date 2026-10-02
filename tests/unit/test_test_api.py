@@ -12,6 +12,7 @@ from rag_eval.api.test_schemas import (
     TestMetricSelectionUpdate,
     TestUpdate,
 )
+from rag_eval.services.test_service import RetryFailedCasesResult
 
 # These Pydantic schemas are API models, not pytest test classes.
 for _api_model in (TestCreate, TestDetail, TestMetricSelectionUpdate, TestUpdate):
@@ -139,8 +140,12 @@ async def test_run_api_maps_not_ready_and_missing_runs() -> None:
         async def get_run(self, run_id: str) -> None:
             return None
 
+    class Session:
+        async def rollback(self) -> None:
+            return None
+
     with pytest.raises(HTTPException) as invalid:
-        await test_api.start_test_run("test-1", Service())
+        await test_api.start_test_run("test-1", Service(), Session(), BackgroundTasks())
     assert invalid.value.status_code == 422
 
     with pytest.raises(HTTPException) as missing:
@@ -187,12 +192,91 @@ async def test_start_run_queues_execution_after_run_creation() -> None:
             executed.append(run_id)
 
     background_tasks = BackgroundTasks()
-    result = await test_api.start_test_run("test-1", Service(), background_tasks)
+
+    class Session:
+        async def commit(self) -> None:
+            return None
+
+        async def rollback(self) -> None:
+            return None
+
+    result = await test_api.start_test_run(
+        "test-1", Service(), Session(), background_tasks
+    )
 
     assert result.run_id == "run-1"
     assert len(background_tasks.tasks) == 1
     await background_tasks()
     assert executed == ["run-1"]
+
+
+@pytest.mark.asyncio
+async def test_retry_failed_cases_commits_and_queues_reset_subset() -> None:
+    """Retry commits before scheduling execution and preserves the case subset."""
+
+    class Session:
+        committed = False
+
+        async def commit(self) -> None:
+            self.committed = True
+
+        async def rollback(self) -> None:
+            raise AssertionError("rollback should not be needed")
+
+    session = Session()
+    executed: list[tuple[str, set[str], bool]] = []
+
+    class Service:
+        async def retry_failed_cases(self, run_id: str) -> RetryFailedCasesResult:
+            assert run_id == "run-1"
+            return RetryFailedCasesResult(
+                run={
+                    "run_id": "run-1",
+                    "name": "test",
+                    "status": "PENDING",
+                    "status_reason": None,
+                    "config_hash": "hash",
+                    "target_id": "target-1",
+                    "benchmark_id": "benchmark-1",
+                    "test_definition_id": "test-1",
+                    "started_at": None,
+                    "finished_at": None,
+                    "paused_at": None,
+                    "interrupted_at": None,
+                    "seed": None,
+                    "rag_eval_version": None,
+                    "tags": [],
+                    "metadata": {},
+                    "created_at": NOW,
+                    "updated_at": NOW,
+                    "total_cases": 2,
+                    "complete_cases": 1,
+                    "failed_cases": 0,
+                    "pending_cases": 1,
+                    "running_cases": 0,
+                },
+                case_execution_ids={"case-exec-failed"},
+            )
+
+        async def execute_run(
+            self,
+            run_id: str,
+            *,
+            case_execution_ids: set[str],
+        ) -> None:
+            executed.append((run_id, case_execution_ids, session.committed))
+
+    background_tasks = BackgroundTasks()
+    result = await test_api.retry_failed_cases(
+        "run-1",
+        Service(),
+        session,
+        background_tasks,
+    )
+
+    assert result.run_id == "run-1"
+    await background_tasks()
+    assert executed == [("run-1", {"case-exec-failed"}, True)]
 
 
 @pytest.mark.asyncio
