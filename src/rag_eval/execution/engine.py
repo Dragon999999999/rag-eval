@@ -299,8 +299,7 @@ class BenchmarkExecutor:
         if missing_requested:
             raise ValueError(
                 "requested case executions do not belong to run "
-                f"{run_id}: "
-                + ", ".join(sorted(missing_requested))
+                f"{run_id}: " + ", ".join(sorted(missing_requested))
             )
 
         return {
@@ -322,9 +321,7 @@ class BenchmarkExecutor:
             repository = TestRepository(session)
             records = await repository.list_case_executions(run_id)
 
-        statuses = {
-            record.case_execution_id: record.status for record in records
-        }
+        statuses = {record.case_execution_id: record.status for record in records}
         selected_cases = [
             case
             for case in benchmark.cases
@@ -428,9 +425,7 @@ class BenchmarkExecutor:
             if decision.observation is not None:
                 observation = decision.observation
                 if latest_attempt is None:
-                    raise RuntimeError(
-                        "recovered observation has no owning attempt"
-                    )
+                    raise RuntimeError("recovered observation has no owning attempt")
                 attempt_id = latest_attempt.attempt_id
             else:
                 await self._reset_case_for_new_attempt(case_execution_id)
@@ -489,15 +484,11 @@ class BenchmarkExecutor:
                 self._artifact_store,
                 persistence_repository,
             )
-            case_execution = await test_repository.get_case_execution(
-                case_execution_id
-            )
+            case_execution = await test_repository.get_case_execution(case_execution_id)
             if case_execution is None or case_execution.run_id != run_id:
                 raise KeyError(f"case execution not found: {case_execution_id}")
 
-            latest_attempt = await test_repository.get_latest_attempt(
-                case_execution_id
-            )
+            latest_attempt = await test_repository.get_latest_attempt(case_execution_id)
             recovery_service = CaseRecoveryService(
                 adapter=self._adapter,
                 artifact_service=artifact_service,
@@ -545,10 +536,13 @@ class BenchmarkExecutor:
             repository = TestRepository(session)
             attempts = await repository.list_attempts(case_execution_id)
 
-        attempt_number = max(
-            (attempt.attempt_number for attempt in attempts),
-            default=0,
-        ) + 1
+        attempt_number = (
+            max(
+                (attempt.attempt_number for attempt in attempts),
+                default=0,
+            )
+            + 1
+        )
         return f"attempt-{case_execution_id}-{attempt_number}", attempt_number
 
     async def _reset_case_for_new_attempt(self, case_execution_id: str) -> None:
@@ -556,9 +550,7 @@ class BenchmarkExecutor:
         async with self._session_factory() as session:
             async with session.begin():
                 repository = TestRepository(session)
-                case_execution = await repository.get_case_execution(
-                    case_execution_id
-                )
+                case_execution = await repository.get_case_execution(case_execution_id)
                 if case_execution is None:
                     raise KeyError(f"case execution not found: {case_execution_id}")
                 if case_execution.status != CaseExecutionStatus.PENDING.value:
@@ -942,13 +934,9 @@ class BenchmarkExecutor:
                     run_id,
                     status=status,
                     status_reason=(
-                        "one or more case executions failed"
-                        if failed_count
-                        else None
+                        "one or more case executions failed" if failed_count else None
                     ),
-                    finished_at=(
-                        None if status == RUN_RUNNING else datetime.now(UTC)
-                    ),
+                    finished_at=(None if status == RUN_RUNNING else datetime.now(UTC)),
                     clear_finished_at=status == RUN_RUNNING,
                     clear_status_reason=not failed_count,
                 )
