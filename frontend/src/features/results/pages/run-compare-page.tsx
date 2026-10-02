@@ -20,8 +20,11 @@ import { useRun, useRunComparison } from "../use-runs";
 import {
   getRunStatusVariant,
   formatMetricValue,
+  formatMetricStatistic,
   formatMetricDelta,
   getDeltaVariant,
+  getMetricDisplayName,
+  isMetricStatisticAllowed,
 } from "../run-formatters";
 
 export function RunComparePage() {
@@ -62,6 +65,10 @@ export function RunComparePage() {
       </Page>
     );
   }
+
+  const metricComparisons = comparison.metric_comparisons.filter((metricComp) =>
+    isMetricStatisticAllowed(metricComp.metric_id, metricComp.aggregation)
+  );
 
   return (
     <Page>
@@ -129,14 +136,14 @@ export function RunComparePage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {comparison.metric_comparisons.map((metricComp, idx) => {
+                {metricComparisons.map((metricComp, idx) => {
                   const variant = getDeltaVariant(metricComp.absolute_delta);
                   return (
                     <TableRow key={idx}>
                       <TableCell>
                         <div>
                           <div className="font-medium text-text-primary">
-                            {metricComp.metric_id}
+                            {getMetricDisplayName(metricComp.metric_id)}
                           </div>
                           <div className="text-xs text-text-tertiary">
                             v{metricComp.metric_version}
@@ -145,14 +152,15 @@ export function RunComparePage() {
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-text-tertiary">
-                          {metricComp.aggregation}
+                          {formatMetricStatistic(metricComp.aggregation)}
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <span className="font-medium text-text-primary">
                           {formatMetricValue(
                             metricComp.run_a_value,
-                            metricComp.metric_id
+                            metricComp.metric_id,
+                            metricComp.aggregation
                           )}
                         </span>
                       </TableCell>
@@ -160,7 +168,8 @@ export function RunComparePage() {
                         <span className="font-medium text-text-primary">
                           {formatMetricValue(
                             metricComp.run_b_value,
-                            metricComp.metric_id
+                            metricComp.metric_id,
+                            metricComp.aggregation
                           )}
                         </span>
                       </TableCell>

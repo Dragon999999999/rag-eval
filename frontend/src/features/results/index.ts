@@ -67,6 +67,11 @@ export {
   truncateText,
   formatAnswerability,
   getAnswerabilityVariant,
+  formatMetricStatistic,
+  getMetricCatalogEntry,
+  getMetricDisplayName,
+  getMetricStatistics,
+  isMetricStatisticAllowed,
 } from "./run-formatters";
 
 // Pages

@@ -1,7 +1,7 @@
 /**
  * Run detail page - shows evaluation run status, progress, and results.
  */
-import { useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Page } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pause, Download, GitCompare, Trash2 } from "lucide-react";
-import type { CaseExecutionSummary } from "../run-types";
+import type { AggregateResultDetail, CaseExecutionSummary } from "../run-types";
 import { MetricResultsMatrix } from "../components/metric-results-matrix";
 import {
   useRun,
@@ -41,7 +41,46 @@ import {
   formatElapsedTime,
   formatRelativeTime,
   formatMetricValue,
+  formatMetricStatus,
+  formatMetricStatistic,
+  getMetricCatalogEntry,
+  getMetricStatistics,
+  isMetricStatisticAllowed,
 } from "../run-formatters";
+
+interface KeyMetricRow {
+  metricId: string;
+  metricVersion: string;
+  family: string;
+  label: string;
+  values: Map<string, AggregateResultDetail>;
+}
+
+function groupKeyMetrics(aggregates: AggregateResultDetail[]): KeyMetricRow[] {
+  const rows = new Map<string, KeyMetricRow>();
+
+  for (const aggregate of aggregates) {
+    const statistic = aggregate.aggregation.toLowerCase();
+    if (!isMetricStatisticAllowed(aggregate.metric_id, statistic)) continue;
+
+    const key = `${aggregate.metric_id}:${aggregate.metric_version}`;
+    const entry = getMetricCatalogEntry(aggregate.metric_id);
+    const row = rows.get(key) ?? {
+      metricId: aggregate.metric_id,
+      metricVersion: aggregate.metric_version,
+      family: entry.family,
+      label: entry.label,
+      values: new Map<string, AggregateResultDetail>(),
+    };
+    row.values.set(statistic, aggregate);
+    rows.set(key, row);
+  }
+
+  return [...rows.values()].sort(
+    (left, right) =>
+      left.family.localeCompare(right.family) || left.label.localeCompare(right.label)
+  );
+}
 
 export function RunDetailPage() {
   const { runId } = useParams<{ runId: string }>();
@@ -75,6 +114,20 @@ export function RunDetailPage() {
     }
   };
 
+  const aggregates = useMemo(() => results?.aggregates ?? [], [results?.aggregates]);
+  const keyMetricRows = useMemo(() => groupKeyMetrics(aggregates), [aggregates]);
+  const keyMetricStatistics = useMemo(
+    () => getMetricStatistics(keyMetricRows.map((row) => row.metricId)),
+    [keyMetricRows]
+  );
+  const keyMetricGroups = useMemo(() => {
+    const groups = new Map<string, KeyMetricRow[]>();
+    for (const row of keyMetricRows) {
+      groups.set(row.family, [...(groups.get(row.family) ?? []), row]);
+    }
+    return [...groups.entries()];
+  }, [keyMetricRows]);
+
   if (runLoading || progressLoading) {
     return (
       <Page>
@@ -103,7 +156,6 @@ export function RunDetailPage() {
   const isCompleted = ["COMPLETE", "COMPLETED_WITH_ERRORS", "completed"].includes(
     run.status
   );
-  const aggregates = results?.aggregates ?? [];
 
   return (
     <Page>
@@ -201,25 +253,74 @@ export function RunDetailPage() {
           )}
 
           {/* Aggregate metrics for completed runs */}
-          {aggregates.length > 0 && (
+          {keyMetricGroups.length > 0 && (
             <Surface className="p-6">
-              <h3 className="mb-4 text-sm font-medium text-text-primary">
-                Key Metrics
-              </h3>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-                {aggregates.map((agg) => (
-                  <div
-                    key={`${agg.metric_id}:${agg.metric_version}:${agg.aggregation}`}
-                    className="space-y-1"
-                  >
-                    <div className="text-xs text-text-tertiary">
-                      {agg.metric_id.split(".").pop()}
-                    </div>
-                    <div className="text-lg font-semibold text-text-primary">
-                      {formatMetricValue(agg.value, agg.metric_id)}
-                    </div>
-                  </div>
-                ))}
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-text-primary">Key Metrics</h3>
+                <p className="mt-1 text-xs text-text-tertiary">
+                  Statistics are shown only where they are meaningful for the metric.
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <Table className="min-w-max">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[230px]">Metric</TableHead>
+                      {keyMetricStatistics.map((statistic) => (
+                        <TableHead key={statistic} className="text-right">
+                          {formatMetricStatistic(statistic)}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {keyMetricGroups.map(([family, rows]) => (
+                      <Fragment key={family}>
+                        <TableRow className="bg-surface-elevated">
+                          <TableCell
+                            colSpan={keyMetricStatistics.length + 1}
+                            className="py-2 text-xs font-medium uppercase tracking-wide text-text-tertiary"
+                          >
+                            {family}
+                          </TableCell>
+                        </TableRow>
+                        {rows.map((row) => (
+                          <TableRow key={`${row.metricId}:${row.metricVersion}`}>
+                            <TableCell>
+                              <div className="font-medium text-text-primary">
+                                {row.family} · {row.label}
+                              </div>
+                              <div className="font-mono text-[10px] text-text-tertiary">
+                                v{row.metricVersion}
+                              </div>
+                            </TableCell>
+                            {keyMetricStatistics.map((statistic) => {
+                              const aggregate = row.values.get(statistic);
+                              const isComputed =
+                                aggregate?.status.toUpperCase() === "COMPUTED";
+                              return (
+                                <TableCell
+                                  key={statistic}
+                                  className="whitespace-nowrap text-right text-sm"
+                                >
+                                  {aggregate
+                                    ? isComputed
+                                      ? formatMetricValue(
+                                          aggregate.value,
+                                          row.metricId,
+                                          statistic
+                                        )
+                                      : formatMetricStatus(aggregate.status)
+                                    : "—"}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        ))}
+                      </Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </Surface>
           )}

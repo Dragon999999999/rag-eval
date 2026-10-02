@@ -18,7 +18,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils/cn";
-import { formatMetricStatus, formatMetricValue } from "../run-formatters";
+import {
+  formatMetricStatistic,
+  formatMetricStatus,
+  formatMetricValue,
+  getMetricCatalogEntry,
+  getMetricDisplayName,
+  getMetricStatistics,
+  isMetricStatisticAllowed,
+} from "../run-formatters";
+import type { MetricStatistic } from "../metric-catalog";
 import type {
   AggregateResultDetail,
   CaseExecutionSummary,
@@ -38,18 +47,7 @@ interface MetricResultsMatrixProps {
   aggregates: AggregateResultDetail[];
 }
 
-type Statistic = "computed" | "mean" | "median" | "min" | "max";
-
-function metricLabel(metricId: string): string {
-  return (metricId.split(".").at(-1) ?? metricId)
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function metricFamily(metricId: string): string {
-  return metricId.split(".")[0] ?? "other";
-}
+type Statistic = MetricStatistic;
 
 function statusVariant(
   status: string
@@ -85,8 +83,10 @@ function statisticValue(
   column: MetricColumn,
   metrics: MetricResultDetail[]
 ): number | null {
+  if (!isMetricStatisticAllowed(column.metricId, statistic)) return null;
+
   const values = numericValues(column, metrics).sort((a, b) => a - b);
-  if (statistic === "computed") {
+  if (statistic === "count") {
     return metrics.filter(
       (item) =>
         item.metric_id === column.metricId &&
@@ -95,15 +95,24 @@ function statisticValue(
     ).length;
   }
   if (values.length === 0) return null;
+  if (statistic === "sum") {
+    return values.reduce((sum, value) => sum + value, 0);
+  }
   if (statistic === "mean") {
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
   if (statistic === "min") return values[0] ?? null;
   if (statistic === "max") return values.at(-1) ?? null;
-  const middle = Math.floor(values.length / 2);
-  return values.length % 2 === 0
-    ? ((values[middle - 1] ?? 0) + (values[middle] ?? 0)) / 2
-    : (values[middle] ?? null);
+  const percentile =
+    statistic === "median" || statistic === "p50" ? 50 : statistic === "p95" ? 95 : 99;
+  const position = (percentile / 100) * (values.length - 1);
+  const lower = Math.floor(position);
+  const upper = Math.ceil(position);
+  if (lower === upper) return values[lower] ?? null;
+  return (
+    (values[lower] ?? 0) +
+    ((values[upper] ?? 0) - (values[lower] ?? 0)) * (position - lower)
+  );
 }
 
 function cellFor(
@@ -166,10 +175,7 @@ function StatisticRow({
   metrics: MetricResultDetail[];
   bottom?: boolean;
 }) {
-  const label =
-    statistic === "computed"
-      ? "Computed"
-      : statistic.charAt(0).toUpperCase() + statistic.slice(1);
+  const label = formatMetricStatistic(statistic);
   return (
     <TableRow className={cn("bg-surface-elevated", bottom && "border-t-2")}>
       <TableCell className="sticky left-0 z-20 whitespace-nowrap bg-surface-elevated font-medium">
@@ -181,9 +187,9 @@ function StatisticRow({
           <TableCell key={column.key} className="whitespace-nowrap text-right text-xs">
             {value === null
               ? "—"
-              : statistic === "computed"
+              : statistic === "count"
                 ? value
-                : formatMetricValue(value, column.metricId)}
+                : formatMetricValue(value, column.metricId, statistic)}
           </TableCell>
         );
       })}
@@ -212,11 +218,21 @@ export function MetricResultsMatrix({
   const families = useMemo(() => {
     const grouped = new Map<string, MetricColumn[]>();
     for (const column of columns) {
-      const family = metricFamily(column.metricId);
+      const family = getMetricCatalogEntry(column.metricId).family;
       grouped.set(family, [...(grouped.get(family) ?? []), column]);
     }
     return [...grouped.entries()];
   }, [columns]);
+  const statistics = useMemo(
+    () => getMetricStatistics(columns.map((column) => column.metricId)),
+    [columns]
+  );
+  const topStatistics = statistics.filter(
+    (statistic) => !["sum", "min", "max"].includes(statistic)
+  );
+  const bottomStatistics = statistics.filter((statistic) =>
+    ["sum", "min", "max"].includes(statistic)
+  );
 
   if (cases.length === 0) {
     return (
@@ -259,18 +275,23 @@ export function MetricResultsMatrix({
                 <TableHead
                   key={column.key}
                   className="sticky top-10 z-20 min-w-[130px] bg-surface-elevated text-right"
-                  title={`${column.metricId} v${column.version}`}
+                  title={`${getMetricDisplayName(column.metricId)} v${column.version}`}
                 >
-                  <div>{metricLabel(column.metricId)}</div>
+                  <div>{getMetricDisplayName(column.metricId)}</div>
                   <div className="font-mono text-[10px] font-normal text-text-tertiary">
                     v{column.version}
                   </div>
                 </TableHead>
               ))}
             </TableRow>
-            <StatisticRow statistic="computed" columns={columns} metrics={metrics} />
-            <StatisticRow statistic="mean" columns={columns} metrics={metrics} />
-            <StatisticRow statistic="median" columns={columns} metrics={metrics} />
+            {topStatistics.map((statistic) => (
+              <StatisticRow
+                key={statistic}
+                statistic={statistic}
+                columns={columns}
+                metrics={metrics}
+              />
+            ))}
           </TableHeader>
           <TableBody>
             {cases.map((caseItem, index) => (
@@ -308,10 +329,19 @@ export function MetricResultsMatrix({
               </TableRow>
             ))}
           </TableBody>
-          <TableFooter>
-            <StatisticRow statistic="min" columns={columns} metrics={metrics} bottom />
-            <StatisticRow statistic="max" columns={columns} metrics={metrics} bottom />
-          </TableFooter>
+          {bottomStatistics.length > 0 && (
+            <TableFooter>
+              {bottomStatistics.map((statistic) => (
+                <StatisticRow
+                  key={statistic}
+                  statistic={statistic}
+                  columns={columns}
+                  metrics={metrics}
+                  bottom
+                />
+              ))}
+            </TableFooter>
+          )}
         </Table>
       </div>
       <div className="border-t border-border-default px-4 py-3 text-xs text-text-tertiary">

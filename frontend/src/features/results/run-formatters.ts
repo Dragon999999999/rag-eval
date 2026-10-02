@@ -9,6 +9,7 @@ import type {
   RunProgress,
   AggregateResultSummary,
 } from "./run-types";
+import { formatCatalogMetricValue } from "./metric-catalog";
 
 /**
  * Format run status for display.
@@ -157,52 +158,15 @@ export function formatRelativeTime(dateString: string | null): string {
 /**
  * Format metric value with appropriate precision.
  */
-export function formatMetricValue(value: unknown, metricId?: string): string {
-  if (value === null || value === undefined) return "—";
-
-  if (typeof value === "number") {
-    // Percentages
-    if (
-      metricId?.includes("recall") ||
-      metricId?.includes("precision") ||
-      metricId?.includes("rate")
-    ) {
-      return `${(value * 100).toFixed(1)}%`;
-    }
-
-    // Latency
-    if (metricId?.includes("latency")) {
-      return `${Math.round(value).toFixed(0)}ms`;
-    }
-
-    // Tokens
-    if (metricId?.includes("token")) {
-      return value.toLocaleString();
-    }
-
-    // Cost
-    if (metricId?.includes("cost")) {
-      return `$${value.toFixed(2)}`;
-    }
-
-    // Default decimal formatting
-    if (value >= 0 && value <= 1) {
-      return `${(value * 100).toFixed(1)}%`;
-    }
-
-    return value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+export function formatMetricValue(
+  value: unknown,
+  metricId?: string,
+  statistic?: string
+): string {
+  if (metricId === "ms") {
+    return typeof value === "number" ? `${value.toFixed(1)}ms` : String(value);
   }
-
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
-  }
-
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-base-to-string
-  return String(value);
+  return formatCatalogMetricValue(value, metricId, statistic);
 }
 
 /**
@@ -248,8 +212,16 @@ export function getDeltaVariant(
  * Format aggregate metric for display.
  */
 export function formatAggregateMetric(agg: AggregateResultSummary): string {
-  return formatMetricValue(agg.value_summary, agg.metric_id);
+  return formatCatalogMetricValue(agg.value_summary, agg.metric_id, agg.aggregation);
 }
+
+export {
+  formatMetricStatistic,
+  getMetricCatalogEntry,
+  getMetricDisplayName,
+  getMetricStatistics,
+  isMetricStatisticAllowed,
+} from "./metric-catalog";
 
 /**
  * Truncate text with ellipsis.
