@@ -21,7 +21,7 @@ function renderWithRouter(ui: React.ReactElement, route = "/") {
 describe("Page routing", () => {
   it("renders Dashboard at /", () => {
     renderWithRouter(<DashboardPage />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Evaluation Overview")).toBeInTheDocument();
     expect(
       screen.getByText(/Monitor evaluations and recent system performance/i)
     ).toBeInTheDocument();
