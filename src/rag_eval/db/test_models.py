@@ -39,7 +39,6 @@ from sqlalchemy.sql import func
 from rag_eval.db.base import Base
 from rag_eval.db.models import TimestampedRecord
 
-
 # ============================================================================
 # Test definitions
 # ============================================================================
@@ -354,6 +353,54 @@ class RunRecord(Base, TimestampedRecord):
     )
 
 
+class MetricRunRecord(Base, TimestampedRecord):
+    """One immutable, repeatable scoring pass over an evaluation run.
+
+    A metric run consumes the target observations belonging to ``run_id`` and
+    owns its configuration and derived metric rows.  It never invokes the
+    evaluated target.
+    """
+
+    __tablename__ = "metric_runs"
+
+    metric_run_id: Mapped[str] = mapped_column(
+        String(128),
+        primary_key=True,
+    )
+
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    # PENDING / RUNNING / COMPLETED / FAILED.
+    status: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+    )
+
+    config_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+    )
+
+    status_reason: Mapped[str | None] = mapped_column(Text)
+
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+
 class RunEventRecord(Base, TimestampedRecord):
     """Append-only lifecycle/audit event for a run."""
 
@@ -623,6 +670,12 @@ class MetricResultRecord(Base, TimestampedRecord):
         index=True,
     )
 
+    metric_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("metric_runs.metric_run_id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
     case_execution_id: Mapped[str | None] = mapped_column(
         ForeignKey(
             "case_executions.case_execution_id",
@@ -694,6 +747,12 @@ class AggregateMetricResultRecord(Base, TimestampedRecord):
             ondelete="CASCADE",
         ),
         nullable=False,
+        index=True,
+    )
+
+    metric_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("metric_runs.metric_run_id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 

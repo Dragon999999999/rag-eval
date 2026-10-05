@@ -8,6 +8,7 @@ from uuid import uuid4
 from pydantic import ValidationError
 
 from rag_eval.artifacts import ArtifactService
+from rag_eval.bundles import benchmark_content_hash
 from rag_eval.db.benchmark_models import BenchmarkRecord
 from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.models import (
@@ -62,7 +63,9 @@ class BenchmarkService:
 
         await self._repository.create_benchmark(manifest)
 
-        return Benchmark(manifest=manifest)
+        await self._refresh_content_hash(manifest.benchmark_id)
+
+        return Benchmark(manifest=await self.get_manifest(manifest.benchmark_id))
 
     async def list_benchmarks(
         self,
@@ -123,6 +126,7 @@ class BenchmarkService:
             benchmark_id,
             case,
         )
+        await self._refresh_content_hash(benchmark_id)
 
         return case
 
@@ -139,6 +143,8 @@ class BenchmarkService:
                 benchmark_id,
                 case,
             )
+
+        await self._refresh_content_hash(benchmark_id)
 
         return len(cases)
 
@@ -180,6 +186,7 @@ class BenchmarkService:
 
         if not deleted:
             raise KeyError(f"case {case_id} not found in benchmark {benchmark_id}")
+        await self._refresh_content_hash(benchmark_id)
 
     # ------------------------------------------------------------------
     # Documents
@@ -204,6 +211,7 @@ class BenchmarkService:
             benchmark_id,
             document,
         )
+        await self._refresh_content_hash(benchmark_id)
 
         return document
 
@@ -238,6 +246,8 @@ class BenchmarkService:
                 benchmark_id,
                 document,
             )
+
+        await self._refresh_content_hash(benchmark_id)
 
         return len(documents)
 
@@ -286,6 +296,7 @@ class BenchmarkService:
             raise KeyError(
                 f"document {document_id} not found in benchmark {benchmark_id}"
             )
+        await self._refresh_content_hash(benchmark_id)
 
     # ------------------------------------------------------------------
     # Chunks
@@ -310,6 +321,7 @@ class BenchmarkService:
             benchmark_id,
             chunk,
         )
+        await self._refresh_content_hash(benchmark_id)
 
         return chunk
 
@@ -333,6 +345,8 @@ class BenchmarkService:
                 benchmark_id,
                 chunk,
             )
+
+        await self._refresh_content_hash(benchmark_id)
 
         return len(chunks)
 
@@ -374,6 +388,7 @@ class BenchmarkService:
 
         if not deleted:
             raise KeyError(f"chunk {chunk_id} not found in benchmark {benchmark_id}")
+        await self._refresh_content_hash(benchmark_id)
 
     # ------------------------------------------------------------------
     # Corpus mode transitions
@@ -583,6 +598,8 @@ class BenchmarkService:
                     chunk,
                 )
 
+        await self._refresh_content_hash(benchmark_id)
+
         return benchmark.case_count
 
     # ------------------------------------------------------------------
@@ -598,6 +615,24 @@ class BenchmarkService:
             )
 
         return self._artifact_service
+
+    async def _refresh_content_hash(self, benchmark_id: str) -> str:
+        """Hash manifest metadata and normalized benchmark resources."""
+        benchmark = await self._repository.get_benchmark(benchmark_id)
+        if benchmark is None:
+            raise KeyError(f"benchmark not found: {benchmark_id}")
+        manifest = benchmark.manifest.model_dump(mode="json")
+        digest = benchmark_content_hash(
+            manifest,
+            [item.model_dump(mode="json") for item in benchmark.cases],
+            [
+                item.model_dump(mode="json", exclude={"artifact"})
+                for item in benchmark.documents
+            ],
+            [item.model_dump(mode="json") for item in benchmark.chunks],
+        )
+        await self._repository.update_content_hash(benchmark_id, digest)
+        return digest
 
     @staticmethod
     def _parse_chunks(

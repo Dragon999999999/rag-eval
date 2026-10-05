@@ -240,7 +240,9 @@ def _compute_std(values: list[float | int]) -> float:
 
 
 def convert_to_canonical(
-    agg: AggregationResult, run_id: str
+    agg: AggregationResult,
+    run_id: str,
+    metric_run_id: str | None = None,
 ) -> AggregateMetricResultModel:
     """Convert aggregation result to canonical model for persistence.
 
@@ -259,6 +261,7 @@ def convert_to_canonical(
 
     return AggregateMetricResultModel(
         run_id=run_id,
+        metric_run_id=metric_run_id,
         metric_id=agg.metric_id,
         metric_version=agg.metric_version,
         aggregation=agg.aggregation_name,

@@ -27,6 +27,7 @@ class MetricResult(CanonicalModel):
     status: MetricStatus
     value: float | int | bool | str | None = None
     run_id: str | None = None
+    metric_run_id: str | None = None
     case_id: str | None = None
     reason: str | None = None
     details: JsonDict = Field(default_factory=dict)
@@ -47,6 +48,7 @@ class AggregateMetricResult(CanonicalModel):
     """Run-level aggregation kept distinct from individual metric results."""
 
     run_id: str
+    metric_run_id: str | None = None
 
     metric_id: str
     metric_version: str

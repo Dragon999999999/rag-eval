@@ -86,6 +86,19 @@ class BenchmarkRepository:
 
         return self._manifest_from_record(record)
 
+    async def update_content_hash(
+        self,
+        benchmark_id: str,
+        content_hash: str,
+    ) -> BenchmarkRecord:
+        """Persist the deterministic content hash for a benchmark."""
+        record = await self._session.get(BenchmarkRecord, benchmark_id)
+        if record is None:
+            raise KeyError(f"benchmark not found: {benchmark_id}")
+        record.content_hash = content_hash
+        await self._session.flush()
+        return record
+
     async def get_benchmark(
         self,
         benchmark_id: str,
@@ -229,6 +242,10 @@ class BenchmarkRepository:
 
         return self._case_from_record(record)
 
+    async def case_id_exists(self, case_id: str) -> bool:
+        """Return whether a case identity is already used."""
+        return await self._session.get(BenchmarkCaseRecord, case_id) is not None
+
     async def list_cases(
         self,
         benchmark_id: str,
@@ -316,6 +333,10 @@ class BenchmarkRepository:
             return None
 
         return await self._document_from_record(record)
+
+    async def document_id_exists(self, document_id: str) -> bool:
+        """Return whether a document identity is already used."""
+        return await self._session.get(BenchmarkDocumentRecord, document_id) is not None
 
     async def list_documents(
         self,
@@ -414,6 +435,10 @@ class BenchmarkRepository:
             return None
 
         return self._chunk_from_record(record)
+
+    async def chunk_id_exists(self, chunk_id: str) -> bool:
+        """Return whether a chunk identity is already used."""
+        return await self._session.get(BenchmarkChunkRecord, chunk_id) is not None
 
     async def list_chunks(
         self,

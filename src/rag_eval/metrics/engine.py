@@ -51,6 +51,10 @@ class ScoringConfig:
     # Whether to persist FAILED results or skip them
     persist_failed: bool = True
 
+    # Optional identity for a repeatable scoring pass over one evaluation.
+    # None preserves the legacy run-scoped result behavior.
+    metric_run_id: str | None = None
+
 
 class MetricExecutionEngine:
     """Execute metrics on persisted benchmark data.
@@ -182,6 +186,7 @@ class MetricExecutionEngine:
                     reason=reason,
                     case_id=context.case.case_id,
                     run_id=context.run_id,
+                    metric_run_id=self._config.metric_run_id,
                 )
 
             # Check NOT_APPLICABLE
@@ -193,6 +198,7 @@ class MetricExecutionEngine:
                     reason="Metric not applicable for this case",
                     case_id=context.case.case_id,
                     run_id=context.run_id,
+                    metric_run_id=self._config.metric_run_id,
                 )
 
             # Execute metric
@@ -208,6 +214,7 @@ class MetricExecutionEngine:
                 details=result.details,
                 case_id=context.case.case_id,
                 run_id=context.run_id,
+                metric_run_id=self._config.metric_run_id,
             )
 
         except Exception as exc:
@@ -226,6 +233,7 @@ class MetricExecutionEngine:
                 details={"exception_type": type(exc).__name__},
                 case_id=context.case.case_id,
                 run_id=context.run_id,
+                metric_run_id=self._config.metric_run_id,
             )
 
     def _check_requirements(
@@ -342,7 +350,7 @@ class MetricExecutionEngine:
         # Convert to canonical model
         canonical_result = MetricResultModel(
             metric_result_id=(
-                f"mr-{result.run_id}-{result.metric_id}-"
+                f"mr-{result.metric_run_id or result.run_id}-{result.metric_id}-"
                 f"{case_id}-{result.metric_version}"
             ),
             metric_id=result.metric_id,
@@ -350,6 +358,7 @@ class MetricExecutionEngine:
             status=result.status,
             value=result.value,
             run_id=result.run_id,
+            metric_run_id=result.metric_run_id,
             case_id=case_id,
             reason=result.reason,
             details=result.details,

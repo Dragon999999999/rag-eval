@@ -1,6 +1,7 @@
 /** HTTP client for persisted test runs and their metric results. */
 
 import { apiRequest } from "@/lib/api/client";
+import { API_BASE_URL } from "@/config/env";
 import type {
   AggregateResultDetail,
   AggregateResultSummary,
@@ -13,6 +14,7 @@ import type {
   ExportResult,
   MetricResultDetail,
   MetricResultSummary,
+  MetricRunDetail,
   RunDetail,
   RunProgress,
   RunReport,
@@ -153,6 +155,24 @@ export const RunService = {
   async getRun(runId: string): Promise<RunDetail> {
     const run = await apiRequest<RunDetail>(runPath(runId));
     return { ...run, status: normalizeStatus(run.status) };
+  },
+
+  async listMetricRuns(runId: string): Promise<MetricRunDetail[]> {
+    return apiRequest<MetricRunDetail[]>(`${runPath(runId)}/metric-runs`);
+  },
+
+  async createMetricRun(
+    runId: string,
+    request: {
+      name: string;
+      config: Record<string, unknown>;
+      execute?: boolean;
+    }
+  ): Promise<MetricRunDetail> {
+    return apiRequest<MetricRunDetail>(`${runPath(runId)}/metric-runs`, {
+      method: "POST",
+      body: request,
+    });
   },
 
   async getRunProgress(runId: string): Promise<RunProgress> {
@@ -347,7 +367,31 @@ export const RunService = {
     };
   },
 
-  exportRun(_runId: string, _request: ExportRequest): Promise<ExportResult> {
-    throw new Error("Run export is not available from the current API.");
+  async exportRun(runId: string, _request: ExportRequest): Promise<ExportResult> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/bundles/runs/${encodeURIComponent(runId)}`
+    );
+    if (!response.ok) {
+      throw new Error(
+        `API error: ${String(response.status)} - ${await response.text()}`
+      );
+    }
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    return {
+      run_id: runId,
+      export_id: `bundle-${runId}`,
+      status: "COMPLETED",
+      files: [
+        {
+          filename: `${runId}.rzip`,
+          format: "rzip",
+          size_bytes: blob.size,
+          download_url: downloadUrl,
+        },
+      ],
+      download_url: downloadUrl,
+      created_at: new Date().toISOString(),
+    };
   },
 };

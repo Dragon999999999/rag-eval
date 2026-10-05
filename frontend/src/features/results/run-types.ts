@@ -236,6 +236,7 @@ export interface MetricResultSummary {
 export interface MetricResultDetail {
   metric_result_id: string;
   run_id: string;
+  metric_run_id?: string | null;
   case_execution_id: string | null;
   case_id: string | null;
   metric_id: string;
@@ -261,6 +262,7 @@ export interface AggregateResultSummary {
 export interface AggregateResultDetail {
   aggregate_metric_result_id: string;
   run_id: string;
+  metric_run_id?: string | null;
   metric_id: string;
   metric_version: string;
   aggregation: string;
@@ -333,6 +335,19 @@ export interface ExportResult {
   }>;
   download_url: string | null;
   created_at: string;
+}
+
+/** Isolated offline scoring pass over one evaluation's observations. */
+export interface MetricRunDetail {
+  metric_run_id: string;
+  run_id: string;
+  name: string;
+  status: string;
+  status_reason: string | null;
+  config_snapshot: Record<string, unknown>;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
 }
 
 /** Error detail */

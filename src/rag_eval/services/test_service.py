@@ -528,25 +528,30 @@ class TestService:
             )
             test = await self._require_test(test_id)
 
-        mode, requested_metrics = self._parse_yaml_metrics(loaded.get("metrics"))
+        metrics_block = loaded.get("metrics")
+        mode, requested_metrics = self._parse_yaml_metrics(metrics_block)
+        metrics_mapping = metrics_block if isinstance(metrics_block, dict) else {}
 
         raw_parameters = loaded.get(
             "parameters",
-            loaded.get("metric_parameters", {}),
+            loaded.get(
+                "metric_parameters",
+                metrics_mapping.get("parameters", {}),
+            ),
         )
         if not isinstance(raw_parameters, dict):
             raise ValueError("parameters must be a mapping")
 
         judge_config = loaded.get(
             "judge",
-            loaded.get("judge_config", {}),
+            loaded.get("judge_config", metrics_mapping.get("judge", {})),
         )
         if not isinstance(judge_config, dict):
             raise ValueError("judge configuration must be a mapping")
 
         retrieval_config = loaded.get(
             "retrieval",
-            loaded.get("retrieval_config", {}),
+            loaded.get("retrieval_config", metrics_mapping.get("retrieval", {})),
         )
         if not isinstance(retrieval_config, dict):
             raise ValueError("retrieval configuration must be a mapping")
@@ -1677,12 +1682,19 @@ class TestService:
     async def get_run_results(
         self,
         run_id: str,
+        metric_run_id: str | None = None,
     ) -> dict[str, Any]:
-        """Return individual and aggregate metric results."""
+        """Return legacy results or one isolated metric scoring pass."""
         await self._require_run(run_id)
 
-        metrics = await self._repository.list_metric_results(run_id)
-        aggregates = await self._repository.list_aggregates(run_id)
+        metrics = await self._repository.list_metric_results(
+            run_id,
+            metric_run_id=metric_run_id,
+        )
+        aggregates = await self._repository.list_aggregates(
+            run_id,
+            metric_run_id=metric_run_id,
+        )
 
         return {
             "run_id": run_id,
@@ -1690,6 +1702,7 @@ class TestService:
                 {
                     "metric_result_id": item.metric_result_id,
                     "run_id": item.run_id,
+                    "metric_run_id": item.metric_run_id,
                     "case_execution_id": (item.case_execution_id),
                     "case_id": item.case_id,
                     "metric_id": item.metric_id,
@@ -1707,6 +1720,7 @@ class TestService:
                 {
                     "aggregate_metric_result_id": (item.aggregate_metric_result_id),
                     "run_id": item.run_id,
+                    "metric_run_id": item.metric_run_id,
                     "metric_id": item.metric_id,
                     "metric_version": item.metric_version,
                     "aggregation": item.aggregation,
@@ -2275,7 +2289,23 @@ class TestService:
             return EXPLICIT, []
 
         if isinstance(value, list):
-            return EXPLICIT, cls._unique_strings([str(item) for item in value])
+            return EXPLICIT, cls._unique_strings(
+                [
+                    str(item.get("id"))
+                    if isinstance(item, dict) and item.get("id") is not None
+                    else str(item)
+                    for item in value
+                ]
+            )
+
+        if isinstance(value, dict):
+            mode = str(value.get("mode", "explicit")).lower()
+            selected = value.get("selected", [])
+            if mode in {"all", ALL_AVAILABLE.lower()}:
+                return ALL_AVAILABLE, []
+            if not isinstance(selected, list):
+                raise ValueError("metrics.selected must be a list")
+            return cls._parse_yaml_metrics(selected)
 
         raise ValueError("metrics must be 'all' or a list of metric IDs")
 

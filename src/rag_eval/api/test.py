@@ -28,6 +28,7 @@ from fastapi.responses import PlainTextResponse
 
 from rag_eval.api.dependencies import (
     MetricRegistryDep,
+    MetricRunServiceDep,
     SessionDep,
     TestServiceDep,
     verify_api_key,
@@ -37,6 +38,8 @@ from rag_eval.api.test_schemas import (
     CaseExecutionDetail,
     MetricDefinition,
     MetricImportResult,
+    MetricRunCreate,
+    MetricRunDetail,
     RunDetail,
     RunEventInfo,
     RunResultsResponse,
@@ -806,11 +809,58 @@ async def list_case_attempts(
 async def get_run_results(
     run_id: str,
     service: TestServiceDep,
+    metric_run_id: str | None = None,
 ) -> RunResultsResponse:
     """Return individual and aggregate metric results for a run."""
     try:
-        results = await service.get_run_results(run_id)
+        results = await service.get_run_results(run_id, metric_run_id=metric_run_id)
     except KeyError as exc:
         raise _not_found(str(exc)) from exc
 
     return RunResultsResponse.model_validate(results)
+
+
+@router.post(
+    "/runs/{run_id}/metric-runs",
+    response_model=MetricRunDetail,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create and optionally execute an offline metric run",
+)
+async def create_metric_run(
+    run_id: str,
+    request: MetricRunCreate,
+    service: MetricRunServiceDep,
+) -> MetricRunDetail:
+    """Create a scoring pass that consumes persisted target observations."""
+    try:
+        record = await service.create(
+            run_id,
+            name=request.name,
+            config=request.config,
+        )
+        if request.execute:
+            await service.execute(record.metric_run_id)
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+    except ValueError as exc:
+        raise _bad_request(str(exc)) from exc
+    return MetricRunDetail.model_validate(record, from_attributes=True)
+
+
+@router.get(
+    "/runs/{run_id}/metric-runs",
+    response_model=list[MetricRunDetail],
+    summary="List offline metric runs",
+)
+async def list_metric_runs(
+    run_id: str,
+    service: MetricRunServiceDep,
+) -> list[MetricRunDetail]:
+    """List all scoring passes attached to an evaluation run."""
+    try:
+        records = await service.list(run_id)
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+    return [
+        MetricRunDetail.model_validate(item, from_attributes=True) for item in records
+    ]

@@ -21,6 +21,7 @@ from rag_eval.db.test_models import (
     CaseExecutionRecord,
     ErrorRecordDB,
     MetricResultRecord,
+    MetricRunRecord,
     RunConfigRecord,
     RunEventRecord,
     RunRecord,
@@ -315,6 +316,60 @@ class TestRepository:
             RunConfigRecord,
             run.config_hash,
         )
+
+    async def create_metric_run(
+        self,
+        record: MetricRunRecord,
+    ) -> MetricRunRecord:
+        """Persist a scoring-pass record for an existing evaluation run."""
+        if await self.get_run(record.run_id) is None:
+            raise KeyError(f"run not found: {record.run_id}")
+        self._session.add(record)
+        await self._session.flush()
+        return record
+
+    async def get_metric_run(
+        self,
+        metric_run_id: str,
+    ) -> MetricRunRecord | None:
+        """Return one scoring pass by identity."""
+        return await self._session.get(MetricRunRecord, metric_run_id)
+
+    async def list_metric_runs(
+        self,
+        run_id: str,
+    ) -> Sequence[MetricRunRecord]:
+        """List scoring passes for an evaluation in creation order."""
+        result = await self._session.scalars(
+            select(MetricRunRecord)
+            .where(MetricRunRecord.run_id == run_id)
+            .order_by(MetricRunRecord.created_at, MetricRunRecord.metric_run_id)
+        )
+        return result.all()
+
+    async def update_metric_run(
+        self,
+        metric_run_id: str,
+        *,
+        status: str | None = None,
+        status_reason: str | None = None,
+        started_at: datetime | None = None,
+        finished_at: datetime | None = None,
+    ) -> MetricRunRecord:
+        """Update scoring-pass lifecycle fields."""
+        record = await self.get_metric_run(metric_run_id)
+        if record is None:
+            raise KeyError(f"metric run not found: {metric_run_id}")
+        if status is not None:
+            record.status = status
+        if status_reason is not None:
+            record.status_reason = status_reason
+        if started_at is not None:
+            record.started_at = started_at
+        if finished_at is not None:
+            record.finished_at = finished_at
+        await self._session.flush()
+        return record
 
     async def update_run_lifecycle(
         self,
@@ -708,6 +763,7 @@ class TestRepository:
         record = MetricResultRecord(
             metric_result_id=metric.metric_result_id,
             run_id=metric.run_id,
+            metric_run_id=metric.metric_run_id,
             case_execution_id=case_execution_id,
             case_id=metric.case_id,
             metric_id=metric.metric_id,
@@ -729,8 +785,14 @@ class TestRepository:
                     "metric_result_id already belongs to another run: "
                     f"{metric.metric_result_id}"
                 )
+            if existing.metric_run_id != metric.metric_run_id:
+                raise ValueError(
+                    "metric_result_id already belongs to another metric run: "
+                    f"{metric.metric_result_id}"
+                )
 
             existing.run_id = metric.run_id
+            existing.metric_run_id = metric.metric_run_id
             existing.case_execution_id = case_execution_id
             existing.case_id = metric.case_id
             existing.value = metric.value
@@ -748,17 +810,27 @@ class TestRepository:
     async def list_metric_results(
         self,
         run_id: str,
+        *,
+        metric_run_id: str | None = None,
     ) -> Sequence[MetricResultRecord]:
-        """List all individual metric results for a run."""
+        """List results for a run or one isolated scoring pass.
+
+        Omitting ``metric_run_id`` retains legacy behavior and returns rows
+        created by the original run-scoped scorer only.
+        """
+        statement = select(MetricResultRecord).where(
+            MetricResultRecord.run_id == run_id
+        )
         result = await self._session.scalars(
-            select(MetricResultRecord)
-            .where(MetricResultRecord.run_id == run_id)
-            .order_by(
+            statement.order_by(
                 MetricResultRecord.case_id,
                 MetricResultRecord.metric_id,
             )
         )
-        return result.all()
+        rows = result.all()
+        if metric_run_id is None:
+            return [row for row in rows if row.metric_run_id is None]
+        return [row for row in rows if row.metric_run_id == metric_run_id]
 
     async def persist_aggregate(
         self,
@@ -767,12 +839,13 @@ class TestRepository:
         """Persist a canonical run-level aggregate metric."""
         record = AggregateMetricResultRecord(
             aggregate_metric_result_id=(
-                f"agr-{aggregate.run_id}-"
+                f"agr-{aggregate.metric_run_id or aggregate.run_id}-"
                 f"{aggregate.metric_id}-"
                 f"{aggregate.aggregation}-"
                 f"{aggregate.metric_version}"
             ),
             run_id=aggregate.run_id,
+            metric_run_id=aggregate.metric_run_id,
             metric_id=aggregate.metric_id,
             metric_version=aggregate.metric_version,
             aggregation=aggregate.aggregation,
@@ -794,25 +867,34 @@ class TestRepository:
     async def list_aggregates(
         self,
         run_id: str,
+        *,
+        metric_run_id: str | None = None,
     ) -> Sequence[AggregateMetricResultRecord]:
-        """List all aggregate metric results for a run."""
+        """List aggregates for a run or one isolated scoring pass."""
+        statement = select(AggregateMetricResultRecord).where(
+            AggregateMetricResultRecord.run_id == run_id
+        )
         result = await self._session.scalars(
-            select(AggregateMetricResultRecord)
-            .where(AggregateMetricResultRecord.run_id == run_id)
-            .order_by(
+            statement.order_by(
                 AggregateMetricResultRecord.metric_id,
                 AggregateMetricResultRecord.aggregation,
             )
         )
-        return result.all()
+        rows = result.all()
+        if metric_run_id is None:
+            return [row for row in rows if row.metric_run_id is None]
+        return [row for row in rows if row.metric_run_id == metric_run_id]
 
-    async def delete_aggregates(self, run_id: str) -> None:
+    async def delete_aggregates(
+        self,
+        run_id: str,
+        *,
+        metric_run_id: str | None = None,
+    ) -> None:
         """Remove derived aggregates before rebuilding them from case results."""
-        await self._session.execute(
-            delete(AggregateMetricResultRecord).where(
-                AggregateMetricResultRecord.run_id == run_id
-            )
-        )
+        rows = await self.list_aggregates(run_id, metric_run_id=metric_run_id)
+        for row in rows:
+            await self._session.delete(row)
         await self._session.flush()
 
     # -------------------------------------------------------------------------

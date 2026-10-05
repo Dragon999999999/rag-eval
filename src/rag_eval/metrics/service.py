@@ -178,7 +178,11 @@ class ScoringService:
                 # Continue with next case - don't abort entire run
 
         # Aggregate results
-        aggregates_persisted = await self._aggregate_and_persist(run_id, metric_values)
+        aggregates_persisted = await self._aggregate_and_persist(
+            run_id,
+            metric_values,
+            metric_run_id=self._config.metric_run_id,
+        )
 
         logger.info(
             "Completed scoring for run %s: %d/%d cases, %d computed, "
@@ -248,7 +252,10 @@ class ScoringService:
         metric_values: dict[
             tuple[str, str], list[tuple[float | int | None, MetricStatus]]
         ] = {}
-        for result in await self._test_repository.list_metric_results(run_id):
+        for result in await self._test_repository.list_metric_results(
+            run_id,
+            metric_run_id=self._config.metric_run_id,
+        ):
             key = (result.metric_id, result.metric_version)
             status = MetricStatus(result.status)
             value = (
@@ -259,8 +266,15 @@ class ScoringService:
             )
             metric_values.setdefault(key, []).append((value, status))
 
-        await self._test_repository.delete_aggregates(run_id)
-        return await self._aggregate_and_persist(run_id, metric_values)
+        await self._test_repository.delete_aggregates(
+            run_id,
+            metric_run_id=self._config.metric_run_id,
+        )
+        return await self._aggregate_and_persist(
+            run_id,
+            metric_values,
+            metric_run_id=self._config.metric_run_id,
+        )
 
     async def _load_observation(
         self, case_execution_id: str
@@ -357,6 +371,8 @@ class ScoringService:
         metric_values: dict[
             tuple[str, str], list[tuple[float | int | None, MetricStatus]]
         ],
+        *,
+        metric_run_id: str | None = None,
     ) -> int:
         """Aggregate metric results and persist aggregates.
 
@@ -389,7 +405,11 @@ class ScoringService:
             # Persist each aggregation
             for agg in aggregations:
                 try:
-                    canonical = convert_to_canonical(agg, run_id)
+                    canonical = convert_to_canonical(
+                        agg,
+                        run_id,
+                        metric_run_id=metric_run_id,
+                    )
                     await self._test_repository.persist_aggregate(canonical)
                     persisted += 1
                 except Exception as exc:

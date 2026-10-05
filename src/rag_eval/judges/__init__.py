@@ -8,5 +8,10 @@ This package provides:
 """
 
 from .base import JudgeAdapter
+from .openai_compatible import OpenAICompatibleJudge, create_judge_adapter
 
-__all__ = ["JudgeAdapter"]
+__all__ = [
+    "JudgeAdapter",
+    "OpenAICompatibleJudge",
+    "create_judge_adapter",
+]

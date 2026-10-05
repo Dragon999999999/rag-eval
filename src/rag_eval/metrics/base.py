@@ -166,6 +166,7 @@ class MetricResult:
     details: dict[str, object] = field(default_factory=dict)
     case_id: str | None = None
     run_id: str | None = None
+    metric_run_id: str | None = None
 
     def is_computed(self) -> bool:
         """Check if metric was successfully computed."""

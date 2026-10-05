@@ -472,6 +472,7 @@ class MetricResultDetail(BaseModel):
     metric_result_id: str
 
     run_id: str
+    metric_run_id: str | None = None
     case_execution_id: str | None
     case_id: str | None
 
@@ -507,6 +508,7 @@ class AggregateResultDetail(BaseModel):
     aggregate_metric_result_id: str
 
     run_id: str
+    metric_run_id: str | None = None
 
     metric_id: str
     metric_version: str
@@ -529,6 +531,28 @@ class RunResultsResponse(BaseModel):
 
     metrics: list[MetricResultDetail]
     aggregates: list[AggregateResultDetail]
+
+
+class MetricRunCreate(BaseModel):
+    """Create one offline scoring pass over an existing evaluation."""
+
+    name: str = "Metric scoring pass"
+    config: dict[str, Any] = Field(default_factory=dict)
+    execute: bool = True
+
+
+class MetricRunDetail(BaseModel):
+    """Scoring-pass lifecycle and immutable configuration."""
+
+    metric_run_id: str
+    run_id: str
+    name: str
+    status: str
+    status_reason: str | None
+    config_snapshot: dict[str, Any]
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
 
 
 # ============================================================================

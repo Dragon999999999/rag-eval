@@ -102,12 +102,21 @@ class ExecutionConfig(ExperimentModel):
 
 
 class JudgeConfig(ExperimentModel):
-    """Future judge identity and parameters without any invocation behavior."""
+    """Portable configuration for an offline semantic judge.
+
+    Authentication remains an environment-variable reference or a bundle
+    placeholder.  ``connection`` is deliberately untyped JSON because judge
+    providers may expose different transport options, while the common
+    ``base_url`` and ``timeout_seconds`` keys are understood by built-in
+    OpenAI-compatible judges.
+    """
 
     provider: str | None = None
     model: str | None = None
     parameters: JsonDict = Field(default_factory=dict)
     authentication_env: str | None = None
+    connection: JsonDict = Field(default_factory=dict)
+    secrets: JsonDict = Field(default_factory=dict)
 
 
 class MetricsConfig(ExperimentModel):

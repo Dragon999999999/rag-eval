@@ -28,6 +28,8 @@ from rag_eval.db.test_repository import TestRepository
 from rag_eval.metrics import get_stage12_catalog
 from rag_eval.metrics.registry import MetricRegistry
 from rag_eval.services.benchmark_service import BenchmarkService
+from rag_eval.services.bundle_service import BundleService
+from rag_eval.services.metric_run_service import MetricRunService
 from rag_eval.services.secret_service import SecretService
 from rag_eval.services.target_service import TargetService
 from rag_eval.services.test_service import TestService
@@ -346,6 +348,54 @@ def get_test_service(
 TestServiceDep = Annotated[
     TestService,
     Depends(get_test_service),
+]
+
+
+def get_metric_run_service(
+    repository: TestRepositoryDep,
+    target_repository: TargetRepositoryDep,
+    benchmark_repository: BenchmarkRepositoryDep,
+    metric_registry: MetricRegistryDep,
+) -> MetricRunService:
+    """Provide offline scoring-pass orchestration for the current session."""
+    return MetricRunService(
+        repository=repository,
+        target_repository=target_repository,
+        benchmark_repository=benchmark_repository,
+        metric_registry=metric_registry,
+    )
+
+
+MetricRunServiceDep = Annotated[
+    MetricRunService,
+    Depends(get_metric_run_service),
+]
+
+
+def get_bundle_service(
+    target_service: TargetServiceDep,
+    benchmark_service: BenchmarkServiceDep,
+    test_service: TestServiceDep,
+    target_repository: TargetRepositoryDep,
+    benchmark_repository: BenchmarkRepositoryDep,
+    test_repository: TestRepositoryDep,
+    artifact_service: ArtifactServiceDep,
+) -> BundleService:
+    """Provide portable bundle export/import orchestration."""
+    return BundleService(
+        target_service=target_service,
+        benchmark_service=benchmark_service,
+        test_service=test_service,
+        target_repository=target_repository,
+        benchmark_repository=benchmark_repository,
+        test_repository=test_repository,
+        artifact_service=artifact_service,
+    )
+
+
+BundleServiceDep = Annotated[
+    BundleService,
+    Depends(get_bundle_service),
 ]
 
 
