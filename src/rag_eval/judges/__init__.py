@@ -5,12 +5,8 @@ They are separate from target execution and operate on persisted data.
 
 This package provides:
 - JudgeAdapter protocol (provider-neutral)
-- DummyJudgeAdapter for testing
 """
 
-from .base import DummyJudgeAdapter, JudgeAdapter
+from .base import JudgeAdapter
 
-__all__ = [
-    "JudgeAdapter",
-    "DummyJudgeAdapter",
-]
+__all__ = ["JudgeAdapter"]

@@ -5,7 +5,19 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/query-client";
 import { DashboardPage } from "./dashboard-page";
 import * as dashboardService from "./dashboard-service";
-import { getMockDashboardSummary } from "./mocks";
+import type { DashboardSummary } from "./dashboard-types";
+
+const dashboardSummary: DashboardSummary = {
+  resources: {
+    targets: { total: 1 },
+    datasets: { total: 1 },
+    tests: { total: 1 },
+  },
+  activeRuns: [],
+  recentRuns: [],
+  latestCompletedRun: null,
+  latestComparison: null,
+};
 
 function renderDashboard(ui: React.ReactElement) {
   return render(
@@ -19,7 +31,7 @@ describe("DashboardPage", () => {
   beforeEach(() => {
     queryClient.clear();
     vi.spyOn(dashboardService, "getDashboardSummary").mockResolvedValue(
-      getMockDashboardSummary()
+      dashboardSummary
     );
   });
 
