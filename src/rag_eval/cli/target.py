@@ -626,6 +626,7 @@ def capabilities(
     typer.echo("Target Capabilities:")
     typer.echo(f"  Target: {result.target.name}")
     typer.echo(f"  Query: {result.query}")
+    typer.echo(f"  Answer: {result.answer}")
     typer.echo(f"  Retrieval: {result.retrieval}")
     typer.echo(f"  Streaming: {result.streaming}")
     typer.echo(f"  Citations: {result.citations}")

@@ -435,6 +435,7 @@ async def capabilities() -> TargetCapabilities:
         ),
         protocol_version="1",
         query=True,
+        answer=True,
         streaming=True,
         retrieval=True,
         retrieval_stages=True,

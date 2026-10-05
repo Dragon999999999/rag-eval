@@ -22,6 +22,7 @@ class RetrievalTarget:
         return {
             "target": {"name": "test-target", "version": "1"},
             "query": True,
+            "answer": True,
             "retrieval": True,
             "streaming": True,
             "request_recovery": True,
@@ -85,11 +86,11 @@ class RetrievalTarget:
 
 
 class QueryOnlyTarget:
-    """Target deliberately advertising only the minimum query capability."""
+    """Target advertising only query and generated-answer capabilities."""
 
     async def capabilities(self) -> dict[str, object]:
-        """Advertise query only."""
-        return {"target": {"name": "query-only"}, "query": True}
+        """Advertise query and answer observations without retrieval."""
+        return {"target": {"name": "query-only"}, "query": True, "answer": True}
 
     async def health(self) -> dict[str, object]:
         """Return a ready health response."""

@@ -203,6 +203,54 @@ def test_factory_builds_openai_and_generic_http_adapters() -> None:
 
 
 @pytest.mark.anyio
+async def test_openai_adapter_advertises_answer_capability() -> None:
+    """OpenAI chat completions expose the answer observation required by metrics."""
+    config = TargetConfigResolver().resolve(
+        TargetConfig(
+            adapter=TargetAdapterSelection(type="openai_compatible"),
+            connection=TargetConnectionConfig(base_url="https://target.test"),
+            parameters={"model": "test-model"},
+        )
+    )
+    adapter = create_target_adapter(config)
+
+    try:
+        capabilities = await adapter.capabilities()
+    finally:
+        await adapter.aclose()
+
+    assert capabilities.query is True
+    assert capabilities.answer is True
+
+
+@pytest.mark.anyio
+async def test_generic_http_infers_answer_capability_from_mapping() -> None:
+    """Mapped generic query responses advertise answer observations."""
+    config = TargetConfigResolver().resolve(
+        TargetConfig(
+            adapter=TargetAdapterSelection(type="generic_http"),
+            connection=TargetConnectionConfig(base_url="https://target.test"),
+            protocol={
+                "query": {
+                    "method": "POST",
+                    "endpoint": "answer",
+                    "response": {"answer_path": "$.answer"},
+                }
+            },
+        )
+    )
+    adapter = create_target_adapter(config)
+
+    try:
+        capabilities = await adapter.capabilities()
+    finally:
+        await adapter.aclose()
+
+    assert capabilities.query is True
+    assert capabilities.answer is True
+
+
+@pytest.mark.anyio
 async def test_secret_service_extracts_encrypts_and_preserves_references() -> None:
     """Plaintext secrets become encrypted stable references across edits."""
     repository = MemorySecretRepository()

@@ -275,6 +275,10 @@ class TargetCapabilities(CanonicalModel):
     target: TargetInfo
 
     query: bool = False
+    answer: bool = Field(
+        default=False,
+        description="Whether queries produce a target answer observation.",
+    )
     streaming: bool = False
     conversation_history: bool = False
 

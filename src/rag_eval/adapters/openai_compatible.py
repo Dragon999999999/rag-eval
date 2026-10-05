@@ -133,6 +133,7 @@ class OpenAICompatibleAdapter:
             "protocol_version": "1.0",
             "target": target.model_dump(mode="json"),
             "query": True,
+            "answer": True,
             "streaming": False,
             "conversation_history": True,
             "retrieval": False,

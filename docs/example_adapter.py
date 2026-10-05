@@ -32,6 +32,7 @@ class MyAdapter:
                 implementation="custom-python",
             ),
             query=True,
+            answer=True,
             retrieval=False,
         )
 

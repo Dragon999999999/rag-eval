@@ -584,6 +584,7 @@ Conceptual groups:
 
 ```text
 query
+answer
 
 streaming
 conversation history

@@ -33,7 +33,6 @@ function metricValues(aggregates: AggregateResultDetail[]): DashboardMetric[] {
       (aggregate) =>
         aggregate.status.toUpperCase() === "COMPUTED" && aggregate.value != null
     )
-    .slice(0, 4)
     .map((aggregate) => ({
       metricId: aggregate.metric_id,
       label: metricLabel(aggregate.metric_id),

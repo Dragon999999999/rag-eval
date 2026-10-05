@@ -512,6 +512,46 @@ async def test_metric_applicability_checks_requirements_and_warnings() -> None:
 
 
 @pytest.mark.asyncio
+async def test_answer_metrics_require_and_accept_target_answer_capability() -> None:
+    """Answer metrics resolve once the target advertises generated answers."""
+    service, repository, _, _ = service_fixture(
+        requirements={
+            "metric.answer_quality": [
+                {"benchmark_field": "reference_answer"},
+                {"capability": "answer"},
+            ]
+        },
+        capabilities={"query": True, "answer": True},
+        cases=[BenchmarkCase(case_id="case-1", query="Q", reference_answer="A")],
+    )
+    created = await service.create_test(name="Answer quality")
+    test_id = created["test_definition_id"]
+    await service.update_test(
+        test_id,
+        changes={"target_id": "target-1", "benchmark_id": "benchmark-1"},
+    )
+    repository.tests[test_id].metric_selection_mode = ALL_AVAILABLE
+
+    result = await service.validate_test(test_id)
+
+    assert result["valid"] is True
+    assert result["resolved_metric_ids"] == ["metric.answer_quality"]
+
+    await service.set_test_metrics(
+        test_id,
+        mode=EXPLICIT,
+        selected_metrics=["metric.answer_quality"],
+        metric_parameters={},
+        judge_config={},
+        retrieval_config={},
+    )
+    explicit_result = await service.validate_test(test_id)
+
+    assert explicit_result["valid"] is True
+    assert explicit_result["resolved_metric_ids"] == ["metric.answer_quality"]
+
+
+@pytest.mark.asyncio
 async def test_yaml_round_trip_conflicts_and_invalid_inputs() -> None:
     """Portable YAML handles all/explicit modes, warnings, conflicts, and shapes."""
     service, repository, _, _ = service_fixture()

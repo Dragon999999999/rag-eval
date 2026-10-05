@@ -193,6 +193,7 @@ Example:
 
   "capabilities": {
     "query": true,
+    "answer": true,
     "streaming": true,
 
     "conversation_history": true,

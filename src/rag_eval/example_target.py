@@ -31,6 +31,7 @@ class ExampleTarget:
                 implementation="in-memory-example",
             ),
             query=True,
+            answer=True,
             document_ingestion=True,
             chunk_ingestion=True,
         )

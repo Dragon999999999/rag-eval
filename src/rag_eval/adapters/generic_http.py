@@ -146,12 +146,17 @@ class GenericHttpTargetAdapter:
 
         retrieve_spec = self._operation_spec("retrieve")
 
+        query_response = (
+            self._response_spec(query_spec) if query_spec is not None else {}
+        )
+
         configured = self._protocol.get("capabilities")
 
         payload: dict[str, Any] = {
             "protocol_version": "1.0",
             "target": target.model_dump(mode="json"),
             "query": query_spec is not None,
+            "answer": isinstance(query_response.get("answer_path"), str),
             "streaming": False,
             "conversation_history": (
                 query_spec is not None
