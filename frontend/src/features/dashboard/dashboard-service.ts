@@ -115,7 +115,9 @@ function toDashboardRun(
   return {
     runId: run.run_id,
     testName: testNames.get(run.test_definition_id ?? "") ?? run.name,
+    targetId: run.target_id,
     targetName: targetNames.get(run.target_id ?? "") ?? run.target_id ?? "—",
+    benchmarkId: run.benchmark_id ?? null,
     datasetName: benchmarkNames.get(run.benchmark_id ?? "") ?? run.benchmark_id ?? "—",
     status: dashboardStatus(run.status),
     progress: {

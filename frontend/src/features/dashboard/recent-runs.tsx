@@ -3,7 +3,7 @@
  *
  * Shows a dense table of recent evaluation runs.
  */
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -58,6 +58,7 @@ interface RecentRunRowProps {
 }
 
 function RecentRunRow({ run }: RecentRunRowProps) {
+  const navigate = useNavigate();
   const statusMap: Record<
     RunStatus,
     "success" | "warning" | "error" | "info" | "neutral"
@@ -70,19 +71,67 @@ function RecentRunRow({ run }: RecentRunRowProps) {
   };
 
   const keyResult = run.keyMetrics?.[0];
+  const rowHref = `/runs/${encodeURIComponent(run.runId)}`;
+  const benchmarkHref = run.benchmarkId
+    ? `/benchmarks/${encodeURIComponent(run.benchmarkId)}`
+    : undefined;
+  const targetHref = run.targetId
+    ? `/targets/${encodeURIComponent(run.targetId)}`
+    : undefined;
+  const stopRowNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+  };
 
   return (
-    <TableRow className="group">
+    <TableRow
+      className="group cursor-pointer"
+      onClick={() => {
+        navigate(rowHref);
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          navigate(rowHref);
+        }
+      }}
+      tabIndex={0}
+    >
       <TableCell>
         <Link
-          to={`/runs/${run.runId}`}
+          to={rowHref}
           className="font-medium text-text-primary hover:text-accent"
+          onClick={stopRowNavigation}
         >
           {run.testName}
         </Link>
       </TableCell>
-      <TableCell className="text-text-secondary">{run.targetName}</TableCell>
-      <TableCell className="text-text-secondary">{run.datasetName}</TableCell>
+      <TableCell className="text-text-secondary">
+        {targetHref ? (
+          <Link
+            to={targetHref}
+            className="font-medium text-text-primary hover:text-accent"
+            onClick={stopRowNavigation}
+          >
+            {run.targetName}
+          </Link>
+        ) : (
+          run.targetName
+        )}
+      </TableCell>
+      <TableCell className="text-text-secondary">
+        {benchmarkHref ? (
+          <Link
+            to={benchmarkHref}
+            className="font-medium text-text-primary hover:text-accent"
+            onClick={stopRowNavigation}
+          >
+            {run.datasetName}
+          </Link>
+        ) : (
+          run.datasetName
+        )}
+      </TableCell>
       <TableCell>
         <StatusBadge status={statusMap[run.status]} showDot>
           {run.status.charAt(0).toUpperCase() + run.status.slice(1)}

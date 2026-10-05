@@ -9,13 +9,28 @@ import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
 import { Spinner } from "@/components/ui/spinner";
 import { Surface } from "@/components/layout/surface";
+import { useBenchmarkList } from "@/features/datasets/use-datasets";
+import { useTargetList } from "@/features/targets/use-targets";
 import { useTests } from "../use-tests";
 import type { TestDefinitionInfo } from "../test-types";
 
 /** Saved test definitions with a compact readiness overview. */
 export function TestsPage() {
   const { data: tests, isLoading, error, refetch } = useTests();
+  const { data: benchmarks } = useBenchmarkList();
+  const { data: targets } = useTargetList({ autoHealthCheck: false });
   const [query, setQuery] = useState("");
+  const benchmarkNames = useMemo(
+    () =>
+      new Map(
+        (benchmarks ?? []).map((benchmark) => [benchmark.benchmark_id, benchmark.name])
+      ),
+    [benchmarks]
+  );
+  const targetNames = useMemo(
+    () => new Map((targets ?? []).map((target) => [target.target_id, target.name])),
+    [targets]
+  );
   const filtered = useMemo(
     () =>
       (tests ?? []).filter((test) =>
@@ -95,7 +110,18 @@ export function TestsPage() {
                   </thead>
                   <tbody className="divide-y divide-border-default">
                     {filtered.map((test) => (
-                      <TestRow key={test.test_definition_id} test={test} />
+                      <TestRow
+                        key={test.test_definition_id}
+                        test={test}
+                        benchmarkName={
+                          test.benchmark_id
+                            ? benchmarkNames.get(test.benchmark_id)
+                            : undefined
+                        }
+                        targetName={
+                          test.target_id ? targetNames.get(test.target_id) : undefined
+                        }
+                      />
                     ))}
                   </tbody>
                 </table>
@@ -113,10 +139,28 @@ export function TestsPage() {
   );
 }
 
-function TestRow({ test }: { test: TestDefinitionInfo }) {
+function TestRow({
+  test,
+  benchmarkName,
+  targetName,
+}: {
+  test: TestDefinitionInfo;
+  benchmarkName?: string;
+  targetName?: string;
+}) {
   const navigate = useNavigate();
   const href = `/tests/${encodeURIComponent(test.test_definition_id)}`;
   const ready = test.configuration_status === "READY";
+  const benchmarkHref = test.benchmark_id
+    ? `/benchmarks/${encodeURIComponent(test.benchmark_id)}`
+    : undefined;
+  const targetHref = test.target_id
+    ? `/targets/${encodeURIComponent(test.target_id)}`
+    : undefined;
+  const stopRowNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.stopPropagation();
+  };
+
   return (
     <tr
       className="cursor-pointer hover:bg-surface-hover"
@@ -124,6 +168,7 @@ function TestRow({ test }: { test: TestDefinitionInfo }) {
         navigate(href);
       }}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           navigate(href);
@@ -132,7 +177,11 @@ function TestRow({ test }: { test: TestDefinitionInfo }) {
       tabIndex={0}
     >
       <td className="px-4 py-4">
-        <Link className="font-medium text-text-primary hover:text-accent" to={href}>
+        <Link
+          className="font-medium text-text-primary hover:text-accent"
+          to={href}
+          onClick={stopRowNavigation}
+        >
           {test.name}
         </Link>
         <div className="mt-1 text-xs text-text-tertiary">{test.test_definition_id}</div>
@@ -143,14 +192,42 @@ function TestRow({ test }: { test: TestDefinitionInfo }) {
         </Badge>
       </td>
       <td className="px-4 py-4 text-text-secondary">
-        {test.benchmark_id ?? "Not selected"}
+        {test.benchmark_id && benchmarkHref ? (
+          <>
+            <Link
+              className="font-medium text-text-primary hover:text-accent"
+              to={benchmarkHref}
+              onClick={stopRowNavigation}
+            >
+              {benchmarkName ?? test.benchmark_id}
+            </Link>
+            <div className="mt-1 text-xs text-text-tertiary">{test.benchmark_id}</div>
+          </>
+        ) : (
+          "Not selected"
+        )}
       </td>
       <td className="px-4 py-4 text-text-secondary">
-        {test.target_id ?? "Not selected"}
+        {test.target_id && targetHref ? (
+          <>
+            <Link
+              className="font-medium text-text-primary hover:text-accent"
+              to={targetHref}
+              onClick={stopRowNavigation}
+            >
+              {targetName ?? test.target_id}
+            </Link>
+            <div className="mt-1 text-xs text-text-tertiary">{test.target_id}</div>
+          </>
+        ) : (
+          "Not selected"
+        )}
       </td>
       <td className="px-4 py-4 text-right">
         <Button size="sm" variant="secondary" asChild>
-          <Link to={href}>Open</Link>
+          <Link to={href} onClick={stopRowNavigation}>
+            Open
+          </Link>
         </Button>
       </td>
     </tr>

@@ -31,7 +31,9 @@ export interface ResourceSummary {
 export interface DashboardRunSummary {
   runId: string;
   testName: string;
+  targetId: string | null;
   targetName: string;
+  benchmarkId: string | null;
   datasetName: string;
   status: RunStatus;
   progress: {
