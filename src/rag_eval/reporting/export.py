@@ -27,6 +27,7 @@ import pyarrow.parquet as pq
 import yaml
 
 from rag_eval.db.benchmark_models import BenchmarkCaseRecord
+from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_models import (
     AggregateMetricResultRecord,
     CaseExecutionRecord,
@@ -119,13 +120,25 @@ class ExportService:
         retrievals_path = export_path / "retrievals.parquet"
         retrievals_exported = await self._export_retrievals(run_id, retrievals_path)
         if retrievals_exported:
-            files.append("retrievals.parquet")
+            files.extend(
+                filename
+                for filename in (
+                    "retrievals.parquet",
+                    "retrieval_stages.parquet",
+                    "retrieved_items.parquet",
+                )
+                if (export_path / filename).exists()
+            )
 
         # Export traces (if available)
         traces_path = export_path / "traces.parquet"
         traces_exported = await self._export_traces(run_id, traces_path)
         if traces_exported:
             files.append("traces.parquet")
+
+        files.extend(
+            await self._export_observation_datasets(run_id, export_path)
+        )
 
         # Export errors (if available)
         errors_path = export_path / "errors.parquet"
@@ -300,18 +313,170 @@ class ExportService:
 
         Returns True if any retrievals were exported.
         """
-        # This would require loading retrieval data from observations
-        # For now, skip if not implemented
-        return False
+        observations = await self._observations_for_run(run_id)
+        stage_rows: list[dict[str, Any]] = []
+        item_rows: list[dict[str, Any]] = []
+
+        for observation in observations:
+            if observation.retrieval is None:
+                continue
+            for stage in observation.retrieval.stages:
+                stage_rows.append(
+                    {
+                        "run_id": run_id,
+                        "case_id": observation.case_id,
+                        "observation_id": observation.observation_id,
+                        "stage_id": stage.stage_id,
+                        "stage_type": stage.type.value,
+                        "parent_stage_ids": json.dumps(stage.parent_stage_ids),
+                        "component_name": stage.component_name,
+                        "trace_span_id": stage.trace_span_id,
+                        "item_count": len(stage.items),
+                        "parameters": json.dumps(stage.parameters, sort_keys=True),
+                    }
+                )
+                for item in stage.items:
+                    item_rows.append(
+                        {
+                            "run_id": run_id,
+                            "case_id": observation.case_id,
+                            "observation_id": observation.observation_id,
+                            "stage_id": stage.stage_id,
+                            "retrieval_id": item.retrieval_id,
+                            "rank": item.rank,
+                            "text": item.text,
+                            "source": json.dumps(
+                                item.source.model_dump(mode="json")
+                                if item.source is not None
+                                else None
+                            ),
+                            "score": (
+                                item.score.value if item.score is not None else None
+                            ),
+                            "score_type": (
+                                item.score.type if item.score is not None else None
+                            ),
+                        }
+                    )
+
+        self._write_rows(stage_rows, path.parent / "retrieval_stages.parquet")
+        self._write_rows(item_rows, path.parent / "retrieved_items.parquet")
+        self._write_rows(item_rows, path)
+        return bool(stage_rows or item_rows)
 
     async def _export_traces(self, run_id: str, path: Path) -> bool:
         """Export trace spans to Parquet.
 
         Returns True if any traces were exported.
         """
-        # This would require loading trace data from observations
-        # For now, skip if not implemented
-        return False
+        observations = await self._observations_for_run(run_id)
+        rows: list[dict[str, Any]] = []
+        for observation in observations:
+            if observation.trace is None:
+                continue
+            for span in observation.trace.spans:
+                rows.append(
+                    {
+                        "run_id": run_id,
+                        "case_id": observation.case_id,
+                        "observation_id": observation.observation_id,
+                        "trace_id": observation.trace.trace_id,
+                        "span_id": span.span_id,
+                        "parent_span_ids": json.dumps(span.parent_span_ids),
+                        "component_type": span.component_type,
+                        "component_name": span.component_name or span.name,
+                        "status": span.status,
+                        "started_at": span.started_at.isoformat(),
+                        "ended_at": span.ended_at.isoformat()
+                        if span.ended_at is not None
+                        else None,
+                        "duration_ms": span.duration_ms,
+                        "input_count": span.input_count,
+                        "output_count": span.output_count,
+                        "error": json.dumps(span.error, sort_keys=True),
+                        "metadata": json.dumps(span.metadata, sort_keys=True),
+                    }
+                )
+        self._write_rows(rows, path)
+        return bool(rows)
+
+    async def _export_observation_datasets(
+        self,
+        run_id: str,
+        export_path: Path,
+    ) -> list[str]:
+        """Export claims, citations, assessments, decisions, usage, and config."""
+        observations = await self._observations_for_run(run_id)
+        datasets: dict[str, list[dict[str, Any]]] = {
+            "claims.parquet": [],
+            "citations.parquet": [],
+            "assessments.parquet": [],
+            "decisions.parquet": [],
+            "usage.parquet": [],
+            "effective_configurations.parquet": [],
+        }
+        for observation in observations:
+            identity = {
+                "run_id": run_id,
+                "case_id": observation.case_id,
+                "observation_id": observation.observation_id,
+            }
+            for claim in observation.claims or []:
+                datasets["claims.parquet"].append(
+                    {**identity, **claim.model_dump(mode="json")}
+                )
+            if observation.answer is not None:
+                for citation in observation.answer.citations:
+                    datasets["citations.parquet"].append(
+                        {**identity, **citation.model_dump(mode="json")}
+                    )
+            for assessment in observation.assessments or []:
+                datasets["assessments.parquet"].append(
+                    {**identity, **assessment.model_dump(mode="json")}
+                )
+            if observation.decision is not None:
+                datasets["decisions.parquet"].append(
+                    {**identity, **observation.decision.model_dump(mode="json")}
+                )
+            if observation.usage is not None:
+                datasets["usage.parquet"].append(
+                    {
+                        **identity,
+                        **observation.usage.model_dump(mode="json"),
+                    }
+                )
+            datasets["effective_configurations.parquet"].append(
+                {
+                    **identity,
+                    "target_run_id": observation.target_run_id,
+                    "corpus_id": observation.corpus_id,
+                    "architecture_name": observation.architecture_name,
+                    "architecture_version": observation.architecture_version,
+                    "configuration": json.dumps(
+                        observation.configuration.model_dump(mode="json"),
+                        sort_keys=True,
+                    ),
+                }
+            )
+
+        written: list[str] = []
+        for filename, rows in datasets.items():
+            if self._write_rows(rows, export_path / filename):
+                written.append(filename)
+        return written
+
+    async def _observations_for_run(self, run_id: str) -> list[Any]:
+        """Load normalized observations through the target-domain repository."""
+        repository = TargetRepository(self._repository._session)
+        return await repository.list_observations_for_run(run_id)
+
+    @staticmethod
+    def _write_rows(rows: list[dict[str, Any]], path: Path) -> bool:
+        """Write non-empty row data to a compressed Parquet file."""
+        if not rows:
+            return False
+        pq.write_table(pa.Table.from_pylist(rows), path, compression="snappy")
+        return True
 
     async def _export_errors(self, run_id: str, path: Path) -> bool:
         """Export error records to Parquet.

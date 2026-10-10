@@ -825,6 +825,23 @@ class TargetRepository:
         )
         return [TargetObservation.model_validate(record.payload) for record in result]
 
+    async def list_observations_for_run(
+        self,
+        run_id: str,
+    ) -> list[TargetObservation]:
+        """Return normalized observations captured by one evaluation run."""
+        result = await self._session.scalars(
+            select(TargetObservationRecord)
+            .join(
+                CaseExecutionRecord,
+                TargetObservationRecord.case_execution_id
+                == CaseExecutionRecord.case_execution_id,
+            )
+            .where(CaseExecutionRecord.run_id == run_id)
+            .order_by(TargetObservationRecord.created_at)
+        )
+        return [TargetObservation.model_validate(record.payload) for record in result]
+
     # -------------------------------------------------------------------------
     # Internal helpers
     # -------------------------------------------------------------------------
