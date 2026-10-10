@@ -143,9 +143,10 @@ class ExportService:
         if traces_exported:
             files.append("traces.parquet")
 
-        files.extend(
-            await self._export_observation_datasets(run_id, export_path)
-        )
+        files.extend(await self._export_observation_datasets(run_id, export_path))
+        judge_path = export_path / "judge_results.parquet"
+        if await self._export_judge_results(run_id, judge_path):
+            files.append("judge_results.parquet")
 
         # Export errors (if available)
         errors_path = export_path / "errors.parquet"
@@ -268,7 +269,44 @@ class ExportService:
             },
             "metrics": metrics_summary,
             "stage_metrics": stage_metrics,
+            "advanced_metric_families": sorted(
+                {
+                    aggregate.metric_id.split(".", 1)[0]
+                    for aggregate in aggregates
+                    if "." in aggregate.metric_id
+                    and aggregate.metric_id.split(".", 1)[0]
+                    not in {"stage", "retrieval", "answer", "citation"}
+                }
+            ),
         }
+
+    async def _export_judge_results(self, run_id: str, path: Path) -> bool:
+        """Export persisted judge outputs without raw provider prompts."""
+        rows = []
+        for result in await self._repository.list_judge_results(run_id):
+            rows.append(
+                {
+                    "run_id": run_id,
+                    "judge_result_id": result.judge_result_id,
+                    "case_execution_id": result.case_execution_id,
+                    "metric_id": result.metric_id,
+                    "metric_version": result.metric_version,
+                    "score": result.score,
+                    "label": result.label,
+                    "reasoning_summary": result.reasoning_summary,
+                    "evidence_ids": json.dumps(result.evidence_ids),
+                    "claim_ids": json.dumps(result.claim_ids),
+                    "confidence": result.confidence,
+                    "judge_model": result.judge_model,
+                    "prompt_version": result.prompt_version,
+                    "usage": json.dumps(result.usage, sort_keys=True),
+                    "latency_ms": result.latency_ms,
+                    "status": result.status,
+                    "cache_key": result.cache_key,
+                    "metadata": json.dumps(result.metadata_json, sort_keys=True),
+                }
+            )
+        return self._write_rows(rows, path)
 
     async def _export_cases(
         self, run_id: str, case_executions: Sequence[CaseExecutionRecord], path: Path
@@ -431,6 +469,10 @@ class ExportService:
             "decisions.parquet": [],
             "usage.parquet": [],
             "effective_configurations.parquet": [],
+            "embedding_diagnostics.parquet": [],
+            "conversation_metrics.parquet": [],
+            "resource_metrics.parquet": [],
+            "robustness_pairs.parquet": [],
         }
         for observation in observations:
             identity = {
@@ -462,6 +504,56 @@ class ExportService:
                         **observation.usage.model_dump(mode="json"),
                     }
                 )
+                if observation.usage.resources:
+                    datasets["resource_metrics.parquet"].append(
+                        {
+                            **identity,
+                            **observation.usage.resources,
+                        }
+                    )
+            if observation.embedding_vectors is not None:
+                datasets["embedding_diagnostics.parquet"].append(
+                    {
+                        **identity,
+                        "model_name": observation.embedding_vectors.model_name,
+                        "vector_count": len(
+                            observation.embedding_vectors.vectors or []
+                        ),
+                        "artifact": json.dumps(
+                            observation.embedding_vectors.artifact.model_dump(
+                                mode="json"
+                            )
+                            if observation.embedding_vectors.artifact
+                            else None
+                        ),
+                        "metadata": json.dumps(
+                            observation.embedding_vectors.metadata,
+                            sort_keys=True,
+                        ),
+                    }
+                )
+            if observation.metadata.get("perturbation_pair"):
+                datasets["robustness_pairs.parquet"].append(
+                    {
+                        **identity,
+                        "perturbation_pair": json.dumps(
+                            observation.metadata["perturbation_pair"],
+                            sort_keys=True,
+                        ),
+                    }
+                )
+            if observation.case_id is not None:
+                case_record = await self._repository._session.get(
+                    BenchmarkCaseRecord, observation.case_id
+                )
+                if case_record is not None and case_record.conversation_id:
+                    datasets["conversation_metrics.parquet"].append(
+                        {
+                            **identity,
+                            "conversation_id": case_record.conversation_id,
+                            "turn_index": case_record.turn_index,
+                        }
+                    )
             datasets["effective_configurations.parquet"].append(
                 {
                     **identity,

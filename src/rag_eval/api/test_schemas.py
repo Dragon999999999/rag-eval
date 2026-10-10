@@ -610,6 +610,7 @@ class ComparisonResult(BaseModel):
     compatibility_warnings: list[str]
     metric_comparisons: list[dict[str, Any]]
     summary: dict[str, Any]
+    statistics: list[dict[str, Any]] = Field(default_factory=list)
 
     compared_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -10,6 +10,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from rag_eval.db.test_repository import TestRepository
+from rag_eval.reporting.stats import (
+    benjamini_hochberg,
+    bootstrap_ci,
+    cohens_dz,
+    holm_bonferroni,
+    paired_permutation_pvalue,
+    rank_biserial,
+)
 
 
 @dataclass(frozen=True)
@@ -39,6 +47,10 @@ class MetricComparison:
 
     # Assessment (improved, regressed, unchanged, inconclusive)
     assessment: str = "inconclusive"
+    paired_count: int = 0
+    confidence_interval: tuple[float, float] | None = None
+    p_value: float | None = None
+    effect_size: float | None = None
 
 
 @dataclass(frozen=True)
@@ -60,6 +72,7 @@ class ComparisonResult:
     regressed_count: int = 0
     unchanged_count: int = 0
     inconclusive_count: int = 0
+    statistics: list[dict[str, Any]] = field(default_factory=list)
 
 
 # Metric direction metadata
@@ -252,6 +265,7 @@ class RunComparator:
         common_keys = set(agg_lookup_a.keys()) & set(agg_lookup_b.keys())
 
         comparisons = []
+        statistics: list[dict[str, Any]] = []
         improved = 0
         regressed = 0
         unchanged = 0
@@ -279,6 +293,45 @@ class RunComparator:
 
             comparisons.append(comparison)
 
+            paired_a, paired_b = await self._paired_values(
+                run_a_id, run_b_id, metric_id, version
+            )
+            differences = [b - a for a, b in zip(paired_a, paired_b, strict=True)]
+            interval = bootstrap_ci(differences)
+            p_value = paired_permutation_pvalue(differences)
+            effect = cohens_dz(differences)
+            comparison = MetricComparison(
+                **{
+                    **comparison.__dict__,
+                    "paired_count": len(differences),
+                    "confidence_interval": interval,
+                    "p_value": p_value,
+                    "effect_size": effect,
+                }
+            )
+            comparisons[-1] = comparison
+            statistics.append(
+                {
+                    "metric_id": metric_id,
+                    "metric_version": version,
+                    "aggregation": aggregation,
+                    "paired_count": len(differences),
+                    "mean_delta": (
+                        sum(differences) / len(differences) if differences else None
+                    ),
+                    "median_delta": (
+                        sorted(differences)[len(differences) // 2]
+                        if differences
+                        else None
+                    ),
+                    "confidence_interval": interval,
+                    "p_value": p_value,
+                    "cohens_dz": effect,
+                    "effect_size": effect,
+                    "rank_biserial": rank_biserial(differences),
+                }
+            )
+
             if comparison.assessment == "improved":
                 improved += 1
             elif comparison.assessment == "regressed":
@@ -298,7 +351,60 @@ class RunComparator:
             regressed_count=regressed,
             unchanged_count=unchanged,
             inconclusive_count=inconclusive,
+            statistics=self._adjust_statistics(statistics),
         )
+
+    async def _paired_values(
+        self,
+        run_a_id: str,
+        run_b_id: str,
+        metric_id: str,
+        version: str,
+    ) -> tuple[list[float], list[float]]:
+        """Load numeric per-case values aligned by case identity."""
+        if not hasattr(self._repository, "list_metric_results"):
+            return [], []
+        rows_a = await self._repository.list_metric_results(run_a_id)
+        rows_b = await self._repository.list_metric_results(run_b_id)
+        values_a = {
+            row.case_id: float(row.value)
+            for row in rows_a
+            if row.metric_id == metric_id
+            and row.metric_version == version
+            and row.case_id is not None
+            and isinstance(row.value, (int, float))
+        }
+        values_b = {
+            row.case_id: float(row.value)
+            for row in rows_b
+            if row.metric_id == metric_id
+            and row.metric_version == version
+            and row.case_id is not None
+            and isinstance(row.value, (int, float))
+        }
+        case_ids = sorted(set(values_a) & set(values_b))
+        return [values_a[case_id] for case_id in case_ids], [
+            values_b[case_id] for case_id in case_ids
+        ]
+
+    @staticmethod
+    def _adjust_statistics(statistics: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Add family-wise and false-discovery corrected p-values."""
+        p_values = [
+            item["p_value"] for item in statistics if item["p_value"] is not None
+        ]
+        holm = holm_bonferroni(p_values)
+        bh = benjamini_hochberg(p_values)
+        index = 0
+        for item in statistics:
+            if item["p_value"] is None:
+                item["holm_p_value"] = None
+                item["benjamini_hochberg_p_value"] = None
+            else:
+                item["holm_p_value"] = holm[index]
+                item["benjamini_hochberg_p_value"] = bh[index]
+                index += 1
+        return statistics
 
     def _compare_metric(
         self,

@@ -323,8 +323,24 @@ export interface ComparisonResult {
     relative_delta_percent: number | null;
     direction: "higher_is_better" | "lower_is_better" | "neutral";
     status: "improved" | "regressed" | "unchanged" | "incomparable";
+    paired_count: number;
+    confidence_interval: [number, number] | null;
+    p_value: number | null;
+    effect_size: number | null;
   }>;
   summary: Record<string, unknown>;
+  statistics: Array<{
+    metric_id: string;
+    metric_version: string;
+    aggregation: string;
+    paired_count: number;
+    confidence_interval: [number, number] | null;
+    p_value: number | null;
+    effect_size: number | null;
+    rank_biserial: number | null;
+    holm_p_value?: number | null;
+    benjamini_hochberg_p_value?: number | null;
+  }>;
   compared_at: string;
 }
 

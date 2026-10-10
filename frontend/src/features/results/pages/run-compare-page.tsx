@@ -216,6 +216,46 @@ export function RunComparePage() {
             </Table>
           </Surface>
 
+          {comparison.statistics.length > 0 && (
+            <Surface className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-primary">
+                Statistical comparison
+              </h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Metric</TableHead>
+                      <TableHead className="text-right">Paired cases</TableHead>
+                      <TableHead className="text-right">95% CI</TableHead>
+                      <TableHead className="text-right">p-value</TableHead>
+                      <TableHead className="text-right">Effect</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {comparison.statistics.map((stat) => (
+                      <TableRow key={`${stat.metric_id}-${stat.aggregation}`}>
+                        <TableCell>{getMetricDisplayName(stat.metric_id)}</TableCell>
+                        <TableCell className="text-right">{stat.paired_count}</TableCell>
+                        <TableCell className="text-right">
+                          {stat.confidence_interval
+                            ? `[${stat.confidence_interval[0].toFixed(3)}, ${stat.confidence_interval[1].toFixed(3)}]`
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {stat.p_value == null ? "—" : stat.p_value.toFixed(4)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {stat.effect_size == null ? "—" : stat.effect_size.toFixed(3)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Surface>
+          )}
+
           {/* Summary */}
           <Surface className="p-4">
             <h3 className="mb-3 text-sm font-medium text-text-primary">Summary</h3>

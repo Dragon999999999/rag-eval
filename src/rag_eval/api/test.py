@@ -872,15 +872,17 @@ async def compare_runs(
                     "absolute_delta": item.absolute_delta,
                     "relative_delta_percent": item.relative_delta,
                     "direction": (
-                        item.direction
-                        if item.direction != "unknown"
-                        else "neutral"
+                        item.direction if item.direction != "unknown" else "neutral"
                     ),
                     "status": (
                         item.assessment
                         if item.assessment != "inconclusive"
                         else "incomparable"
                     ),
+                    "paired_count": item.paired_count,
+                    "confidence_interval": item.confidence_interval,
+                    "p_value": item.p_value,
+                    "effect_size": item.effect_size,
                 }
                 for item in comparison.comparisons
             ],
@@ -891,6 +893,7 @@ async def compare_runs(
                 "unchanged": comparison.unchanged_count,
                 "inconclusive": comparison.inconclusive_count,
             },
+            "statistics": comparison.statistics,
         }
     )
 
