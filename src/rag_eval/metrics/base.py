@@ -85,6 +85,12 @@ TARGET_REQUIREMENTS = frozenset(
         MetricRequirement.CONFIDENCE,
         MetricRequirement.TRACE,
         MetricRequirement.USAGE,
+        MetricRequirement.CLAIMS,
+        MetricRequirement.ASSESSMENTS,
+        MetricRequirement.DECISION,
+        MetricRequirement.COMPONENT_TRACE,
+        MetricRequirement.STAGE_BY_ID,
+        MetricRequirement.STAGE_BY_TYPE,
     }
 )
 

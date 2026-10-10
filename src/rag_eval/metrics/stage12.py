@@ -23,11 +23,37 @@ from rag_eval.metrics.answer import (
 from rag_eval.metrics.citations import (
     AttributionRate,
     BrokenCitations,
+    BrokenRate,
     CitationResolution,
+    ClaimCoverage,
+    DocumentAttributionAccuracy,
+    EvidenceUtilization,
+    MeanCitationsPerClaim,
+    PageAttributionAccuracy,
+    ResolutionRate,
+    UncitedClaimRate,
+)
+from rag_eval.metrics.decision import (
+    AbstentionPrecision,
+    AbstentionRate,
+    AbstentionRecall,
+    AcceptRate,
+    AnswerabilityAccuracy,
+    FalseAbstentionRate,
+    FalseAnswerRate,
+    RejectRate,
 )
 from rag_eval.metrics.performance import (
+    AssessmentLatency,
+    ComponentFailureRate,
+    ContextConstructionLatency,
+    E2ELatency,
+    EmbeddingLatency,
     GenerationLatency,
     RetrievalLatency,
+    StageLatency,
+    StageLatencyShare,
+    StageThroughput,
     TokensPerSecond,
     TotalLatency,
 )
@@ -41,17 +67,46 @@ from rag_eval.metrics.reliability import (
 )
 from rag_eval.metrics.retrieval import (
     MRR,
+    DocumentRecall,
+    F1AtK,
+    FirstRelevantRank,
     HitAtK,
     MAPAtK,
     NDCGAtK,
+    PageRecall,
     PrecisionAtK,
     RecallAtK,
     RPrecision,
 )
+from rag_eval.metrics.stage_delta import (
+    GoldRetention,
+    ItemRetentionRate,
+    MAPDelta,
+    MRRDelta,
+    NDCGDelta,
+    NoiseRejection,
+    PrecisionDelta,
+    QualityGainPerMs,
+    RankGain,
+    RankRegression,
+    RecallDelta,
+    SourceRetentionRate,
+    TopKChurn,
+)
+from rag_eval.metrics.stage_delta import (
+    StageLatency as StageLatencyDelta,
+)
 from rag_eval.metrics.usage import (
+    ContextTokens,
     CostPerToken,
+    EmbeddingCalls,
     InputTokens,
+    LLMCalls,
     OutputTokens,
+    RelevantEvidencePerContextToken,
+    RerankerCalls,
+    RetrievalCalls,
+    TokensPerCorrectAnswer,
     TotalCost,
     TotalTokens,
 )
@@ -89,17 +144,62 @@ def register_stage12_metrics(registry: MetricRegistry | None = None) -> MetricRe
     registry.register(CitationResolution())
     registry.register(BrokenCitations())
     registry.register(AttributionRate())
+    for metric in (
+        ResolutionRate(),
+        BrokenRate(),
+        ClaimCoverage(),
+        DocumentAttributionAccuracy(),
+        PageAttributionAccuracy(),
+        MeanCitationsPerClaim(),
+        UncitedClaimRate(),
+        EvidenceUtilization(),
+    ):
+        registry.register(metric)
+
+    # Decision and abstention metrics
+    for metric in (
+        AcceptRate(),
+        RejectRate(),
+        AbstentionRate(),
+        AnswerabilityAccuracy(),
+        FalseAnswerRate(),
+        FalseAbstentionRate(),
+        AbstentionPrecision(),
+        AbstentionRecall(),
+    ):
+        registry.register(metric)
 
     # Performance metrics
     registry.register(TotalLatency())
     registry.register(RetrievalLatency())
     registry.register(GenerationLatency())
     registry.register(TokensPerSecond())
+    for metric in (
+        E2ELatency(),
+        EmbeddingLatency(),
+        ContextConstructionLatency(),
+        AssessmentLatency(),
+        StageLatency(),
+        StageLatencyShare(),
+        StageThroughput(),
+        ComponentFailureRate(),
+    ):
+        registry.register(metric)
 
     # Usage metrics
     registry.register(TotalTokens())
     registry.register(InputTokens())
     registry.register(OutputTokens())
+    for metric in (
+        ContextTokens(),
+        LLMCalls(),
+        EmbeddingCalls(),
+        RetrievalCalls(),
+        RerankerCalls(),
+        TokensPerCorrectAnswer(),
+        RelevantEvidencePerContextToken(),
+    ):
+        registry.register(metric)
 
     # Cost metrics (default USD)
     registry.register(TotalCost(currency="USD"))
@@ -111,6 +211,29 @@ def register_stage12_metrics(registry: MetricRegistry | None = None) -> MetricRe
     registry.register(Availability())
     registry.register(LatencyP50())
     registry.register(LatencyP99())
+
+    # Retrieval-stage comparison metrics
+    for metric in (
+        F1AtK(),
+        FirstRelevantRank(),
+        DocumentRecall(),
+        PageRecall(),
+        RecallDelta(),
+        PrecisionDelta(),
+        NDCGDelta(),
+        MRRDelta(),
+        MAPDelta(),
+        RankGain(),
+        RankRegression(),
+        GoldRetention(),
+        NoiseRejection(),
+        ItemRetentionRate(),
+        SourceRetentionRate(),
+        TopKChurn(),
+        StageLatencyDelta(),
+        QualityGainPerMs(),
+    ):
+        registry.register(metric)
 
     return registry
 

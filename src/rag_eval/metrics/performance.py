@@ -11,6 +11,7 @@ Metrics:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 from rag_eval.metrics.base import (
@@ -40,13 +41,35 @@ def _extract_timing_from_trace(trace: dict[str, Any]) -> dict[str, float]:
     if spans:
         total_ms = 0.0
         stage_times = {}
+        intervals: list[tuple[float, float]] = []
 
         for span in spans:
-            span_name = span.get("name", "unknown")
+            span_name = span.get("component_name") or span.get("name", "unknown")
             duration = span.get("duration_ms")
             if duration is not None:
                 stage_times[f"{span_name}_ms"] = duration
-                total_ms += duration
+            started_at = span.get("started_at")
+            ended_at = span.get("ended_at")
+            if isinstance(started_at, str) and isinstance(ended_at, str):
+                try:
+                    start = datetime.fromisoformat(started_at).timestamp() * 1000
+                    end = datetime.fromisoformat(ended_at).timestamp() * 1000
+                except ValueError:
+                    pass
+                else:
+                    if end >= start:
+                        intervals.append((start, end))
+
+        if intervals:
+            merged: list[list[float]] = []
+            for start, end in sorted(intervals):
+                if merged and start <= merged[-1][1]:
+                    merged[-1][1] = max(merged[-1][1], end)
+                else:
+                    merged.append([start, end])
+            total_ms = sum(end - start for start, end in merged)
+        else:
+            total_ms = sum(stage_times.values())
 
         if total_ms > 0:
             timings["total_ms"] = total_ms
@@ -506,10 +529,295 @@ class TokensPerSecond:
         )
 
 
+def _trace_metric_result(
+    metric_id: str,
+    description: str,
+    context: MetricContext,
+    value: float | None,
+    *,
+    details: dict[str, Any] | None = None,
+    reason: str | None = None,
+) -> MetricResult:
+    """Build a trace metric result with explicit missing-data semantics."""
+    return MetricResult(
+        metric_id=metric_id,
+        metric_version="1",
+        status=(
+            MetricStatus.COMPUTED
+            if reason is None
+            else MetricStatus.UNAVAILABLE_MISSING_INPUT
+        ),
+        value=value,
+        reason=reason,
+        case_id=context.case.case_id,
+        run_id=context.run_id,
+        details={"description": description, **(details or {})},
+    )
+
+
+class _NamedSpanMetric:
+    """Compute one metric from spans whose component name matches a token."""
+
+    metric_id: str
+    description: str
+    token: str
+
+    def __init__(self) -> None:
+        self._definition = MetricDefinition(
+            metric_id=self.metric_id,
+            version="1",
+            scope=MetricScope.CASE,
+            requirements=frozenset({MetricRequirement.TRACE}),
+            description=self.description,
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        if not context.has_trace():
+            return _trace_metric_result(
+                self.metric_id,
+                self.description,
+                context,
+                None,
+                reason="Target has no execution trace",
+            )
+        values = [
+            span.duration_ms
+            for span in context.observation.trace.spans
+            if span.duration_ms is not None
+            and self.token in (span.component_name or span.name or "").lower()
+        ]
+        if not values:
+            return _trace_metric_result(
+                self.metric_id,
+                self.description,
+                context,
+                None,
+                reason=f"No {self.token} span was reported",
+            )
+        return _trace_metric_result(
+            self.metric_id,
+            self.description,
+            context,
+            round(sum(values), 3),
+            details={"span_count": len(values)},
+        )
+
+
+class E2ELatency(_NamedSpanMetric):
+    """Expose unioned end-to-end latency under the grounding metric ID."""
+
+    metric_id = "performance.e2e_latency_ms"
+    description = "End-to-end latency in milliseconds."
+    token = "query"
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        if not context.has_trace():
+            return await super().compute(context)
+        value = _extract_timing_from_trace(
+            context.observation.trace.model_dump(mode="json")
+        ).get("total_ms")
+        if value is None:
+            return await super().compute(context)
+        return _trace_metric_result(
+            self.metric_id, self.description, context, round(value, 3)
+        )
+
+
+class EmbeddingLatency(_NamedSpanMetric):
+    """Measure embedding component latency."""
+
+    metric_id = "performance.embedding_latency_ms"
+    description = "Embedding latency in milliseconds."
+    token = "embed"
+
+
+class ContextConstructionLatency(_NamedSpanMetric):
+    """Measure context-construction latency."""
+
+    metric_id = "performance.context_construction_latency_ms"
+    description = "Context construction latency in milliseconds."
+    token = "context"
+
+
+class AssessmentLatency(_NamedSpanMetric):
+    """Measure assessment or judge latency."""
+
+    metric_id = "performance.assessment_latency_ms"
+    description = "Assessment latency in milliseconds."
+    token = "assess"
+
+
+class StageLatency:
+    """Measure latency for one retrieval stage's linked trace span."""
+
+    def __init__(self, stage_id: str | None = None) -> None:
+        self._stage_id = stage_id
+        self._definition = MetricDefinition(
+            metric_id="performance.stage_latency_ms",
+            version="1",
+            scope=MetricScope.RETRIEVAL_STAGE,
+            requirements=frozenset(
+                {MetricRequirement.RETRIEVAL, MetricRequirement.TRACE}
+            ),
+            description="Latency of a retrieval stage in milliseconds.",
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        stage = (
+            context.get_retrieval_stage_by_id(self._stage_id)
+            if self._stage_id is not None
+            else context.get_final_context() or context.get_candidate_retrieval()
+        )
+        if stage is None or not context.has_trace():
+            return _trace_metric_result(
+                self.definition.metric_id,
+                self.definition.description,
+                context,
+                None,
+                reason="Stage or trace is missing",
+            )
+        if stage.trace_span_id is None:
+            return _trace_metric_result(
+                self.definition.metric_id,
+                self.definition.description,
+                context,
+                None,
+                reason="Selected stage has no trace span identity",
+            )
+        for span in context.observation.trace.spans:
+            if span.span_id == stage.trace_span_id:
+                return _trace_metric_result(
+                    self.definition.metric_id,
+                    self.definition.description,
+                    context,
+                    span.duration_ms,
+                    details={"stage_id": stage.stage_id},
+                )
+        return _trace_metric_result(
+            self.definition.metric_id,
+            self.definition.description,
+            context,
+            None,
+            reason="Linked trace span is missing",
+        )
+
+
+class StageLatencyShare(StageLatency):
+    """Measure stage latency as a share of end-to-end latency."""
+
+    def __init__(self, stage_id: str | None = None) -> None:
+        super().__init__(stage_id)
+        self._definition = MetricDefinition(
+            metric_id="performance.stage_latency_share",
+            version="1",
+            scope=MetricScope.RETRIEVAL_STAGE,
+            requirements=self._definition.requirements,
+            description="Stage latency divided by end-to-end latency.",
+        )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        result = await super().compute(context)
+        result.metric_id = self.definition.metric_id
+        if result.status != MetricStatus.COMPUTED or result.value is None:
+            return result
+        total = _extract_timing_from_trace(
+            context.observation.trace.model_dump(mode="json")
+        ).get("total_ms")
+        if total is None or total == 0:
+            result.value = None
+            result.reason = "End-to-end latency is missing or zero"
+            result.status = MetricStatus.UNAVAILABLE_MISSING_INPUT
+            return result
+        result.value = round(float(result.value) / total, 6)
+        return result
+
+
+class StageThroughput(StageLatency):
+    """Measure items returned per stage millisecond."""
+
+    def __init__(self, stage_id: str | None = None) -> None:
+        super().__init__(stage_id)
+        self._definition = MetricDefinition(
+            metric_id="performance.stage_throughput",
+            version="1",
+            scope=MetricScope.RETRIEVAL_STAGE,
+            requirements=self._definition.requirements,
+            description="Retrieved items per stage millisecond.",
+        )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        result = await super().compute(context)
+        result.metric_id = self.definition.metric_id
+        stage = (
+            context.get_retrieval_stage_by_id(self._stage_id)
+            if self._stage_id is not None
+            else context.get_final_context() or context.get_candidate_retrieval()
+        )
+        if (
+            result.status != MetricStatus.COMPUTED
+            or result.value in (None, 0)
+            or stage is None
+        ):
+            return result
+        result.value = round(len(stage.items) / float(result.value), 6)
+        return result
+
+
+class ComponentFailureRate(_NamedSpanMetric):
+    """Compute the fraction of named component spans reporting an error."""
+
+    metric_id = "performance.component_failure_rate"
+    description = "Fraction of component spans with a failure status or error."
+    token = ""
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        if not context.has_component_trace():
+            return _trace_metric_result(
+                self.metric_id,
+                self.description,
+                context,
+                None,
+                reason="Component trace is missing",
+            )
+        spans = [
+            span
+            for span in context.observation.trace.spans
+            if span.component_name or span.name
+        ]
+        failed = sum(
+            bool(span.error)
+            or (span.status or "").lower() in {"error", "failed", "failure"}
+            for span in spans
+        )
+        return _trace_metric_result(
+            self.metric_id,
+            self.description,
+            context,
+            round(safe_divide(failed, len(spans)), 6),
+            details={"failed_spans": failed, "component_spans": len(spans)},
+        )
+
+
 # Export all performance metrics
 __all__ = [
     "TotalLatency",
     "RetrievalLatency",
     "GenerationLatency",
     "TokensPerSecond",
+    "E2ELatency",
+    "EmbeddingLatency",
+    "ContextConstructionLatency",
+    "AssessmentLatency",
+    "StageLatency",
+    "StageLatencyShare",
+    "StageThroughput",
+    "ComponentFailureRate",
 ]

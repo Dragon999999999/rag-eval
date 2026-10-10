@@ -464,6 +464,216 @@ class CostPerToken:
         )
 
 
+class _UsageFieldMetric:
+    """Compute one explicitly reported field without defaulting missing to zero."""
+
+    metric_id: str
+    field_name: str
+    description: str
+
+    def __init__(self) -> None:
+        self._definition = MetricDefinition(
+            metric_id=self.metric_id,
+            version="1",
+            scope=MetricScope.CASE,
+            requirements=frozenset({MetricRequirement.USAGE}),
+            description=self.description,
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        usage = context.observation.usage if context.observation is not None else None
+        value = getattr(usage, self.field_name, None)
+        if value is None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason=f"Target did not report usage.{self.field_name}",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        return MetricResult(
+            metric_id=self.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=value,
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+        )
+
+
+class ContextTokens(_UsageFieldMetric):
+    """Count tokens used to construct generation context."""
+
+    metric_id = "usage.context_tokens"
+    field_name = "context_tokens"
+    description = "Tokens used to construct target context."
+
+
+class LLMCalls(_UsageFieldMetric):
+    """Count target-side language-model calls."""
+
+    metric_id = "usage.llm_calls"
+    field_name = "llm_calls"
+    description = "Number of language-model calls."
+
+
+class EmbeddingCalls(_UsageFieldMetric):
+    """Count embedding calls."""
+
+    metric_id = "usage.embedding_calls"
+    field_name = "embedding_calls"
+    description = "Number of embedding calls."
+
+
+class RetrievalCalls(_UsageFieldMetric):
+    """Count retrieval calls."""
+
+    metric_id = "usage.retrieval_calls"
+    field_name = "retrieval_calls"
+    description = "Number of retrieval calls."
+
+
+class RerankerCalls(_UsageFieldMetric):
+    """Count reranker calls."""
+
+    metric_id = "usage.reranker_calls"
+    field_name = "reranker_calls"
+    description = "Number of reranker calls."
+
+
+class TokensPerCorrectAnswer:
+    """Report total tokens per exact normalized answer."""
+
+    def __init__(self) -> None:
+        self._definition = MetricDefinition(
+            metric_id="usage.tokens_per_correct_answer",
+            version="1",
+            scope=MetricScope.CASE,
+            requirements=frozenset(
+                {
+                    MetricRequirement.USAGE,
+                    MetricRequirement.ANSWER,
+                    MetricRequirement.REFERENCE_ANSWER,
+                }
+            ),
+            description="Total tokens divided by a correct answer indicator.",
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        usage = context.observation.usage if context.observation is not None else None
+        if usage is None:
+            return MetricResult(
+                metric_id=self._definition.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Target has no usage data",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        answer = context.get_answer_text()
+        reference = context.get_reference_answer()
+        if answer is None or reference is None:
+            return MetricResult(
+                metric_id=self._definition.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Answer or reference answer is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        total = usage.total_tokens
+        if total is None:
+            total = _extract_usage_values(usage.model_dump(mode="json"))["total_tokens"]
+        correct = answer.strip().casefold() == reference.strip().casefold()
+        return MetricResult(
+            metric_id=self._definition.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=float(total) if correct else None,
+            reason=None if correct else "Answer is not correct",
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+            details={"correct": correct, "total_tokens": total},
+        )
+
+
+class RelevantEvidencePerContextToken:
+    """Report relevant retrieved evidence per context token."""
+
+    def __init__(self) -> None:
+        self._definition = MetricDefinition(
+            metric_id="usage.relevant_evidence_per_context_token",
+            version="1",
+            scope=MetricScope.CASE,
+            requirements=frozenset(
+                {
+                    MetricRequirement.USAGE,
+                    MetricRequirement.RETRIEVAL,
+                    MetricRequirement.GOLD_EVIDENCE,
+                }
+            ),
+            description="Relevant evidence count divided by context tokens.",
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        usage = context.observation.usage if context.observation is not None else None
+        stage = context.get_candidate_retrieval()
+        if usage is None or stage is None or not context.has_gold_evidence():
+            return MetricResult(
+                metric_id=self._definition.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Usage, retrieval, or gold evidence is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        if usage.context_tokens is None:
+            return MetricResult(
+                metric_id=self._definition.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Target did not report usage.context_tokens",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        gold = [item.model_dump(mode="json") for item in context.case.gold_evidence]
+        from rag_eval.metrics.helpers import match_gold_evidence
+
+        relevant = sum(
+            match.matched for match in match_gold_evidence(gold, stage.items)
+        )
+        return MetricResult(
+            metric_id=self._definition.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=round(safe_divide(relevant, usage.context_tokens), 6),
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+            details={
+                "relevant_evidence": relevant,
+                "context_tokens": usage.context_tokens,
+            },
+        )
+
+
 # Export all usage and cost metrics
 __all__ = [
     "TotalTokens",
@@ -471,4 +681,11 @@ __all__ = [
     "OutputTokens",
     "TotalCost",
     "CostPerToken",
+    "ContextTokens",
+    "LLMCalls",
+    "EmbeddingCalls",
+    "RetrievalCalls",
+    "RerankerCalls",
+    "TokensPerCorrectAnswer",
+    "RelevantEvidencePerContextToken",
 ]

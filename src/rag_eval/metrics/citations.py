@@ -27,6 +27,318 @@ from rag_eval.metrics.helpers import (
 )
 
 
+def _citation_source(citation: dict) -> dict:
+    """Return a citation's source coordinates across legacy and canonical shapes."""
+    source = citation.get("source")
+    return source if isinstance(source, dict) else citation
+
+
+def _citation_metric_result(
+    metric_id: str,
+    context: MetricContext,
+    value: float | int | None,
+    *,
+    reason: str | None = None,
+    details: dict | None = None,
+) -> MetricResult:
+    """Build a result for one additive citation metric."""
+    return MetricResult(
+        metric_id=metric_id,
+        metric_version="1",
+        status=(
+            MetricStatus.COMPUTED
+            if reason is None or value is not None
+            else MetricStatus.UNAVAILABLE_MISSING_INPUT
+        ),
+        value=value,
+        reason=reason,
+        case_id=context.case.case_id,
+        run_id=context.run_id,
+        details=details or {},
+    )
+
+
+class _CitationMetric:
+    """Base for additive citation metrics."""
+
+    metric_id: str
+    description: str
+    requirements = frozenset({MetricRequirement.ANSWER, MetricRequirement.CITATIONS})
+
+    def __init__(self) -> None:
+        self._definition = MetricDefinition(
+            metric_id=self.metric_id,
+            version="1",
+            scope=MetricScope.CASE,
+            requirements=self.requirements,
+            description=self.description,
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    def _citations(self, context: MetricContext) -> list[dict] | None:
+        return context.get_citations()
+
+
+class ResolutionRate(_CitationMetric):
+    """Compute the fraction of answer characters covered by citations."""
+
+    metric_id = "citation.resolution_rate"
+    description = "Fraction of answer characters covered by citations."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        answer = context.get_answer_text()
+        citations = self._citations(context)
+        if answer is None or citations is None:
+            return _citation_metric_result(
+                self.metric_id,
+                context,
+                None,
+                reason="Answer or citations are missing",
+            )
+        covered = compute_span_union_length(get_answer_span_union(citations))
+        return _citation_metric_result(
+            self.metric_id,
+            context,
+            round(safe_divide(covered, len(answer)), 6),
+            details={"covered_length": covered, "answer_length": len(answer)},
+        )
+
+
+class BrokenRate(_CitationMetric):
+    """Compute the fraction of citations whose source is absent from retrieval."""
+
+    metric_id = "citation.broken_rate"
+    description = "Fraction of citations that cannot be resolved to retrieval."
+    requirements = frozenset(
+        {
+            MetricRequirement.ANSWER,
+            MetricRequirement.CITATIONS,
+            MetricRequirement.RETRIEVAL,
+        }
+    )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        citations = self._citations(context)
+        stage = context.get_candidate_retrieval()
+        if citations is None or stage is None:
+            return _citation_metric_result(
+                self.metric_id,
+                context,
+                None,
+                reason="Citations or retrieval are missing",
+            )
+        retrieved = {
+            (
+                item.get("source", {}).get("document_id"),
+                item.get("source", {}).get("page"),
+            )
+            for item in stage.items
+        }
+        broken = sum(
+            (
+                _citation_source(citation).get("document_id"),
+                _citation_source(citation).get("page"),
+            )
+            not in retrieved
+            for citation in citations
+        )
+        return _citation_metric_result(
+            self.metric_id,
+            context,
+            round(safe_divide(broken, len(citations)), 6),
+            details={"broken_count": broken, "citation_count": len(citations)},
+        )
+
+
+class ClaimCoverage(_CitationMetric):
+    """Compute the fraction of claims covered by at least one citation span."""
+
+    metric_id = "citation.claim_coverage"
+    description = "Fraction of claims covered by answer citations."
+    requirements = frozenset(
+        {
+            MetricRequirement.ANSWER,
+            MetricRequirement.CITATIONS,
+            MetricRequirement.CLAIMS,
+        }
+    )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        claims = context.get_claims()
+        citations = self._citations(context)
+        if claims is None or citations is None:
+            return _citation_metric_result(
+                self.metric_id, context, None, reason="Claims or citations are missing"
+            )
+        citation_spans = get_answer_span_union(citations)
+        covered = 0
+        for claim in claims:
+            span = claim.get("answer_span")
+            if span is None:
+                covered += bool(claim.get("metadata", {}).get("citation_ids"))
+                continue
+            covered += any(
+                spans_overlap(span["start_char"], span["end_char"], start, end)
+                for start, end in citation_spans
+            )
+        return _citation_metric_result(
+            self.metric_id,
+            context,
+            round(safe_divide(covered, len(claims)), 6),
+            details={"covered_claims": covered, "claim_count": len(claims)},
+        )
+
+
+class DocumentAttributionAccuracy(_CitationMetric):
+    """Compute document-level citation attribution accuracy."""
+
+    metric_id = "citation.document_attribution_accuracy"
+    description = "Fraction of citations attributed to retrieved documents."
+    requirements = frozenset(
+        {
+            MetricRequirement.ANSWER,
+            MetricRequirement.CITATIONS,
+            MetricRequirement.RETRIEVAL,
+        }
+    )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        citations = self._citations(context)
+        stage = context.get_candidate_retrieval()
+        if citations is None or stage is None:
+            return _citation_metric_result(
+                self.metric_id,
+                context,
+                None,
+                reason="Citations or retrieval are missing",
+            )
+        docs = {item.get("source", {}).get("document_id") for item in stage.items}
+        correct = sum(
+            _citation_source(citation).get("document_id") in docs
+            for citation in citations
+        )
+        return _citation_metric_result(
+            self.metric_id, context, round(safe_divide(correct, len(citations)), 6)
+        )
+
+
+class PageAttributionAccuracy(DocumentAttributionAccuracy):
+    """Compute page-level citation attribution accuracy."""
+
+    metric_id = "citation.page_attribution_accuracy"
+    description = "Fraction of citations attributed to retrieved document pages."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        citations = self._citations(context)
+        stage = context.get_candidate_retrieval()
+        if citations is None or stage is None:
+            return _citation_metric_result(
+                self.metric_id,
+                context,
+                None,
+                reason="Citations or retrieval are missing",
+            )
+        pages = {
+            (
+                item.get("source", {}).get("document_id"),
+                item.get("source", {}).get("page"),
+            )
+            for item in stage.items
+        }
+        correct = sum(
+            (
+                _citation_source(citation).get("document_id"),
+                _citation_source(citation).get("page"),
+            )
+            in pages
+            for citation in citations
+        )
+        return _citation_metric_result(
+            self.metric_id, context, round(safe_divide(correct, len(citations)), 6)
+        )
+
+
+class MeanCitationsPerClaim(_CitationMetric):
+    """Compute the mean citation count per exposed claim."""
+
+    metric_id = "citation.mean_citations_per_claim"
+    description = "Mean number of citations per claim."
+    requirements = frozenset({MetricRequirement.CITATIONS, MetricRequirement.CLAIMS})
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        claims = context.get_claims()
+        citations = self._citations(context)
+        if claims is None or citations is None:
+            return _citation_metric_result(
+                self.metric_id, context, None, reason="Claims or citations are missing"
+            )
+        return _citation_metric_result(
+            self.metric_id, context, safe_divide(len(citations), len(claims))
+        )
+
+
+class UncitedClaimRate(ClaimCoverage):
+    """Compute the complement of claim citation coverage."""
+
+    metric_id = "citation.uncited_claim_rate"
+    description = "Fraction of claims without citation coverage."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        result = await ClaimCoverage.compute(self, context)
+        if result.status != MetricStatus.COMPUTED or result.value is None:
+            result.metric_id = self.metric_id
+            return result
+        result.metric_id = self.metric_id
+        result.value = round(1 - float(result.value), 6)
+        return result
+
+
+class EvidenceUtilization(_CitationMetric):
+    """Compute the fraction of retrieved items referenced by citations."""
+
+    metric_id = "citation.evidence_utilization"
+    description = "Fraction of retrieved evidence items cited by the answer."
+    requirements = frozenset(
+        {
+            MetricRequirement.ANSWER,
+            MetricRequirement.CITATIONS,
+            MetricRequirement.RETRIEVAL,
+        }
+    )
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        citations = self._citations(context)
+        stage = context.get_final_context() or context.get_candidate_retrieval()
+        if citations is None or stage is None:
+            return _citation_metric_result(
+                self.metric_id,
+                context,
+                None,
+                reason="Citations or retrieval are missing",
+            )
+        cited_docs = {
+            (
+                _citation_source(citation).get("document_id"),
+                _citation_source(citation).get("page"),
+            )
+            for citation in citations
+        }
+        utilized = sum(
+            (
+                item.get("source", {}).get("document_id"),
+                item.get("source", {}).get("page"),
+            )
+            in cited_docs
+            for item in stage.items
+        )
+        return _citation_metric_result(
+            self.metric_id, context, round(safe_divide(utilized, len(stage.items)), 6)
+        )
+
+
 @dataclass
 class CitationResolutionResult(MetricResult):
     """Result of citation resolution computation."""

@@ -28,6 +28,7 @@ from rag_eval.metrics.helpers import (
     match_gold_evidence,
     safe_divide,
 )
+from rag_eval.models.enums import RetrievalStageType
 
 
 def _is_item_relevant(
@@ -93,6 +94,19 @@ def _to_dict(obj: Any) -> dict[str, Any]:
         return dict(obj)
 
 
+def _get_stage(
+    context: MetricContext,
+    stage_id: str | None,
+    stage_type: RetrievalStageType | None,
+):
+    """Resolve a configured retrieval stage without silently falling back."""
+    if stage_id is not None:
+        return context.get_retrieval_stage_by_id(stage_id)
+    if stage_type is not None:
+        return context.get_retrieval_stage_by_type(stage_type)
+    return context.get_candidate_retrieval()
+
+
 @dataclass
 class HitAtKResult(MetricResult):
     """Result of Hit@K computation."""
@@ -118,8 +132,16 @@ class HitAtK:
         - k = 0 → 0.0 (cannot hit with zero items)
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
         self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.hit_at_k",
             version="1",
@@ -127,7 +149,9 @@ class HitAtK:
             requirements=frozenset(
                 {MetricRequirement.GOLD_EVIDENCE, MetricRequirement.RETRIEVAL}
             ),
-            description=f"Whether any gold evidence appears in top-{k} retrieved items.",
+            description=(
+                f"Whether any gold evidence appears in top-{k} retrieved items."
+            ),
         )
 
     @property
@@ -146,7 +170,7 @@ class HitAtK:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return HitAtKResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -217,8 +241,16 @@ class PrecisionAtK:
         - No gold evidence → UNAVAILABLE_MISSING_INPUT
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
         self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.precision_at_k",
             version="1",
@@ -245,7 +277,7 @@ class PrecisionAtK:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return PrecisionAtKResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -321,8 +353,16 @@ class RecallAtK:
         - More gold than k → recall may be < 1.0 even with perfect retrieval
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
         self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.recall_at_k",
             version="1",
@@ -330,7 +370,9 @@ class RecallAtK:
             requirements=frozenset(
                 {MetricRequirement.GOLD_EVIDENCE, MetricRequirement.RETRIEVAL}
             ),
-            description=f"Fraction of gold evidence matched in top-{k} retrieved items.",
+            description=(
+                f"Fraction of gold evidence matched in top-{k} retrieved items."
+            ),
         )
 
     @property
@@ -349,7 +391,7 @@ class RecallAtK:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return RecallAtKResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -423,7 +465,14 @@ class MRR:
         - No gold evidence → UNAVAILABLE_MISSING_INPUT
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.mrr",
             version="1",
@@ -449,7 +498,7 @@ class MRR:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return MRRResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -524,8 +573,16 @@ class MAPAtK:
         - No relevant items → 0.0
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
         self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.map_at_k",
             version="1",
@@ -552,7 +609,7 @@ class MAPAtK:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return MAPAtKResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -643,8 +700,16 @@ class NDCGAtK:
         - IDCG = 0 → 0.0 (no relevant items)
     """
 
-    def __init__(self, k: int = 5) -> None:
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
         self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.ndcg_at_k",
             version="1",
@@ -673,7 +738,7 @@ class NDCGAtK:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return NDCGAtKResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -766,7 +831,14 @@ class RPrecision:
         - Zero retrieved → 0.0
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
+        self._stage_id = stage_id
+        self._stage_type = stage_type
         self._definition = MetricDefinition(
             metric_id="retrieval.r_precision",
             version="1",
@@ -792,7 +864,7 @@ class RPrecision:
             )
 
         # Check retrieval
-        stage = context.get_candidate_retrieval()
+        stage = _get_stage(context, self._stage_id, self._stage_type)
         if stage is None:
             return RPrecisionResult(
                 status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
@@ -841,6 +913,196 @@ class RPrecision:
         )
 
 
+class _StageRetrievalMetric:
+    """Shared implementation for additional stage-aware retrieval metrics."""
+
+    metric_id: str
+    description: str
+
+    def __init__(
+        self,
+        k: int = 5,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> None:
+        self._k = k
+        self._stage_id = stage_id
+        self._stage_type = stage_type
+        self._definition = MetricDefinition(
+            metric_id=self.metric_id,
+            version="1",
+            scope=MetricScope.RETRIEVAL_STAGE,
+            requirements=frozenset(
+                {MetricRequirement.GOLD_EVIDENCE, MetricRequirement.RETRIEVAL}
+            ),
+            description=self.description,
+        )
+
+    @property
+    def definition(self) -> MetricDefinition:
+        return self._definition
+
+    def _inputs(
+        self, context: MetricContext
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]] | None:
+        """Return selected items and gold evidence, or None if unavailable."""
+        if not context.has_gold_evidence():
+            return None
+        stage = _get_stage(context, self._stage_id, self._stage_type)
+        if stage is None:
+            return None
+        return (
+            stage.items[: self._k] if self._k > 0 else [],
+            [gold.model_dump(mode="json") for gold in context.case.gold_evidence],
+        )
+
+
+class F1AtK(_StageRetrievalMetric):
+    """Compute retrieval F1 from precision and recall at K."""
+
+    metric_id = "retrieval.f1_at_k"
+    description = "Harmonic mean of retrieval precision and recall at K."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        inputs = self._inputs(context)
+        if inputs is None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Gold evidence or selected retrieval stage is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        items, gold = inputs
+        matches = match_gold_evidence(gold, items)
+        relevant = sum(_is_item_relevant(item, gold) for item in items)
+        precision = safe_divide(relevant, self._k, default=0.0)
+        recall = safe_divide(sum(match.matched for match in matches), len(gold))
+        value = safe_divide(2 * precision * recall, precision + recall)
+        return MetricResult(
+            metric_id=self.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=round(value, 6),
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+            details={"k": self._k, "precision": precision, "recall": recall},
+        )
+
+
+class FirstRelevantRank(_StageRetrievalMetric):
+    """Return the rank of the first item matching gold evidence."""
+
+    metric_id = "retrieval.first_relevant_rank"
+    description = "Rank of the first relevant retrieval item."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        inputs = self._inputs(context)
+        if inputs is None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Gold evidence or selected retrieval stage is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        items, gold = inputs
+        for index, item in enumerate(items, start=1):
+            if _is_item_relevant(item, gold):
+                return MetricResult(
+                    metric_id=self.metric_id,
+                    metric_version="1",
+                    status=MetricStatus.COMPUTED,
+                    value=index,
+                    case_id=context.case.case_id,
+                    run_id=context.run_id,
+                )
+        return MetricResult(
+            metric_id=self.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=None,
+            reason="No relevant item was retrieved",
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+        )
+
+
+class DocumentRecall(_StageRetrievalMetric):
+    """Compute recall using document identity only."""
+
+    metric_id = "retrieval.document_recall"
+    description = "Fraction of gold documents represented in retrieval."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        inputs = self._inputs(context)
+        if inputs is None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Gold evidence or selected retrieval stage is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        items, gold = inputs
+        retrieved_docs = {item.get("source", {}).get("document_id") for item in items}
+        gold_docs = {item.get("document_id") for item in gold}
+        value = safe_divide(len(retrieved_docs & gold_docs), len(gold_docs))
+        return MetricResult(
+            metric_id=self.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=round(value, 6),
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+        )
+
+
+class PageRecall(_StageRetrievalMetric):
+    """Compute recall using document and page identity."""
+
+    metric_id = "retrieval.page_recall"
+    description = "Fraction of gold document pages represented in retrieval."
+
+    async def compute(self, context: MetricContext) -> MetricResult:
+        inputs = self._inputs(context)
+        if inputs is None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.UNAVAILABLE_MISSING_INPUT,
+                value=None,
+                reason="Gold evidence or selected retrieval stage is missing",
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
+        items, gold = inputs
+        retrieved_pages = {
+            (
+                item.get("source", {}).get("document_id"),
+                item.get("source", {}).get("page"),
+            )
+            for item in items
+        }
+        gold_pages = {(item.get("document_id"), item.get("page")) for item in gold}
+        value = safe_divide(len(retrieved_pages & gold_pages), len(gold_pages))
+        return MetricResult(
+            metric_id=self.metric_id,
+            metric_version="1",
+            status=MetricStatus.COMPUTED,
+            value=round(value, 6),
+            case_id=context.case.case_id,
+            run_id=context.run_id,
+        )
+
+
 # Export all retrieval metrics
 __all__ = [
     "HitAtK",
@@ -850,4 +1112,8 @@ __all__ = [
     "MAPAtK",
     "NDCGAtK",
     "RPrecision",
+    "F1AtK",
+    "FirstRelevantRank",
+    "DocumentRecall",
+    "PageRecall",
 ]
