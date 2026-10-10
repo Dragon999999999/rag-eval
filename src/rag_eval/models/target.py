@@ -662,6 +662,7 @@ class RetrieveRequest(CanonicalModel):
     """Independent retrieval request that does not require generation."""
 
     request_id: str
+    target_run_id: str | None = None
     corpus_id: str | None = None
 
     query: str
@@ -709,6 +710,7 @@ class QueryRequest(CanonicalModel):
     """Canonical generation request for a target."""
 
     request_id: str
+    target_run_id: str | None = None
     corpus_id: str | None = None
 
     query: str

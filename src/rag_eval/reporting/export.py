@@ -86,6 +86,13 @@ class ExportService:
 
         # Export manifest
         manifest = self._create_manifest(run, config)
+        manifest["stage_metric_ids"] = sorted(
+            {
+                aggregate.metric_id
+                for aggregate in aggregates
+                if aggregate.metric_id.startswith("stage.")
+            }
+        )
         manifest_path = export_path / "manifest.yaml"
         with open(manifest_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(manifest, f, default_flow_style=False)
@@ -229,6 +236,7 @@ class ExportService:
 
         # Organize aggregates
         metrics_summary = {}
+        stage_metrics = {}
         for agg in aggregates:
             key = f"{agg.metric_id}.{agg.aggregation}"
             metrics_summary[key] = {
@@ -238,6 +246,8 @@ class ExportService:
                 ),
                 "sample_count": agg.details.get("sample_count"),
             }
+            if agg.metric_id.startswith("stage."):
+                stage_metrics[key] = metrics_summary[key]
 
         return {
             "run_id": run.run_id,
@@ -251,6 +261,7 @@ class ExportService:
                 "pending": pending,
             },
             "metrics": metrics_summary,
+            "stage_metrics": stage_metrics,
         }
 
     async def _export_cases(
