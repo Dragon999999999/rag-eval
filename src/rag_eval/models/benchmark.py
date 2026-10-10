@@ -59,6 +59,15 @@ class EvidenceSpan(CanonicalModel):
         return value
 
 
+class GoldEvidenceGroup(CanonicalModel):
+    """A required or optional evidence group for multi-hop evaluation."""
+
+    group_id: str
+    evidence_ids: list[str] = Field(default_factory=list)
+    required: bool = True
+    metadata: JsonDict = Field(default_factory=dict)
+
+
 class SuppliedContext(CanonicalModel):
     """Evaluator-controlled context supplied directly to a target."""
 
@@ -94,7 +103,18 @@ class BenchmarkCase(CanonicalModel):
     query: str
     history: list[Message] = Field(default_factory=list)
     reference_answer: str | None = None
+    reference_answers: list[str] = Field(default_factory=list)
     gold_evidence: list[EvidenceSpan] = Field(default_factory=list)
+    required_facts: list[str] = Field(default_factory=list)
+    forbidden_facts: list[str] = Field(default_factory=list)
+    gold_evidence_groups: list[GoldEvidenceGroup] = Field(default_factory=list)
+    required_evidence_relations: list[JsonDict] = Field(default_factory=list)
+    hard_negatives: list[EvidenceSpan] = Field(default_factory=list)
+    expected_route: str | None = None
+    expected_schema: JsonDict | None = None
+    conversation_id: str | None = None
+    turn_index: int | None = Field(default=None, ge=0)
+    domain: str | None = None
     answerability: Answerability | None = None
     tags: list[str] = Field(default_factory=list)
     difficulty: str | None = None
@@ -152,5 +172,6 @@ __all__ = [
     "CorpusMode",
     "Document",
     "EvidenceSpan",
+    "GoldEvidenceGroup",
     "SuppliedContext",
 ]

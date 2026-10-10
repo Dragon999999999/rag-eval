@@ -20,6 +20,7 @@ from rag_eval.db.test_models import (
     AttemptRecord,
     CaseExecutionRecord,
     ErrorRecordDB,
+    JudgeResultRecord,
     MetricResultRecord,
     MetricRunRecord,
     RunConfigRecord,
@@ -29,7 +30,7 @@ from rag_eval.db.test_models import (
     TestDefinitionRecord,
     TestMetricSelectionRecord,
 )
-from rag_eval.models import ErrorRecord, MetricResult
+from rag_eval.models import ErrorRecord, JudgeResult, MetricResult
 from rag_eval.models.metrics import AggregateMetricResult
 
 
@@ -864,6 +865,64 @@ class TestRepository:
         self._session.add(record)
         await self._session.flush()
         return record
+
+    async def persist_judge_result(
+        self,
+        result: JudgeResult,
+        *,
+        run_id: str,
+        metric_run_id: str | None = None,
+        case_execution_id: str | None = None,
+    ) -> JudgeResultRecord:
+        """Persist or replace one judge outcome for an offline scoring pass."""
+        record = JudgeResultRecord(
+            judge_result_id=result.judge_result_id,
+            run_id=run_id,
+            metric_run_id=metric_run_id,
+            case_execution_id=case_execution_id,
+            metric_id=result.metric_id,
+            metric_version=result.metric_version,
+            score=result.score,
+            label=result.label,
+            reasoning_summary=result.reasoning_summary,
+            evidence_ids=result.evidence_ids,
+            claim_ids=result.claim_ids,
+            confidence=result.confidence,
+            judge_model=result.judge_model,
+            prompt_version=result.prompt_version,
+            usage=result.usage,
+            latency_ms=result.latency_ms,
+            status=result.status.value,
+            cache_key=result.cache_key,
+            metadata_json=result.metadata,
+        )
+        existing = await self._session.get(JudgeResultRecord, result.judge_result_id)
+        if existing is not None:
+            for key, value in record.__dict__.items():
+                if key not in {"_sa_instance_state", "judge_result_id"}:
+                    setattr(existing, key, value)
+            await self._session.flush()
+            return existing
+        self._session.add(record)
+        await self._session.flush()
+        return record
+
+    async def list_judge_results(
+        self,
+        run_id: str,
+        *,
+        metric_run_id: str | None = None,
+    ) -> Sequence[JudgeResultRecord]:
+        """List persisted judge results for a run or isolated scoring pass."""
+        result = await self._session.scalars(
+            select(JudgeResultRecord)
+            .where(JudgeResultRecord.run_id == run_id)
+            .order_by(JudgeResultRecord.created_at, JudgeResultRecord.judge_result_id)
+        )
+        rows = result.all()
+        if metric_run_id is None:
+            return [row for row in rows if row.metric_run_id is None]
+        return [row for row in rows if row.metric_run_id == metric_run_id]
 
     async def list_aggregates(
         self,

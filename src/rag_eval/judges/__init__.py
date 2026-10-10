@@ -7,11 +7,12 @@ This package provides:
 - JudgeAdapter protocol (provider-neutral)
 """
 
-from .base import JudgeAdapter
+from .base import JudgeAdapter, JudgeConfiguration
 from .openai_compatible import OpenAICompatibleJudge, create_judge_adapter
 
 __all__ = [
     "JudgeAdapter",
+    "JudgeConfiguration",
     "OpenAICompatibleJudge",
     "create_judge_adapter",
 ]

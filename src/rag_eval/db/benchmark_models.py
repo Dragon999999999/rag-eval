@@ -115,11 +115,48 @@ class BenchmarkCaseRecord(Base, _BenchmarkTimestampedRecord):
         Text,
     )
 
+    reference_answers: Mapped[list[str]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+
     gold_evidence: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB,
         default=list,
         nullable=False,
     )
+
+    required_facts: Mapped[list[str]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    forbidden_facts: Mapped[list[str]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    gold_evidence_groups: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    required_evidence_relations: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    hard_negatives: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    expected_route: Mapped[str | None] = mapped_column(String(255))
+    expected_schema: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    conversation_id: Mapped[str | None] = mapped_column(String(128), index=True)
+    turn_index: Mapped[int | None] = mapped_column(Integer)
+    domain: Mapped[str | None] = mapped_column(String(128))
 
     answerability: Mapped[str | None] = mapped_column(
         String(32),

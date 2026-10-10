@@ -731,6 +731,41 @@ class MetricResultRecord(Base, TimestampedRecord):
     )
 
 
+class JudgeResultRecord(Base, TimestampedRecord):
+    """Persisted semantic-judge result with a reusable content cache key."""
+
+    __tablename__ = "judge_results"
+
+    judge_result_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("runs.run_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    metric_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("metric_runs.metric_run_id", ondelete="CASCADE"), index=True
+    )
+    case_execution_id: Mapped[str | None] = mapped_column(
+        ForeignKey("case_executions.case_execution_id", ondelete="CASCADE"),
+        index=True,
+    )
+    metric_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    metric_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    score: Mapped[float | None] = mapped_column()
+    label: Mapped[str | None] = mapped_column(String(128))
+    reasoning_summary: Mapped[str | None] = mapped_column(Text)
+    evidence_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    claim_ids: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    confidence: Mapped[float | None] = mapped_column()
+    judge_model: Mapped[str | None] = mapped_column(String(255))
+    prompt_version: Mapped[str | None] = mapped_column(String(128))
+    usage: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
+    latency_ms: Mapped[float | None] = mapped_column()
+    status: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    cache_key: Mapped[str | None] = mapped_column(String(128), index=True)
+    metadata_json: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, nullable=False
+    )
+
+
 class AggregateMetricResultRecord(Base, TimestampedRecord):
     """Run-level aggregate metric separate from individual case results."""
 

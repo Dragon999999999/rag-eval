@@ -13,6 +13,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
 
 import rag_eval.db.models  # noqa: F401
+import rag_eval.db.test_models  # noqa: F401
 from rag_eval.config import get_settings
 from rag_eval.db.base import Base
 

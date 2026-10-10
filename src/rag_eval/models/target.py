@@ -523,6 +523,9 @@ class Usage(CanonicalModel):
 
     metadata: JsonDict = Field(default_factory=dict)
 
+    # Optional resource telemetry; providers may report only a subset.
+    resource_metadata: JsonDict = Field(default_factory=dict)
+
     @field_validator("tokens", "calls")
     @classmethod
     def validate_call_counts(
@@ -628,6 +631,19 @@ class Configuration(CanonicalModel):
     corpus_id: str | None = None
     corpus_version: str | None = None
     corpus_hash: str | None = None
+
+
+class EmbeddingVectors(CanonicalModel):
+    """Optional persisted embedding diagnostics payload.
+
+    Vectors may be omitted or referenced through an artifact when storing raw
+    vectors inline would be too large for an observation record.
+    """
+
+    model_name: str | None = None
+    vectors: list[list[float]] | None = None
+    artifact: ArtifactRef | None = None
+    metadata: JsonDict = Field(default_factory=dict)
 
 
 class CreateCorpusRequest(CanonicalModel):
@@ -817,6 +833,7 @@ class TargetObservation(CanonicalModel):
 
     trace: Trace | None = None
     usage: Usage | None = None
+    embedding_vectors: EmbeddingVectors | None = None
 
     warnings: list[WarningRecord] = Field(default_factory=list)
     errors: list[ErrorRecord] = Field(default_factory=list)

@@ -16,7 +16,11 @@ from rag_eval.models.enums import (
     EvidenceRelationship,
     MetricStatus,
 )
-from rag_eval.models.metric_run_additional import Assessment, Decision  # noqa: F401
+from rag_eval.models.metric_run_additional import (  # noqa: F401
+    Assessment,
+    Decision,
+    JudgeResult,
+)
 
 
 class MetricResult(CanonicalModel):

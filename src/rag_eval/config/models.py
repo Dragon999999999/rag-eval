@@ -127,6 +127,14 @@ class JudgeConfig(ExperimentModel):
 
     provider: str | None = None
     model: str | None = None
+    model_id: str | None = None
+    model_version: str | None = None
+    prompt_id: str | None = None
+    prompt_version: str | None = None
+    temperature: float = Field(default=0.0, ge=0, le=2)
+    max_tokens: int | None = Field(default=None, gt=0)
+    retries: int = Field(default=2, ge=0)
+    timeout_seconds: float = Field(default=120.0, gt=0)
     parameters: JsonDict = Field(default_factory=dict)
     authentication_env: str | None = None
     connection: JsonDict = Field(default_factory=dict)

@@ -7,6 +7,7 @@ from rag_eval.models.benchmark import (
     Chunk,
     Document,
     EvidenceSpan,
+    GoldEvidenceGroup,
     SuppliedContext,
 )
 from rag_eval.models.common import (
@@ -37,6 +38,7 @@ from rag_eval.models.metrics import (
     ClaimAssessment,
     Decision,
     EvidenceAssessment,
+    JudgeResult,
     MetricResult,
 )
 from rag_eval.models.retrieval import (
@@ -52,6 +54,7 @@ from rag_eval.models.target import (
     CreateCorpusRequest,
     CreateCorpusResponse,
     EffectiveTargetConfig,
+    EmbeddingVectors,
     ErrorRecord,
     HealthState,
     HealthStatus,
@@ -101,13 +104,16 @@ __all__ = [
     "CreateCorpusResponse",
     "Document",
     "EffectiveTargetConfig",
+    "EmbeddingVectors",
     "ErrorCategory",
     "ErrorRecord",
+    "GoldEvidenceGroup",
     "EvidenceAssessment",
     "EvidenceSpan",
     "FinishReason",
     "HealthState",
     "HealthStatus",
+    "JudgeResult",
     "Message",
     "MessageRole",
     "MetricResult",

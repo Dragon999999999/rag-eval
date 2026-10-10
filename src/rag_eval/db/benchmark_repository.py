@@ -207,9 +207,24 @@ class BenchmarkRepository:
             query=case.query,
             history=[message.model_dump(mode="json") for message in case.history],
             reference_answer=case.reference_answer,
+            reference_answers=case.reference_answers,
             gold_evidence=[
                 evidence.model_dump(mode="json") for evidence in case.gold_evidence
             ],
+            required_facts=case.required_facts,
+            forbidden_facts=case.forbidden_facts,
+            gold_evidence_groups=[
+                group.model_dump(mode="json") for group in case.gold_evidence_groups
+            ],
+            required_evidence_relations=case.required_evidence_relations,
+            hard_negatives=[
+                evidence.model_dump(mode="json") for evidence in case.hard_negatives
+            ],
+            expected_route=case.expected_route,
+            expected_schema=case.expected_schema,
+            conversation_id=case.conversation_id,
+            turn_index=case.turn_index,
+            domain=case.domain,
             answerability=(
                 case.answerability.value if case.answerability is not None else None
             ),
@@ -529,7 +544,18 @@ class BenchmarkRepository:
                 "query": record.query,
                 "history": record.history or [],
                 "reference_answer": record.reference_answer,
+                "reference_answers": record.reference_answers or [],
                 "gold_evidence": record.gold_evidence or [],
+                "required_facts": record.required_facts or [],
+                "forbidden_facts": record.forbidden_facts or [],
+                "gold_evidence_groups": record.gold_evidence_groups or [],
+                "required_evidence_relations": record.required_evidence_relations or [],
+                "hard_negatives": record.hard_negatives or [],
+                "expected_route": record.expected_route,
+                "expected_schema": record.expected_schema,
+                "conversation_id": record.conversation_id,
+                "turn_index": record.turn_index,
+                "domain": record.domain,
                 "answerability": record.answerability,
                 "tags": record.tags or [],
                 "difficulty": difficulty,
