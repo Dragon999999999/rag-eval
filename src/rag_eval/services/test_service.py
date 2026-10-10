@@ -2008,6 +2008,18 @@ class TestService:
         if test.target_id is None:
             return set()
 
+        observations: list[Any] = []
+        list_observations = getattr(
+            self._target_repository,
+            "list_observations_for_target",
+            None,
+        )
+        if callable(list_observations):
+            try:
+                observations = list(await list_observations(test.target_id))
+            except (KeyError, ValueError):
+                observations = []
+
         try:
             capabilities = await self._target_repository.get_capabilities(
                 test.target_id
@@ -2015,10 +2027,77 @@ class TestService:
         except (KeyError, ValueError):
             return set()
 
-        if capabilities is None:
+        if capabilities is None and not observations:
             return set()
 
         available: set[MetricRequirement] = set()
+
+        # Persisted observations are authoritative once execution has occurred.
+        if observations:
+            if any(item.answer is not None for item in observations):
+                available.add(MetricRequirement.ANSWER)
+            if any(item.retrieval is not None for item in observations):
+                available.update(
+                    {
+                        MetricRequirement.RETRIEVAL,
+                        MetricRequirement.STAGE_BY_ID,
+                        MetricRequirement.STAGE_BY_TYPE,
+                    }
+                )
+                if any(
+                    any(stage.parent_stage_ids for stage in item.retrieval.stages)
+                    for item in observations
+                    if item.retrieval is not None
+                ):
+                    available.add(MetricRequirement.STAGE_PAIRS)
+                if any(
+                    any(
+                        stage.type.value == "FINAL_CONTEXT"
+                        for stage in item.retrieval.stages
+                    )
+                    for item in observations
+                    if item.retrieval is not None
+                ):
+                    available.add(MetricRequirement.FINAL_CONTEXT)
+            if any(item.claims is not None for item in observations):
+                available.add(MetricRequirement.CLAIMS)
+            if any(item.assessments is not None for item in observations):
+                available.add(MetricRequirement.ASSESSMENTS)
+            if any(item.decision is not None for item in observations):
+                available.add(MetricRequirement.DECISION)
+            if any(item.answer is not None for item in observations):
+                available.add(MetricRequirement.CITATIONS)
+            if any(bool(item.confidence) for item in observations):
+                available.add(MetricRequirement.CONFIDENCE)
+            if any(item.trace is not None for item in observations):
+                available.add(MetricRequirement.TRACE)
+                if any(
+                    any(span.component_name or span.name for span in item.trace.spans)
+                    for item in observations
+                    if item.trace is not None
+                ):
+                    available.add(MetricRequirement.COMPONENT_TRACE)
+            if any(item.usage is not None for item in observations):
+                available.add(MetricRequirement.USAGE)
+                for requirement, field_name in {
+                    MetricRequirement.USAGE_INPUT: "input_tokens",
+                    MetricRequirement.USAGE_OUTPUT: "output_tokens",
+                    MetricRequirement.USAGE_CONTEXT: "context_tokens",
+                    MetricRequirement.USAGE_LLM_CALLS: "llm_calls",
+                    MetricRequirement.USAGE_EMBEDDING_CALLS: "embedding_calls",
+                    MetricRequirement.USAGE_RETRIEVAL_CALLS: "retrieval_calls",
+                    MetricRequirement.USAGE_RERANKER_CALLS: "reranker_calls",
+                }.items():
+                    if any(
+                        getattr(item.usage, field_name) is not None
+                        for item in observations
+                        if item.usage is not None
+                    ):
+                        available.add(requirement)
+            return available
+
+        if capabilities is None:
+            return available
 
         capability_requirements = {
             MetricRequirement.QUERY: "query",
@@ -2029,6 +2108,10 @@ class TestService:
             MetricRequirement.CONFIDENCE: "confidence",
             MetricRequirement.TRACE: "trace",
             MetricRequirement.USAGE: "usage",
+            MetricRequirement.CLAIMS: "claims",
+            MetricRequirement.ASSESSMENTS: "assessments",
+            MetricRequirement.DECISION: "decision",
+            MetricRequirement.COMPONENT_TRACE: "target_trace",
         }
 
         for requirement, capability_name in capability_requirements.items():

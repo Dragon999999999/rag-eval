@@ -172,6 +172,9 @@ class GenericHttpTargetAdapter:
             "chunk_ingestion": False,
             "context_injection": False,
             "citations": self._query_response_has("citations_path"),
+            "claims": self._query_response_has("claims_path"),
+            "assessments": self._query_response_has("assessments_path"),
+            "decision": self._query_response_has("decision_path"),
             "confidence": False,
             "target_trace": False,
             "effective_configuration": False,
@@ -358,6 +361,12 @@ class GenericHttpTargetAdapter:
             corpus_id=self._optional_scalar_path(
                 payload, response_spec.get("corpus_id_path")
             ),
+            architecture_name=self._architecture_value(
+                payload, response_spec, "name"
+            ),
+            architecture_version=self._architecture_value(
+                payload, response_spec, "version"
+            ),
             answer=Answer(
                 text=answer_value,
                 citations=citations,
@@ -456,6 +465,12 @@ class GenericHttpTargetAdapter:
             ),
             corpus_id=self._optional_scalar_path(
                 payload, response_spec.get("corpus_id_path")
+            ),
+            architecture_name=self._architecture_value(
+                payload, response_spec, "name"
+            ),
+            architecture_version=self._architecture_value(
+                payload, response_spec, "version"
             ),
             retrieval=retrieval,
             usage=usage,
@@ -851,6 +866,25 @@ class GenericHttpTargetAdapter:
                 }
             )
         return Configuration.model_validate(config_payload)
+
+    def _architecture_value(
+        self,
+        payload: Any,
+        response_spec: Mapping[str, Any],
+        key: str,
+    ) -> str | None:
+        """Read one architecture identity value from a configured mapping."""
+        path = response_spec.get("architecture_path")
+        if not isinstance(path, str):
+            return None
+        architecture = self._extract_path(payload, path)
+        if not isinstance(architecture, Mapping):
+            raise TargetProtocolError(
+                f"Response path '{path}' is not an architecture object.",
+                operation="response_mapping",
+            )
+        value = architecture.get(key)
+        return value if isinstance(value, str) else None
 
     # ------------------------------------------------------------------
     # Protocol configuration

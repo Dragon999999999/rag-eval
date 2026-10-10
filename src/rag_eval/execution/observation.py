@@ -89,12 +89,20 @@ class ObservationNormalizer:
             corpus_id=getattr(response, "corpus_id", None)
             or (configuration.corpus_id if configuration is not None else None),
             architecture_name=(
-                configuration.architecture_name if configuration is not None else None
+                getattr(response, "architecture_name", None)
+                or (
+                    configuration.architecture_name
+                    if configuration is not None
+                    else None
+                )
             ),
             architecture_version=(
-                configuration.architecture_version
-                if configuration is not None
-                else None
+                getattr(response, "architecture_version", None)
+                or (
+                    configuration.architecture_version
+                    if configuration is not None
+                    else None
+                )
             ),
             answer=answer,
             claims=getattr(response, "claims", None),

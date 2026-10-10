@@ -24,10 +24,10 @@ Those responsibilities belong to the configuration, secret, adapter, service,
 and artifact layers respectively.
 """
 
-from datetime import UTC, datetime
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -43,6 +43,7 @@ from rag_eval.db.target_models import (
     TargetRecord,
     TargetSecretRecord,
 )
+from rag_eval.db.test_models import CaseExecutionRecord, RunRecord
 from rag_eval.models import (
     Document,
     EffectiveTargetConfig,
@@ -805,6 +806,24 @@ class TargetRepository:
             return None
 
         return TargetObservation.model_validate(result.payload)
+
+    async def list_observations_for_target(
+        self,
+        target_id: str,
+    ) -> list[TargetObservation]:
+        """Return normalized observations captured by runs for one target."""
+        result = await self._session.scalars(
+            select(TargetObservationRecord)
+            .join(
+                CaseExecutionRecord,
+                TargetObservationRecord.case_execution_id
+                == CaseExecutionRecord.case_execution_id,
+            )
+            .join(RunRecord, CaseExecutionRecord.run_id == RunRecord.run_id)
+            .where(RunRecord.target_id == target_id)
+            .order_by(TargetObservationRecord.created_at)
+        )
+        return [TargetObservation.model_validate(record.payload) for record in result]
 
     # -------------------------------------------------------------------------
     # Internal helpers

@@ -30,7 +30,6 @@ from rag_eval.models.enums import (
 from rag_eval.models.metrics import Assessment, Claim, Decision
 from rag_eval.models.retrieval import RetrievalResult
 
-
 # ---------------------------------------------------------------------------
 # Target configuration and management
 # ---------------------------------------------------------------------------
@@ -293,6 +292,9 @@ class TargetCapabilities(CanonicalModel):
     context_injection: bool = False
 
     citations: bool = False
+    claims: bool = False
+    assessments: bool = False
+    decision: bool = False
     confidence: bool = False
     target_trace: bool = False
     effective_configuration: bool = False
@@ -666,6 +668,8 @@ class RetrieveResponse(CanonicalModel):
     request_id: str
     target_run_id: str | None = None
     corpus_id: str | None = None
+    architecture_name: str | None = None
+    architecture_version: str | None = None
     retrieval: RetrievalResult
 
     trace: Trace | None = None
@@ -729,6 +733,8 @@ class QueryResponse(CanonicalModel):
     request_id: str
     target_run_id: str | None = None
     corpus_id: str | None = None
+    architecture_name: str | None = None
+    architecture_version: str | None = None
     status: RequestStatus = RequestStatus.COMPLETED
 
     answer: Answer | None = None
