@@ -31,8 +31,8 @@ Response paths support simple object keys and list indexes:
 
 from __future__ import annotations
 
-from typing import Any
 from collections.abc import AsyncIterator, Mapping, Sequence
+from typing import Any
 
 import httpx
 from pydantic import ValidationError
@@ -68,7 +68,8 @@ from rag_eval.models import (
     TargetInfo,
     Usage,
 )
-
+from rag_eval.models.metric_run_additional import Assessment
+from rag_eval.models.metrics import Claim, Decision
 
 _MISSING = object()
 
@@ -338,14 +339,38 @@ class GenericHttpTargetAdapter:
             "query",
         )
 
+        claims = self._optional_list_model_path(
+            payload, response_spec.get("claims_path"), Claim, "query"
+        )
+        assessments = self._optional_list_model_path(
+            payload, response_spec.get("assessments_path"), Assessment, "query"
+        )
+        decision = self._optional_model_path(
+            payload, response_spec.get("decision_path"), Decision, "query"
+        )
+        configuration = self._mapped_configuration(payload, response_spec, "query")
+
         return QueryResponse(
             request_id=request.request_id,
+            target_run_id=self._optional_scalar_path(
+                payload, response_spec.get("target_run_id_path")
+            ),
+            corpus_id=self._optional_scalar_path(
+                payload, response_spec.get("corpus_id_path")
+            ),
             answer=Answer(
                 text=answer_value,
                 citations=citations,
             ),
             retrieval=retrieval,
+            claims=claims,
+            assessments=assessments,
+            decision=decision,
+            insufficient_evidence=self._optional_bool_path(
+                payload, response_spec.get("insufficient_evidence_path")
+            ),
             usage=usage,
+            configuration=configuration,
         )
 
     # ------------------------------------------------------------------
@@ -422,10 +447,19 @@ class GenericHttpTargetAdapter:
             "retrieve",
         )
 
+        configuration = self._mapped_configuration(payload, response_spec, "retrieve")
+
         return RetrieveResponse(
             request_id=request.request_id,
+            target_run_id=self._optional_scalar_path(
+                payload, response_spec.get("target_run_id_path")
+            ),
+            corpus_id=self._optional_scalar_path(
+                payload, response_spec.get("corpus_id_path")
+            ),
             retrieval=retrieval,
             usage=usage,
+            configuration=configuration,
         )
 
     # ------------------------------------------------------------------
@@ -725,6 +759,98 @@ class GenericHttpTargetAdapter:
                 f"Response path '{path}' is not valid {model_type.__name__}.",
                 operation=operation,
             ) from exc
+
+    def _optional_list_model_path(
+        self,
+        payload: Any,
+        path: Any,
+        model_type: type[Any],
+        operation: str,
+    ) -> list[Any] | None:
+        """Normalize an optional response list into canonical models."""
+        if not isinstance(path, str):
+            return None
+        value = self._extract_path(payload, path)
+        if not isinstance(value, list):
+            raise TargetProtocolError(
+                f"Response path '{path}' does not resolve to a list.",
+                operation=operation,
+            )
+        try:
+            return [model_type.model_validate(item) for item in value]
+        except ValidationError as exc:
+            raise TargetProtocolError(
+                f"Response path '{path}' contains invalid "
+                f"{model_type.__name__} objects.",
+                operation=operation,
+            ) from exc
+
+    def _optional_scalar_path(self, payload: Any, path: Any) -> str | None:
+        """Read an optional string identity field from a response mapping."""
+        if not isinstance(path, str):
+            return None
+        value = self._extract_path(payload, path)
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise TargetProtocolError(
+                f"Response path '{path}' must resolve to a string.",
+                operation="response_mapping",
+            )
+        return value
+
+    def _optional_bool_path(self, payload: Any, path: Any) -> bool | None:
+        """Read an optional boolean response field."""
+        if not isinstance(path, str):
+            return None
+        value = self._extract_path(payload, path)
+        if value is None:
+            return None
+        if not isinstance(value, bool):
+            raise TargetProtocolError(
+                f"Response path '{path}' must resolve to a boolean.",
+                operation="response_mapping",
+            )
+        return value
+
+    def _mapped_configuration(
+        self,
+        payload: Any,
+        response_spec: Mapping[str, Any],
+        operation: str,
+    ) -> Any | None:
+        """Build execution configuration from a configured path."""
+        path = response_spec.get("configuration_path")
+        architecture_path = response_spec.get("architecture_path")
+        if not isinstance(path, str) and not isinstance(architecture_path, str):
+            return None
+
+        from rag_eval.models.target import Configuration
+
+        config_payload: dict[str, Any] = {}
+        if isinstance(path, str):
+            value = self._extract_path(payload, path)
+            if not isinstance(value, Mapping):
+                raise TargetProtocolError(
+                    f"Response path '{path}' is not a configuration object.",
+                    operation=operation,
+                )
+            config_payload.update(value)
+        if isinstance(architecture_path, str):
+            architecture = self._extract_path(payload, architecture_path)
+            if not isinstance(architecture, Mapping):
+                raise TargetProtocolError(
+                    f"Response path '{architecture_path}' is not an "
+                    "architecture object.",
+                    operation=operation,
+                )
+            config_payload.update(
+                {
+                    "architecture_name": architecture.get("name"),
+                    "architecture_version": architecture.get("version"),
+                }
+            )
+        return Configuration.model_validate(config_payload)
 
     # ------------------------------------------------------------------
     # Protocol configuration

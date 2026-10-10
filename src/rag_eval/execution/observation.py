@@ -85,7 +85,22 @@ class ObservationNormalizer:
             observation_id=observation_id,
             case_id=case_id,
             request_id=request_id,
+            target_run_id=getattr(response, "target_run_id", None),
+            corpus_id=getattr(response, "corpus_id", None)
+            or (configuration.corpus_id if configuration is not None else None),
+            architecture_name=(
+                configuration.architecture_name if configuration is not None else None
+            ),
+            architecture_version=(
+                configuration.architecture_version
+                if configuration is not None
+                else None
+            ),
             answer=answer,
+            claims=getattr(response, "claims", None),
+            assessments=getattr(response, "assessments", None),
+            decision=getattr(response, "decision", None),
+            insufficient_evidence=getattr(response, "insufficient_evidence", None),
             retrieval=retrieval,
             confidence=confidence,
             trace=trace,
