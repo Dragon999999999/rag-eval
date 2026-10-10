@@ -1636,6 +1636,24 @@ class TestService:
                 "answer": answer,
                 "retrieval": payload.get("retrieval"),
                 "citations": citations,
+                "target_run_id": observation.target_run_id,
+                "corpus_id": observation.corpus_id,
+                "architecture_name": observation.architecture_name,
+                "architecture_version": observation.architecture_version,
+                "claims": [
+                    claim.model_dump(mode="json")
+                    for claim in observation.claims or []
+                ],
+                "assessments": [
+                    assessment.model_dump(mode="json")
+                    for assessment in observation.assessments or []
+                ],
+                "decision": (
+                    observation.decision.model_dump(mode="json")
+                    if observation.decision is not None
+                    else None
+                ),
+                "insufficient_evidence": observation.insufficient_evidence,
                 "confidence": payload.get("confidence", []),
                 "trace": payload.get("trace"),
                 "usage": payload.get("usage"),
@@ -2101,8 +2119,14 @@ class TestService:
 
         capability_requirements = {
             MetricRequirement.QUERY: "query",
-            MetricRequirement.ANSWER: "answer",
+            # Targets do not expose an ``answer`` capability consistently;
+            # answer availability is established from persisted observations
+            # after execution, while pre-run targets expose the query surface.
+            MetricRequirement.ANSWER: "query",
             MetricRequirement.RETRIEVAL: "retrieval",
+            MetricRequirement.STAGE_BY_ID: "retrieval_stages",
+            MetricRequirement.STAGE_BY_TYPE: "retrieval_stages",
+            MetricRequirement.STAGE_PAIRS: "retrieval_stages",
             MetricRequirement.FINAL_CONTEXT: "context_injection",
             MetricRequirement.CITATIONS: "citations",
             MetricRequirement.CONFIDENCE: "confidence",

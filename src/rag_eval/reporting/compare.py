@@ -79,19 +79,46 @@ _METRIC_DIRECTIONS = {
     "retrieval.map_at_k": "higher_is_better",
     "retrieval.ndcg_at_k": "higher_is_better",
     "retrieval.r_precision": "higher_is_better",
+    "retrieval.f1_at_k": "higher_is_better",
+    "retrieval.first_relevant_rank": "lower_is_better",
+    "retrieval.document_recall": "higher_is_better",
+    "retrieval.page_recall": "higher_is_better",
     # Citation metrics
     "citation.resolution": "higher_is_better",
+    "citation.resolution_rate": "higher_is_better",
     "citation.attribution_rate": "higher_is_better",
     "citation.broken": "lower_is_better",  # Lower broken rate is better
+    "citation.broken_rate": "lower_is_better",
+    "citation.claim_coverage": "higher_is_better",
+    "citation.document_attribution_accuracy": "higher_is_better",
+    "citation.page_attribution_accuracy": "higher_is_better",
+    "citation.mean_citations_per_claim": "higher_is_better",
+    "citation.uncited_claim_rate": "lower_is_better",
+    "citation.evidence_utilization": "higher_is_better",
     # Performance metrics
     "performance.total_latency_ms": "lower_is_better",
     "performance.retrieval_latency_ms": "lower_is_better",
     "performance.generation_latency_ms": "lower_is_better",
+    "performance.e2e_latency_ms": "lower_is_better",
+    "performance.embedding_latency_ms": "lower_is_better",
+    "performance.context_construction_latency_ms": "lower_is_better",
+    "performance.assessment_latency_ms": "lower_is_better",
+    "performance.stage_latency_ms": "lower_is_better",
+    "performance.stage_latency_share": "lower_is_better",
+    "performance.stage_throughput": "higher_is_better",
+    "performance.component_failure_rate": "lower_is_better",
     "performance.tokens_per_second": "higher_is_better",
     # Usage metrics
     "usage.total_tokens": "lower_is_better",  # Generally want efficiency
     "usage.input_tokens": "lower_is_better",
     "usage.output_tokens": "lower_is_better",
+    "usage.context_tokens": "lower_is_better",
+    "usage.tokens_per_correct_answer": "lower_is_better",
+    "usage.relevant_evidence_per_context_token": "higher_is_better",
+    "usage.llm_calls": "lower_is_better",
+    "usage.embedding_calls": "lower_is_better",
+    "usage.retrieval_calls": "lower_is_better",
+    "usage.reranker_calls": "lower_is_better",
     # Cost metrics
     "cost.total": "lower_is_better",
     "cost.per_token": "lower_is_better",
@@ -101,6 +128,15 @@ _METRIC_DIRECTIONS = {
     "reliability.error_rate": "lower_is_better",
     "reliability.latency_p50": "lower_is_better",
     "reliability.latency_p99": "lower_is_better",
+    # Decision metrics
+    "decision.accept_rate": "higher_is_better",
+    "decision.reject_rate": "higher_is_better",
+    "decision.abstention_rate": "higher_is_better",
+    "decision.answerability_accuracy": "higher_is_better",
+    "decision.false_answer_rate": "lower_is_better",
+    "decision.false_abstention_rate": "lower_is_better",
+    "decision.abstention_precision": "higher_is_better",
+    "decision.abstention_recall": "higher_is_better",
 }
 
 
@@ -173,6 +209,32 @@ class RunComparator:
                     f"Different corpus modes: {corpus_a.get('mode')} "
                     f"vs {corpus_b.get('mode')}"
                 )
+
+            for identity_name in ("architecture", "prompt", "embedding"):
+                identity_a = config_a.canonical_config.get("target", {}).get(
+                    identity_name
+                )
+                identity_b = config_b.canonical_config.get("target", {}).get(
+                    identity_name
+                )
+                if identity_a != identity_b and (
+                    identity_a is not None or identity_b is not None
+                ):
+                    warnings.append(
+                        f"Different {identity_name} identities: "
+                        f"{identity_a} vs {identity_b}"
+                    )
+                    compatible = False
+
+            corpus_hash_a = corpus_a.get("content_hash") or corpus_a.get("hash")
+            corpus_hash_b = corpus_b.get("content_hash") or corpus_b.get("hash")
+            if corpus_hash_a != corpus_hash_b and (
+                corpus_hash_a is not None or corpus_hash_b is not None
+            ):
+                warnings.append(
+                    f"Different corpus identities: {corpus_hash_a} vs {corpus_hash_b}"
+                )
+                compatible = False
 
         # Load aggregates for both runs
         aggregates_a = await self._repository.list_aggregates(run_a_id)

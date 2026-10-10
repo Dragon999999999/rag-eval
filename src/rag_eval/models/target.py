@@ -158,6 +158,13 @@ class TargetConfig(CanonicalModel):
     # generic/config-driven adapters.
     protocol: JsonDict | None = None
 
+    # Optional reproducibility identities supplied by the target or its
+    # configuration author.  Values are metadata only and never contain
+    # resolved credentials.
+    architecture: JsonDict | None = None
+    prompt: JsonDict | None = None
+    corpus: JsonDict | None = None
+
     metadata: JsonDict = Field(default_factory=dict)
 
 
@@ -186,6 +193,12 @@ class EffectiveTargetConfig(CanonicalModel):
 
     # Adapter-specific settings that are not protocol mappings.
     parameters: JsonDict = Field(default_factory=dict)
+
+    # Effective identities are persisted with the resolved adapter settings so
+    # reports and comparisons can explain which system produced an observation.
+    architecture: JsonDict | None = None
+    prompt: JsonDict | None = None
+    corpus: JsonDict | None = None
 
     metadata: JsonDict = Field(default_factory=dict)
 

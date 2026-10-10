@@ -43,6 +43,10 @@ class RunReport:
     usage_metrics: dict[str, Any] = field(default_factory=dict)
     cost_metrics: dict[str, Any] = field(default_factory=dict)
     reliability_metrics: dict[str, Any] = field(default_factory=dict)
+    decision_metrics: dict[str, Any] = field(default_factory=dict)
+    stage_metrics: dict[str, Any] = field(default_factory=dict)
+    configuration_identity: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     # Timing
     started_at: str | None = None
@@ -95,6 +99,8 @@ class ReportGenerator:
         usage_metrics = {}
         cost_metrics = {}
         reliability_metrics = {}
+        decision_metrics = {}
+        stage_metrics = {}
 
         for agg in aggregates:
             metric_id = agg.metric_id
@@ -130,6 +136,21 @@ class ReportGenerator:
                 reliability_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
                     value, metric_id
                 )
+            elif metric_id.startswith("decision."):
+                decision_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
+            elif metric_id.startswith("stage."):
+                stage_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
+
+        get_run_config = getattr(self._repository, "get_run_config", None)
+        configuration_identity = (
+            self._configuration_identity(await get_run_config(run_id))
+            if callable(get_run_config)
+            else {}
+        )
 
         # Sum attempt durations so pauses and retries do not inflate runtime.
         duration = 0.0
@@ -173,10 +194,28 @@ class ReportGenerator:
             usage_metrics=usage_metrics,
             cost_metrics=cost_metrics,
             reliability_metrics=reliability_metrics,
+            decision_metrics=decision_metrics,
+            stage_metrics=stage_metrics,
+            configuration_identity=configuration_identity,
             started_at=_format_timestamp(run.started_at) if run.started_at else None,
             finished_at=_format_timestamp(run.finished_at) if run.finished_at else None,
             duration_seconds=duration,
         )
+
+    @staticmethod
+    def _configuration_identity(config: Any | None) -> dict[str, Any]:
+        """Extract non-secret architecture and corpus identity for reporting."""
+        if config is None:
+            return {}
+        payload = config.canonical_config
+        target = payload.get("target", {})
+        return {
+            "architecture": target.get("architecture"),
+            "prompt": target.get("prompt"),
+            "corpus": target.get("corpus"),
+            "embedding": target.get("embedding"),
+            "effective": target.get("effective"),
+        }
 
     def _format_value(self, value: Any, metric_id: str) -> str:
         """Format metric value for display.

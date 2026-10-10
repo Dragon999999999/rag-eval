@@ -441,6 +441,14 @@ class TargetObservationDetail(BaseModel):
 
     trace: dict[str, Any] | None
     usage: dict[str, Any] | None
+    target_run_id: str | None = None
+    corpus_id: str | None = None
+    architecture_name: str | None = None
+    architecture_version: str | None = None
+    claims: list[dict[str, Any]] = Field(default_factory=list)
+    assessments: list[dict[str, Any]] = Field(default_factory=list)
+    decision: dict[str, Any] | None = None
+    insufficient_evidence: bool | None = None
 
     errors: list[dict[str, Any]]
     warnings: list[dict[str, Any]]
@@ -582,6 +590,10 @@ class RunReport(BaseModel):
     usage_metrics: dict[str, Any]
     cost_metrics: dict[str, Any]
     reliability_metrics: dict[str, Any]
+    decision_metrics: dict[str, Any] = Field(default_factory=dict)
+    stage_metrics: dict[str, Any] = Field(default_factory=dict)
+    configuration_identity: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
 
     started_at: datetime | None
     finished_at: datetime | None

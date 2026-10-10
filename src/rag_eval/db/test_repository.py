@@ -854,6 +854,7 @@ class TestRepository:
             reason=aggregate.reason,
             details={
                 **aggregate.distribution,
+                **aggregate.metadata,
                 "sample_count": aggregate.sample_count,
                 "available_count": aggregate.available_count,
                 "failed_count": aggregate.failed_count,
