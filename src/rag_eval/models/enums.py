@@ -28,6 +28,10 @@ class RetrievalStageType(StrEnum):
     FILTER = "FILTER"
     COMPRESSION = "COMPRESSION"
     FINAL_CONTEXT = "FINAL_CONTEXT"
+    QUERY_REWRITE = "QUERY_REWRITE"
+    HYBRID_RETRIEVAL = "HYBRID_RETRIEVAL"
+    DEDUPLICATION = "DEDUPLICATION"
+    ROUTING = "ROUTING"
     CUSTOM = "CUSTOM"
 
 
@@ -119,6 +123,9 @@ class ClaimClassification(StrEnum):
     SUPPORTED = "SUPPORTED"
     CONTRADICTED = "CONTRADICTED"
     UNSUPPORTED = "UNSUPPORTED"
+    PARTIALLY_SUPPORTED = "PARTIALLY_SUPPORTED"
+    PARTIALLY_CONTRADICTED = "PARTIALLY_CONTRADICTED"
+    MIXED = "MIXED"
     UNKNOWN = "UNKNOWN"
 
 
@@ -126,9 +133,22 @@ class EvidenceRelationship(StrEnum):
     """Relationship between a claim and one evidence item."""
 
     ENTAILS = "ENTAILS"
+    SUPPORTS = "SUPPORTS"
     CONTRADICTS = "CONTRADICTS"
+    REFUTES = "REFUTES"
+    CITES = "CITES"
+    DERIVED_FROM = "DERIVED_FROM"
     NEUTRAL = "NEUTRAL"
     UNKNOWN = "UNKNOWN"
+
+
+class DecisionAction(StrEnum):
+    """Normalized decision made from an answer assessment."""
+
+    ACCEPT = "accept"
+    REJECT = "reject"
+    ABSTAIN = "abstain"
+    UNKNOWN = "unknown"
 
 
 class ArtifactType(StrEnum):

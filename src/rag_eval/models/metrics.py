@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import Field, field_validator, model_validator
 
 from rag_eval.models.common import (
+    AnswerSpan,
     CanonicalModel,
     JsonDict,
     SourceLocation,
@@ -15,7 +16,7 @@ from rag_eval.models.enums import (
     EvidenceRelationship,
     MetricStatus,
 )
-from rag_eval.models.target import AnswerSpan
+from rag_eval.models.metric_run_additional import Assessment, Decision  # noqa: F401
 
 
 class MetricResult(CanonicalModel):

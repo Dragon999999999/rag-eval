@@ -7,6 +7,7 @@ from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from rag_eval.models.benchmark import SuppliedContext
 from rag_eval.models.common import (
+    AnswerSpan,
     ArtifactRef,
     CanonicalModel,
     JsonDict,
@@ -26,6 +27,7 @@ from rag_eval.models.enums import (
     TargetConfigurationStatus,
     TargetConnectionStatus,
 )
+from rag_eval.models.metrics import Assessment, Claim, Decision
 from rag_eval.models.retrieval import RetrievalResult
 
 
@@ -386,20 +388,6 @@ class ManagedTarget(CanonicalModel):
 # ---------------------------------------------------------------------------
 
 
-class AnswerSpan(CanonicalModel):
-    """A half-open character range within a generated answer."""
-
-    start_char: int = Field(ge=0)
-    end_char: int = Field(ge=0)
-
-    @model_validator(mode="after")
-    def validate_span(self) -> "AnswerSpan":
-        """Ensure the end boundary is not before the start boundary."""
-        if self.end_char < self.start_char:
-            raise ValueError("end_char must be greater than or equal to start_char")
-        return self
-
-
 class Citation(CanonicalModel):
     """Mapping from an answer span to source evidence."""
 
@@ -449,7 +437,10 @@ class TraceSpan(CanonicalModel):
 
     span_id: str
     parent_span_id: str | None = None
-    name: str
+    parent_span_ids: list[str] = Field(default_factory=list)
+    name: str | None = None
+    component_type: str | None = None
+    component_name: str | None = None
 
     started_at: datetime
     ended_at: datetime | None = None
@@ -460,6 +451,30 @@ class TraceSpan(CanonicalModel):
     )
 
     attributes: JsonDict = Field(default_factory=dict)
+    metadata: JsonDict = Field(default_factory=dict)
+    status: str | None = None
+    input_count: int | None = Field(default=None, ge=0)
+    output_count: int | None = Field(default=None, ge=0)
+    error: JsonDict | None = None
+
+    @model_validator(mode="after")
+    def normalize_trace_aliases(self) -> "TraceSpan":
+        """Keep legacy name/attributes and canonical component fields aligned."""
+        if self.component_name is None:
+            self.component_name = self.name
+        if self.name is None:
+            self.name = self.component_name
+        if not self.metadata:
+            self.metadata = dict(self.attributes)
+        if not self.attributes:
+            self.attributes = dict(self.metadata)
+        parents = list(dict.fromkeys(self.parent_span_ids))
+        if self.parent_span_id is not None and self.parent_span_id not in parents:
+            parents.insert(0, self.parent_span_id)
+        self.parent_span_ids = parents
+        if self.parent_span_id is None and parents:
+            self.parent_span_id = parents[0]
+        return self
 
     _validate_started_at = field_validator("started_at")(validate_aware_timestamp)
     _validate_ended_at = field_validator("ended_at")(validate_aware_timestamp)
@@ -478,6 +493,14 @@ class Usage(CanonicalModel):
 
     tokens: dict[str, int] = Field(default_factory=dict)
     calls: dict[str, int] = Field(default_factory=dict)
+    context_tokens: int | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    total_tokens: int | None = Field(default=None, ge=0)
+    llm_calls: int | None = Field(default=None, ge=0)
+    embedding_calls: int | None = Field(default=None, ge=0)
+    retrieval_calls: int | None = Field(default=None, ge=0)
+    reranker_calls: int | None = Field(default=None, ge=0)
 
     cost: JsonDict = Field(default_factory=dict)
     resources: JsonDict = Field(default_factory=dict)
@@ -582,6 +605,14 @@ class Configuration(CanonicalModel):
 
     requested: JsonDict = Field(default_factory=dict)
     effective: JsonDict = Field(default_factory=dict)
+    architecture_name: str | None = None
+    architecture_version: str | None = None
+    prompt_name: str | None = None
+    prompt_version: str | None = None
+    prompt_hash: str | None = None
+    corpus_id: str | None = None
+    corpus_version: str | None = None
+    corpus_hash: str | None = None
 
 
 class CreateCorpusRequest(CanonicalModel):
@@ -633,6 +664,8 @@ class RetrieveResponse(CanonicalModel):
     protocol_version: str = "1.0"
 
     request_id: str
+    target_run_id: str | None = None
+    corpus_id: str | None = None
     retrieval: RetrievalResult
 
     trace: Trace | None = None
@@ -694,9 +727,15 @@ class QueryResponse(CanonicalModel):
     protocol_version: str = "1.0"
 
     request_id: str
+    target_run_id: str | None = None
+    corpus_id: str | None = None
     status: RequestStatus = RequestStatus.COMPLETED
 
     answer: Answer | None = None
+    claims: list[Claim] | None = None
+    assessments: list[Assessment] | None = None
+    decision: Decision | None = None
+    insufficient_evidence: bool | None = None
     retrieval: RetrievalResult | None = None
 
     confidence: list[ConfidenceSignal] = Field(default_factory=list)
@@ -741,8 +780,16 @@ class TargetObservation(CanonicalModel):
     observation_id: str
     case_id: str
     request_id: str
+    target_run_id: str | None = None
+    corpus_id: str | None = None
+    architecture_name: str | None = None
+    architecture_version: str | None = None
 
     answer: Answer | None = None
+    claims: list[Claim] | None = None
+    assessments: list[Assessment] | None = None
+    decision: Decision | None = None
+    insufficient_evidence: bool | None = None
     retrieval: RetrievalResult | None = None
 
     confidence: list[ConfidenceSignal] = Field(default_factory=list)

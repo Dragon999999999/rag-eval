@@ -52,9 +52,11 @@ class SourceLocation(CanonicalModel):
 
     document_id: str | None = None
     chunk_id: str | None = None
+    ingestion_id: str | None = None
     page: int | None = Field(default=None, ge=1)
     start_char: int | None = Field(default=None, ge=0)
     end_char: int | None = Field(default=None, ge=0)
+    span_coordinate_system: str | None = None
     section: str | None = None
     metadata: JsonDict = Field(default_factory=dict)
 
@@ -66,6 +68,20 @@ class SourceLocation(CanonicalModel):
         if self.start_char is not None and self.end_char is not None:
             if self.end_char < self.start_char:
                 raise ValueError("end_char must be greater than or equal to start_char")
+        return self
+
+
+class AnswerSpan(CanonicalModel):
+    """A half-open character range within a generated answer."""
+
+    start_char: int = Field(ge=0)
+    end_char: int = Field(ge=0)
+
+    @model_validator(mode="after")
+    def validate_span(self) -> "AnswerSpan":
+        """Ensure the end boundary is not before the start boundary."""
+        if self.end_char < self.start_char:
+            raise ValueError("end_char must be greater than or equal to start_char")
         return self
 
 

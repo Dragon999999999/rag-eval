@@ -10,6 +10,7 @@ from rag_eval.models.benchmark import (
     SuppliedContext,
 )
 from rag_eval.models.common import (
+    AnswerSpan,
     ArtifactRef,
     Message,
     MessageRole,
@@ -21,6 +22,7 @@ from rag_eval.models.enums import (
     ArtifactType,
     ContextPolicy,
     CorpusMode,
+    DecisionAction,
     ErrorCategory,
     FinishReason,
     MetricStatus,
@@ -30,8 +32,10 @@ from rag_eval.models.enums import (
 )
 from rag_eval.models.metrics import (
     AggregateMetricResult,
+    Assessment,
     Claim,
     ClaimAssessment,
+    Decision,
     EvidenceAssessment,
     MetricResult,
 )
@@ -43,7 +47,6 @@ from rag_eval.models.retrieval import (
 )
 from rag_eval.models.target import (
     Answer,
-    AnswerSpan,
     Citation,
     ConfidenceSignal,
     CreateCorpusRequest,
@@ -79,6 +82,7 @@ __all__ = [
     "Answer",
     "AnswerSpan",
     "Answerability",
+    "Assessment",
     "ArtifactRef",
     "ArtifactType",
     "Benchmark",
@@ -91,6 +95,8 @@ __all__ = [
     "ConfidenceSignal",
     "ContextPolicy",
     "CorpusMode",
+    "Decision",
+    "DecisionAction",
     "CreateCorpusRequest",
     "CreateCorpusResponse",
     "Document",
