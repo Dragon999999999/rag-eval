@@ -475,7 +475,20 @@ class ExportService:
         """Write non-empty row data to a compressed Parquet file."""
         if not rows:
             return False
-        pq.write_table(pa.Table.from_pylist(rows), path, compression="snappy")
+        normalized_rows = [
+            {
+                key: json.dumps(value, sort_keys=True)
+                if isinstance(value, (dict, list))
+                else value
+                for key, value in row.items()
+            }
+            for row in rows
+        ]
+        pq.write_table(
+            pa.Table.from_pylist(normalized_rows),
+            path,
+            compression="snappy",
+        )
         return True
 
     async def _export_errors(self, run_id: str, path: Path) -> bool:

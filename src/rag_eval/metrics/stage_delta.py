@@ -279,7 +279,12 @@ class SourceRetentionRate(_SetDelta):
         before, after = items
         def source(item: dict) -> Any:
             """Return the stable document identity for one item."""
-            return item.get("source", {}).get("document_id")
+            source_value = item.get("source")
+            return (
+                source_value.get("document_id")
+                if isinstance(source_value, dict)
+                else None
+            )
         before_ids = {source(item) for item in before}
         after_ids = {source(item) for item in after}
         return self._computed(

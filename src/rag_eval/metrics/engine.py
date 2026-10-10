@@ -204,6 +204,23 @@ class MetricExecutionEngine:
             # Execute metric
             result = await metric.compute(context)
 
+            details = dict(result.details)
+            stage_id = getattr(metric, "_stage_id", None)
+            stage_type = getattr(metric, "_stage_type", None)
+            if stage_id is not None:
+                details.setdefault("stage_id", stage_id)
+            if stage_type is not None:
+                details.setdefault(
+                    "stage_type",
+                    getattr(stage_type, "value", stage_type),
+                )
+            before_stage_id = getattr(metric, "before_stage_id", None)
+            after_stage_id = getattr(metric, "after_stage_id", None)
+            if before_stage_id is not None:
+                details.setdefault("before_stage_id", before_stage_id)
+            if after_stage_id is not None:
+                details.setdefault("after_stage_id", after_stage_id)
+
             # Ensure result has case/run IDs
             return MetricResult(
                 metric_id=result.metric_id,
@@ -211,7 +228,7 @@ class MetricExecutionEngine:
                 status=result.status,
                 value=result.value,
                 reason=result.reason,
-                details=result.details,
+                details=details,
                 case_id=context.case.case_id,
                 run_id=context.run_id,
                 metric_run_id=self._config.metric_run_id,
