@@ -187,6 +187,12 @@ class ExportService:
 
             corpus = config.canonical_config.get("target", {}).get("corpus", {})
             manifest["corpus_hash"] = corpus.get("content_hash")
+            target = config.canonical_config.get("target", {})
+            manifest["configuration_identity"] = {
+                key: target.get(key)
+                for key in ("architecture", "prompt", "corpus", "embedding")
+                if target.get(key) is not None
+            }
 
         return manifest
 

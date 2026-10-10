@@ -229,7 +229,21 @@ def _format_report(report: Any) -> str:
         ("Usage Metrics", report.usage_metrics),
         ("Cost Metrics", report.cost_metrics),
         ("Reliability Metrics", report.reliability_metrics),
+        ("Decision Metrics", report.decision_metrics),
+        ("Stage Metrics", report.stage_metrics),
     ]
+
+    if report.configuration_identity:
+        lines.append("Configuration Identity:")
+        for key, value in sorted(report.configuration_identity.items()):
+            if value is not None:
+                lines.append(f"  {key}: {value}")
+        lines.append("")
+
+    if report.warnings:
+        lines.append("Warnings:")
+        lines.extend(f"  ⚠ {warning}" for warning in report.warnings)
+        lines.append("")
 
     for section_name, metrics in sections:
         if metrics:
