@@ -1641,8 +1641,7 @@ class TestService:
                 "architecture_name": observation.architecture_name,
                 "architecture_version": observation.architecture_version,
                 "claims": [
-                    claim.model_dump(mode="json")
-                    for claim in observation.claims or []
+                    claim.model_dump(mode="json") for claim in observation.claims or []
                 ],
                 "assessments": [
                     assessment.model_dump(mode="json")
@@ -2008,11 +2007,20 @@ class TestService:
             MetricRequirement.HISTORY: "history",
             MetricRequirement.REFERENCE_ANSWER: "reference_answer",
             MetricRequirement.GOLD_EVIDENCE: "gold_evidence",
+            MetricRequirement.GOLD_EVIDENCE_GROUPS: "gold_evidence_groups",
             MetricRequirement.ANSWERABILITY: "answerability",
+            MetricRequirement.CONVERSATION: "conversation_id",
+            MetricRequirement.CHUNK_INVENTORY: "metadata",
+            MetricRequirement.SOURCE_DOCUMENTS: "gold_evidence",
         }
 
         for requirement, field_name in field_requirements.items():
-            if self._benchmark_field_available(cases, field_name):
+            field_available = self._benchmark_field_available(cases, field_name)
+            if requirement == MetricRequirement.REFERENCE_ANSWER:
+                field_available = field_available or self._benchmark_field_available(
+                    cases, "reference_answers"
+                )
+            if field_available:
                 available.add(requirement)
 
         return available
@@ -2112,6 +2120,13 @@ class TestService:
                         if item.usage is not None
                     ):
                         available.add(requirement)
+            if any(item.embedding_vectors is not None for item in observations):
+                available.update(
+                    {
+                        MetricRequirement.EMBEDDING_METADATA,
+                        MetricRequirement.EMBEDDING_VECTORS,
+                    }
+                )
             return available
 
         if capabilities is None:
@@ -2136,6 +2151,9 @@ class TestService:
             MetricRequirement.ASSESSMENTS: "assessments",
             MetricRequirement.DECISION: "decision",
             MetricRequirement.COMPONENT_TRACE: "target_trace",
+            MetricRequirement.EMBEDDING_METADATA: "retrieval_metadata.embedding",
+            MetricRequirement.EMBEDDING_VECTORS: "retrieval_metadata.embedding",
+            MetricRequirement.INGESTION: "document_ingestion",
         }
 
         for requirement, capability_name in capability_requirements.items():

@@ -16,6 +16,11 @@ Stage 10 adds retry, recovery, circuit breaker, and resume support.
 from .circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState
 from .engine import BenchmarkExecutor, ExecutionConfig, ExecutionResult
 from .observation import ObservationNormalizer
+from .perturbation import (
+    PerturbationDefinition,
+    PerturbationRegistry,
+    default_perturbation_registry,
+)
 from .recovery import CaseRecoveryService, RecoveryAction, RecoveryDecision
 from .requests import RequestIdentity, RequestIdentityGenerator
 from .retry import RetryDecision, RetryPolicy
@@ -32,6 +37,8 @@ __all__ = [
     "ExecutionConfig",
     "ExecutionResult",
     "ObservationNormalizer",
+    "PerturbationDefinition",
+    "PerturbationRegistry",
     "RecoveryAction",
     "RecoveryDecision",
     "RequestIdentity",
@@ -39,5 +46,6 @@ __all__ = [
     "ResilientCaseWorker",
     "RetryDecision",
     "RetryPolicy",
+    "default_perturbation_registry",
     "ClientTiming",
 ]

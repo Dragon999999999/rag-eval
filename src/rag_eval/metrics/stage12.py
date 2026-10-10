@@ -13,6 +13,7 @@ Metrics are organized by category:
 All metrics are deterministic - no LLM judges, embeddings, or target calls.
 """
 
+from rag_eval.metrics.advanced import advanced_metrics
 from rag_eval.metrics.answer import (
     ExactMatch,
     NormalizedExactMatch,
@@ -233,6 +234,12 @@ def register_stage12_metrics(registry: MetricRegistry | None = None) -> MetricRe
         StageLatencyDelta(),
         QualityGainPerMs(),
     ):
+        registry.register(metric)
+
+    # Advanced semantic, architecture, benchmark-annotation, calibration,
+    # robustness, and resource metrics remain independently unavailable when
+    # their optional persisted inputs or judge are absent.
+    for metric in advanced_metrics():
         registry.register(metric)
 
     return registry

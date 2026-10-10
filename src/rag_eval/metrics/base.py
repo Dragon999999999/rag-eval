@@ -19,6 +19,12 @@ class MetricScope(Enum):
     RETRIEVAL_STAGE = auto()  # Specific retrieval stage
     RETRIEVAL_STAGE_PAIR = auto()  # Before/after retrieval stages
     CLAIM = auto()  # Individual claim
+    DOCUMENT = auto()
+    CHUNK = auto()
+    CORPUS = auto()
+    TURN = auto()
+    CONVERSATION = auto()
+    EXPERIMENT = auto()
     RUN = auto()  # Entire run aggregation
 
 
@@ -58,6 +64,15 @@ class MetricRequirement(Enum):
     USAGE_RERANKER_CALLS = auto()
     STAGE_BY_ID = auto()
     STAGE_BY_TYPE = auto()
+    GOLD_EVIDENCE_GROUPS = auto()
+    EMBEDDING_METADATA = auto()
+    EMBEDDING_VECTORS = auto()
+    CHUNK_INVENTORY = auto()
+    SOURCE_DOCUMENTS = auto()
+    INGESTION = auto()
+    CONVERSATION = auto()
+    PERTURBATION_PAIR = auto()
+    PAIRED_RUNS = auto()
 
     # Judge requirements
     JUDGE = auto()
@@ -131,6 +146,21 @@ class MetricDefinition:
     scope: MetricScope
     requirements: frozenset[MetricRequirement]
     description: str = ""
+    metric_family: str | None = None
+    direction: str = "unknown"
+    value_type: str = "number"
+    value_range: tuple[float, float] | None = None
+    parameters_schema: dict[str, object] = field(default_factory=dict)
+    aggregation_methods: tuple[str, ...] = (
+        "count",
+        "mean",
+        "median",
+        "p50",
+        "p95",
+        "p99",
+    )
+    judge_required: bool = False
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 @runtime_checkable

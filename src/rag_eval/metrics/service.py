@@ -9,6 +9,8 @@ This service:
 Critical: No TargetAdapter dependency. Scoring operates on persisted data only.
 """
 
+import hashlib
+import json
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -16,7 +18,7 @@ from typing import Any
 from rag_eval.db.benchmark_repository import BenchmarkRepository
 from rag_eval.db.target_repository import TargetRepository
 from rag_eval.db.test_repository import TestRepository
-from rag_eval.models import BenchmarkCase, TargetObservation
+from rag_eval.models import BenchmarkCase, JudgeResult, TargetObservation
 from rag_eval.models.enums import MetricStatus
 
 from .aggregation import compute_aggregations, convert_to_canonical
@@ -141,6 +143,13 @@ class ScoringService:
                     run_metadata=run_metadata,
                     judge=judge,
                 )
+                await self._persist_judge_results(
+                    run_id=run_id,
+                    case_execution_id=case_execution.case_execution_id,
+                    results=results,
+                    judge=judge,
+                    case=case,
+                )
 
                 scored_cases += 1
 
@@ -233,7 +242,7 @@ class ScoringService:
         Returns:
             Metric results produced for the case.
         """
-        return await self._engine.score_case(
+        results = await self._engine.score_case(
             case=case,
             observation=observation,
             run_id=run_id,
@@ -241,6 +250,86 @@ class ScoringService:
             judge=judge,
             case_execution_id=case_execution_id,
         )
+        await self._persist_judge_results(
+            run_id=run_id,
+            case_execution_id=case_execution_id,
+            results=results,
+            judge=judge,
+            case=case,
+        )
+        return results
+
+    async def _persist_judge_results(
+        self,
+        *,
+        run_id: str,
+        case_execution_id: str | None,
+        results: list[Any],
+        judge: Any | None,
+        case: BenchmarkCase,
+    ) -> None:
+        """Persist judge telemetry alongside judge-dependent metric results.
+
+        The metric engine remains provider-neutral.  This boundary records the
+        provider configuration and request telemetry after scoring, while the
+        metric result itself remains the source of the derived score.
+        """
+        if judge is None:
+            return
+        configuration = getattr(judge, "configuration", None)
+        telemetry = dict(getattr(judge, "last_result", {}) or {})
+        if configuration is None and not telemetry:
+            return
+        configuration_data = (
+            configuration.model_dump(mode="json")
+            if hasattr(configuration, "model_dump")
+            else {}
+        )
+        for result in results:
+            definition = self._registry.get(result.metric_id)
+            if definition is None or not definition.definition.judge_required:
+                continue
+            cache_key = telemetry.get("cache_key")
+            identity = json.dumps(
+                {
+                    "run_id": run_id,
+                    "case_execution_id": case_execution_id,
+                    "metric_id": result.metric_id,
+                    "metric_version": result.metric_version,
+                    "cache_key": cache_key,
+                },
+                sort_keys=True,
+            )
+            judge_result = JudgeResult(
+                judge_result_id="jr-" + hashlib.sha256(identity.encode()).hexdigest(),
+                metric_id=result.metric_id,
+                metric_version=result.metric_version,
+                score=(
+                    float(result.value)
+                    if isinstance(result.value, (int, float))
+                    else None
+                ),
+                label=result.status.value,
+                reasoning_summary=telemetry.get("reasoning_summary"),
+                evidence_ids=[evidence.evidence_id for evidence in case.gold_evidence],
+                confidence=telemetry.get("confidence"),
+                judge_model=configuration_data.get("model_id"),
+                prompt_version=configuration_data.get("prompt_version"),
+                usage=dict(telemetry.get("usage") or {}),
+                latency_ms=telemetry.get("latency_ms"),
+                status=result.status,
+                cache_key=cache_key,
+                metadata={
+                    "configuration": configuration_data,
+                    "config_hash": telemetry.get("config_hash"),
+                },
+            )
+            await self._test_repository.persist_judge_result(
+                judge_result,
+                run_id=run_id,
+                metric_run_id=self._config.metric_run_id,
+                case_execution_id=case_execution_id,
+            )
 
     async def aggregate_run(self, run_id: str) -> int:
         """Rebuild run aggregates from already persisted case results.
@@ -357,7 +446,20 @@ class ScoringService:
             query=record.query,
             history=history,
             reference_answer=record.reference_answer,
+            reference_answers=list(record.reference_answers or []),
             gold_evidence=gold_evidence,
+            required_facts=list(record.required_facts or []),
+            forbidden_facts=list(record.forbidden_facts or []),
+            gold_evidence_groups=list(record.gold_evidence_groups or []),
+            required_evidence_relations=list(record.required_evidence_relations or []),
+            hard_negatives=[
+                EvidenceSpan(**item) for item in (record.hard_negatives or [])
+            ],
+            expected_route=record.expected_route,
+            expected_schema=record.expected_schema,
+            conversation_id=record.conversation_id,
+            turn_index=record.turn_index,
+            domain=record.domain,
             answerability=answerability,
             tags=record.tags,
             difficulty=difficulty,

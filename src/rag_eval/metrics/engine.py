@@ -375,6 +375,33 @@ class MetricExecutionEngine:
         elif requirement == MetricRequirement.COMPONENT_TRACE:
             return context.has_component_trace()
 
+        elif requirement == MetricRequirement.GOLD_EVIDENCE_GROUPS:
+            return bool(context.case.gold_evidence_groups)
+
+        elif requirement == MetricRequirement.EMBEDDING_METADATA:
+            return context.has_embedding_metadata()
+
+        elif requirement == MetricRequirement.EMBEDDING_VECTORS:
+            return context.has_embedding_vectors()
+
+        elif requirement == MetricRequirement.CHUNK_INVENTORY:
+            return context.has_chunk_inventory()
+
+        elif requirement == MetricRequirement.SOURCE_DOCUMENTS:
+            return context.has_source_documents()
+
+        elif requirement == MetricRequirement.INGESTION:
+            return context.has_ingestion()
+
+        elif requirement == MetricRequirement.CONVERSATION:
+            return context.has_conversation()
+
+        elif requirement == MetricRequirement.PERTURBATION_PAIR:
+            return context.has_perturbation_pair()
+
+        elif requirement == MetricRequirement.PAIRED_RUNS:
+            return bool(context.run_metadata.get("paired_runs"))
+
         elif requirement in {
             MetricRequirement.STAGE_BY_ID,
             MetricRequirement.STAGE_BY_TYPE,

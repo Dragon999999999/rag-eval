@@ -97,10 +97,7 @@ class MetricContext:
         An empty collection is present data and is intentionally different from
         an absent answer observation.
         """
-        return (
-            self.observation is not None
-            and self.observation.answer is not None
-        )
+        return self.observation is not None and self.observation.answer is not None
 
     def has_claims(self) -> bool:
         """Check whether the target exposed claims, including an empty list."""
@@ -117,8 +114,7 @@ class MetricContext:
     def has_component_trace(self) -> bool:
         """Check whether the target trace contains at least one named component."""
         return self.has_trace() and any(
-            span.component_name or span.name
-            for span in self.observation.trace.spans
+            span.component_name or span.name for span in self.observation.trace.spans
         )
 
     def has_confidence(self) -> bool:
@@ -132,6 +128,58 @@ class MetricContext:
     def has_usage(self) -> bool:
         """Check if target produced usage information."""
         return self.observation is not None and self.observation.usage is not None
+
+    def has_embedding_metadata(self) -> bool:
+        """Return whether target embedding metadata or vectors are present."""
+        return bool(
+            self.observation is not None
+            and (
+                self.observation.embedding_vectors is not None
+                or (
+                    self.observation.retrieval is not None
+                    and any(
+                        stage.metadata.get("embedding") for stage in self.list_stages()
+                    )
+                )
+            )
+        )
+
+    def has_embedding_vectors(self) -> bool:
+        """Return whether inline or artifact-backed vectors are present."""
+        return bool(
+            self.observation is not None
+            and self.observation.embedding_vectors is not None
+            and (
+                self.observation.embedding_vectors.vectors
+                or self.observation.embedding_vectors.artifact is not None
+            )
+        )
+
+    def has_chunk_inventory(self) -> bool:
+        """Return whether benchmark chunk inventory is available in metadata."""
+        return bool(
+            self.case.metadata.get("chunks") or self.case.metadata.get("chunk_count")
+        )
+
+    def has_source_documents(self) -> bool:
+        """Return whether source document metadata is attached to the case."""
+        return bool(self.case.metadata.get("documents") or self.case.gold_evidence)
+
+    def has_ingestion(self) -> bool:
+        """Return whether ingestion telemetry exists in the observation."""
+        return bool(
+            self.observation
+            and self.observation.usage
+            and self.observation.usage.metadata.get("ingestion")
+        )
+
+    def has_conversation(self) -> bool:
+        """Return whether the case belongs to a conversation sequence."""
+        return self.case.conversation_id is not None
+
+    def has_perturbation_pair(self) -> bool:
+        """Return whether a baseline/perturbed pair is attached to metadata."""
+        return bool(self.case.metadata.get("perturbation_pair"))
 
     def get_retrieval_stage(
         self, stage_type: RetrievalStageType

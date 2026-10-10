@@ -20,6 +20,7 @@ Stage 12 Metrics:
 - Reliability: success_rate, error_rate, availability
 """
 
+from .advanced import AdvancedMetric, advanced_metrics
 from .aggregation import (
     AggregationResult,
     compute_aggregations,
@@ -153,6 +154,8 @@ __all__ = [
     "MetricRegistry",
     "ScoringService",
     "ScoringResult",
+    "AdvancedMetric",
+    "advanced_metrics",
     # Stage 12 catalog
     "get_stage12_catalog",
     "register_stage12_metrics",
