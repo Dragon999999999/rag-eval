@@ -30,18 +30,21 @@ from rag_eval.api.dependencies import (
     MetricRegistryDep,
     MetricRunServiceDep,
     SessionDep,
+    TestRepositoryDep,
     TestServiceDep,
     verify_api_key,
 )
 from rag_eval.api.test_schemas import (
     AttemptDetail,
     CaseExecutionDetail,
+    ComparisonResult,
     MetricDefinition,
     MetricImportResult,
     MetricRunCreate,
     MetricRunDetail,
     RunDetail,
     RunEventInfo,
+    RunReport,
     RunResultsResponse,
     RunStatus,
     TargetObservationDetail,
@@ -53,6 +56,7 @@ from rag_eval.api.test_schemas import (
     TestUpdate,
     TestValidationResult,
 )
+from rag_eval.reporting import ReportGenerator, RunComparator
 
 router = APIRouter(
     prefix="/tests",
@@ -818,6 +822,77 @@ async def get_run_results(
         raise _not_found(str(exc)) from exc
 
     return RunResultsResponse.model_validate(results)
+
+
+@router.get(
+    "/runs/{run_id}/report",
+    response_model=RunReport,
+    summary="Generate a persisted run report",
+)
+async def get_run_report(
+    run_id: str,
+    repository: TestRepositoryDep,
+) -> RunReport:
+    """Return report aggregates without re-executing the target."""
+    try:
+        report = await ReportGenerator(repository).generate_report(run_id)
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+    return RunReport.model_validate(report, from_attributes=True)
+
+
+@router.get(
+    "/runs/{run_id}/compare/{other_run_id}",
+    response_model=ComparisonResult,
+    summary="Compare two persisted runs",
+)
+async def compare_runs(
+    run_id: str,
+    other_run_id: str,
+    repository: TestRepositoryDep,
+) -> ComparisonResult:
+    """Compare persisted metrics and report configuration incompatibilities."""
+    try:
+        comparison = await RunComparator(repository).compare_runs(run_id, other_run_id)
+    except KeyError as exc:
+        raise _not_found(str(exc)) from exc
+
+    return ComparisonResult.model_validate(
+        {
+            "run_a_id": comparison.run_a_id,
+            "run_b_id": comparison.run_b_id,
+            "compatibility_warnings": comparison.warnings,
+            "metric_comparisons": [
+                {
+                    "metric_id": item.metric_id,
+                    "metric_version": item.metric_version,
+                    "aggregation": item.aggregation,
+                    "run_a_value": item.value_a,
+                    "run_b_value": item.value_b,
+                    "absolute_delta": item.absolute_delta,
+                    "relative_delta_percent": item.relative_delta,
+                    "direction": (
+                        item.direction
+                        if item.direction != "unknown"
+                        else "neutral"
+                    ),
+                    "status": (
+                        item.assessment
+                        if item.assessment != "inconclusive"
+                        else "incomparable"
+                    ),
+                }
+                for item in comparison.comparisons
+            ],
+            "summary": {
+                "compatible": comparison.compatible,
+                "improved": comparison.improved_count,
+                "regressed": comparison.regressed_count,
+                "unchanged": comparison.unchanged_count,
+                "inconclusive": comparison.inconclusive_count,
+            },
+        }
+    )
 
 
 @router.post(

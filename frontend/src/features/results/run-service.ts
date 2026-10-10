@@ -272,99 +272,13 @@ export const RunService = {
   },
 
   async getRunReport(runId: string): Promise<RunReport> {
-    const [run, progress, results] = await Promise.all([
-      this.getRun(runId),
-      this.getRunProgress(runId),
-      getResults(runId),
-    ]);
-    const duration = run.duration_seconds ?? progress.elapsed_seconds;
-    const grouped: Record<string, Record<string, unknown>> = {};
-    for (const aggregate of results.aggregates) {
-      const family = aggregate.metric_id.split(".")[0] ?? "other";
-      grouped[family] ??= {};
-      grouped[family][`${aggregate.metric_id}.${aggregate.aggregation}`] =
-        aggregate.value;
-    }
-    return {
-      run_id: run.run_id,
-      run_name: run.name,
-      status: run.status,
-      target_id: run.target_id,
-      config_hash: run.config_hash,
-      total_cases: progress.total_cases,
-      complete_cases: progress.complete_cases,
-      failed_cases: progress.failed_cases,
-      pending_cases: progress.pending_cases,
-      answer_metrics: grouped.answer ?? {},
-      retrieval_metrics: grouped.retrieval ?? {},
-      citation_metrics: grouped.citation ?? {},
-      performance_metrics: grouped.performance ?? {},
-      usage_metrics: grouped.usage ?? {},
-      cost_metrics: grouped.cost ?? {},
-      reliability_metrics: grouped.reliability ?? {},
-      started_at: run.started_at,
-      finished_at: run.finished_at,
-      duration_seconds: duration,
-    };
+    return apiRequest<RunReport>(`${runPath(runId)}/report`);
   },
 
   async compareRuns(runAId: string, runBId: string): Promise<ComparisonResult> {
-    const [runA, runB, resultsA, resultsB] = await Promise.all([
-      this.getRun(runAId),
-      this.getRun(runBId),
-      getResults(runAId),
-      getResults(runBId),
-    ]);
-    const valuesA = new Map(
-      resultsA.aggregates.map((item) => [
-        `${item.metric_id}:${item.metric_version}:${item.aggregation}`,
-        item,
-      ])
+    return apiRequest<ComparisonResult>(
+      `${runPath(runAId)}/compare/${encodeURIComponent(runBId)}`
     );
-    const valuesB = new Map(
-      resultsB.aggregates.map((item) => [
-        `${item.metric_id}:${item.metric_version}:${item.aggregation}`,
-        item,
-      ])
-    );
-    const keys = new Set([...valuesA.keys(), ...valuesB.keys()]);
-    const comparisons = [...keys].map((key) => {
-      const a = valuesA.get(key);
-      const b = valuesB.get(key);
-      const aValue = typeof a?.value === "number" ? a.value : null;
-      const bValue = typeof b?.value === "number" ? b.value : null;
-      const delta = aValue !== null && bValue !== null ? bValue - aValue : null;
-      return {
-        metric_id: a?.metric_id ?? b?.metric_id ?? key,
-        metric_version: a?.metric_version ?? b?.metric_version ?? "1",
-        aggregation: a?.aggregation ?? b?.aggregation ?? "",
-        run_a_value: a?.value ?? null,
-        run_b_value: b?.value ?? null,
-        absolute_delta: delta,
-        relative_delta_percent:
-          delta !== null && aValue !== null && aValue !== 0
-            ? (delta / aValue) * 100
-            : null,
-        direction: "neutral" as const,
-        status:
-          delta === null
-            ? ("incomparable" as const)
-            : delta === 0
-              ? ("unchanged" as const)
-              : ("improved" as const),
-      };
-    });
-    return {
-      run_a_id: runA.run_id,
-      run_b_id: runB.run_id,
-      compatibility_warnings:
-        runA.config_hash === runB.config_hash
-          ? []
-          : ["Runs have different configurations."],
-      metric_comparisons: comparisons,
-      summary: {},
-      compared_at: new Date().toISOString(),
-    };
   },
 
   async exportRun(runId: string, _request: ExportRequest): Promise<ExportResult> {

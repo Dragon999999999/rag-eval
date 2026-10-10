@@ -217,6 +217,14 @@ export interface TargetObservationDetail {
   confidence: Array<Record<string, unknown>>;
   trace: Record<string, unknown> | null;
   usage: Record<string, unknown> | null;
+  target_run_id?: string | null;
+  corpus_id?: string | null;
+  architecture_name?: string | null;
+  architecture_version?: string | null;
+  claims: Array<Record<string, unknown>>;
+  assessments: Array<Record<string, unknown>>;
+  decision: Record<string, unknown> | null;
+  insufficient_evidence?: boolean | null;
   errors: Array<Record<string, unknown>>;
   warnings: Array<Record<string, unknown>>;
   normalization_version: string;
@@ -291,6 +299,10 @@ export interface RunReport {
   usage_metrics: Record<string, unknown>;
   cost_metrics: Record<string, unknown>;
   reliability_metrics: Record<string, unknown>;
+  decision_metrics: Record<string, unknown>;
+  stage_metrics: Record<string, unknown>;
+  configuration_identity: Record<string, unknown>;
+  warnings: string[];
   started_at: string | null;
   finished_at: string | null;
   duration_seconds: number | null;

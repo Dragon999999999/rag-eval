@@ -32,6 +32,7 @@ import {
   useRun,
   useRunProgress,
   useRunResults,
+  useRunReport,
   useRunCases,
   useCancelRun,
 } from "../use-runs";
@@ -100,6 +101,7 @@ export function RunDetailPage() {
     isLoading: resultsLoading,
     error: resultsError,
   } = useRunResults(runId || "");
+  const { data: report } = useRunReport(runId || "");
   const { data: casesData, isLoading: casesLoading } = useRunCases(runId || "");
   const cancelRun = useCancelRun();
 
@@ -334,6 +336,41 @@ export function RunDetailPage() {
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            </Surface>
+          )}
+
+          {report && (report.warnings.length > 0 ||
+            Object.keys(report.stage_metrics).length > 0 ||
+            Object.keys(report.decision_metrics).length > 0) && (
+            <Surface className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-primary">
+                Grounding Summary
+              </h3>
+              {report.warnings.length > 0 && (
+                <div className="mb-3 space-y-1 text-sm text-warning">
+                  {report.warnings.map((warning) => (
+                    <div key={warning}>{warning}</div>
+                  ))}
+                </div>
+              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                {Object.keys(report.stage_metrics).length > 0 && (
+                  <div>
+                    <div className="text-xs text-text-tertiary">Stage metrics</div>
+                    <pre className="mt-1 max-h-40 overflow-auto text-xs text-text-secondary">
+                      {JSON.stringify(report.stage_metrics, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {Object.keys(report.decision_metrics).length > 0 && (
+                  <div>
+                    <div className="text-xs text-text-tertiary">Decision metrics</div>
+                    <pre className="mt-1 max-h-40 overflow-auto text-xs text-text-secondary">
+                      {JSON.stringify(report.decision_metrics, null, 2)}
+                    </pre>
+                  </div>
+                )}
               </div>
             </Surface>
           )}

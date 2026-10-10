@@ -207,6 +207,73 @@ export function RunCaseDetailPage() {
             </Surface>
           )}
 
+          {observation && (
+            <Surface className="p-4">
+              <h3 className="mb-3 text-sm font-medium text-text-primary">
+                Grounding Metadata
+              </h3>
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <div>
+                  <div className="text-xs text-text-tertiary">Target run</div>
+                  <div className="text-text-secondary">
+                    {observation.target_run_id ?? "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-text-tertiary">Corpus</div>
+                  <div className="text-text-secondary">
+                    {observation.corpus_id ?? "—"}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-text-tertiary">Architecture</div>
+                  <div className="text-text-secondary">
+                    {observation.architecture_name ?? "—"}
+                    {observation.architecture_version
+                      ? ` v${observation.architecture_version}`
+                      : ""}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-text-tertiary">Evidence status</div>
+                  <div className="text-text-secondary">
+                    {observation.insufficient_evidence === null ||
+                    observation.insufficient_evidence === undefined
+                      ? "Not reported"
+                      : observation.insufficient_evidence
+                        ? "Insufficient evidence"
+                        : "Evidence sufficient"}
+                  </div>
+                </div>
+              </div>
+              {(observation.claims.length > 0 || observation.assessments.length > 0 ||
+                observation.decision) && (
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  <div>
+                    <div className="text-xs text-text-tertiary">Claims</div>
+                    <div className="text-lg font-semibold text-text-primary">
+                      {observation.claims.length}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-text-tertiary">Assessments</div>
+                    <div className="text-lg font-semibold text-text-primary">
+                      {observation.assessments.length}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-text-tertiary">Decision</div>
+                    <div className="text-sm font-medium text-text-primary">
+                      {typeof observation.decision?.action === "string"
+                        ? observation.decision.action
+                        : "Not reported"}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Surface>
+          )}
+
           {/* Metrics */}
           {metrics && metrics.length > 0 && (
             <Surface className="p-4">
