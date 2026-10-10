@@ -82,6 +82,16 @@ class JudgeAdapter(Protocol):
         """
         ...
 
+    async def assess_answer(
+        self,
+        answer: str,
+        query: str,
+        evidence: list[SourceLocation] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Score answer relevance and grounded quality without reference leakage."""
+        ...
+
     async def assess_evidence_relationship(
         self,
         claim: Claim,

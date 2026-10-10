@@ -87,6 +87,16 @@ class AdvancedMetric:
         """Compute one metric from persisted inputs and explicit requirements."""
         if self.judge_required and context.judge is None:
             return self._unavailable(context, "judge is required")
+        judged_value = await self._judge_value(context)
+        if judged_value is not None:
+            return MetricResult(
+                metric_id=self.metric_id,
+                metric_version="1",
+                status=MetricStatus.COMPUTED,
+                value=judged_value,
+                case_id=context.case.case_id,
+                run_id=context.run_id,
+            )
         value = self._value(context)
         if value is None:
             return self._unavailable(context, "required advanced input is unavailable")
@@ -98,6 +108,39 @@ class AdvancedMetric:
             case_id=context.case.case_id,
             run_id=context.run_id,
         )
+
+    async def _judge_value(self, context: MetricContext) -> float | None:
+        """Use provider-backed scoring for semantic metrics when available."""
+        if context.judge is None:
+            return None
+        claims = context.observation.claims if context.observation else None
+        if self.metric_id.startswith(("faithfulness.", "hallucination.")):
+            assess_claims = getattr(context.judge, "assess_claims", None)
+            if claims and callable(assess_claims):
+                assessments = await assess_claims(
+                    claims,
+                    context={"query": context.case.query},
+                )
+                supported = sum(
+                    str(item.classification).upper() in {"SUPPORTED", "ENTAILS"}
+                    for item in assessments
+                )
+                rate = supported / len(assessments) if assessments else 0.0
+                return 1.0 - rate if "unsupported" in self.metric_id else rate
+            return None
+        if not (
+            self.metric_id.startswith(("answer.", "context.", "claim.", "citation."))
+            and self.metric_id
+            not in {"answer.off_topic_rate", "citation.overcitation_rate"}
+        ):
+            return None
+        assess_answer = getattr(context.judge, "assess_answer", None)
+        answer = context.get_answer_text()
+        if not callable(assess_answer) or answer is None:
+            return None
+        judged = await assess_answer(answer, context.case.query)
+        score = judged.get("score")
+        return float(score) if isinstance(score, (int, float)) else None
 
     def _unavailable(self, context: MetricContext, reason: str) -> MetricResult:
         return MetricResult(
@@ -167,7 +210,7 @@ class AdvancedMetric:
             assessments = context.get_assessments()
             if assessments:
                 supported = sum(
-                    str(item.label).upper() in {"SUPPORTED", "ENTAILS"}
+                    str(item.get("label")).upper() in {"SUPPORTED", "ENTAILS"}
                     for item in assessments
                 )
                 rate = supported / len(assessments)
@@ -190,9 +233,9 @@ class AdvancedMetric:
                 return None
             if context.has_assessments():
                 scores = [
-                    item.score
+                    item["score"]
                     for item in context.get_assessments()
-                    if item.score is not None
+                    if item.get("score") is not None
                 ]
                 if scores:
                     return sum(scores) / len(scores)

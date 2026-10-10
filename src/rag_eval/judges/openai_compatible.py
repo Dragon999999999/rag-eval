@@ -103,6 +103,29 @@ class OpenAICompatibleJudge:
         )
         return EvidenceAssessment.model_validate(payload)
 
+    async def assess_answer(
+        self,
+        answer: str,
+        query: str,
+        evidence: list[SourceLocation] | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Ask the judge for a bounded answer-quality score."""
+        payload = await self._complete(
+            "Score how well the answer responds to the query and supplied evidence. "
+            "Return one JSON object with score between 0 and 1, label, confidence, "
+            "and a short reasoning_summary.",
+            {
+                "answer": answer,
+                "query": query,
+                "evidence": [item.model_dump(mode="json") for item in evidence or []],
+                "context": context or {},
+            },
+        )
+        if not isinstance(payload, dict):
+            raise ValueError("judge answer assessment must be a JSON object")
+        return payload
+
     async def _complete(self, instruction: str, data: dict[str, Any]) -> Any:
         """Submit a structured judge request and decode its JSON content."""
         response_format = {"type": "json_object"}
