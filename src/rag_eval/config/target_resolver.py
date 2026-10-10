@@ -117,6 +117,15 @@ class TargetConfigResolver:
             "metadata": metadata,
         }
 
+        for identity_name in ("architecture", "prompt", "corpus"):
+            identity = getattr(config, identity_name, None)
+            if identity is not None:
+                payload[identity_name] = (
+                    identity.model_dump(mode="json", exclude_none=True)
+                    if hasattr(identity, "model_dump")
+                    else dict(identity)
+                )
+
         if connection is not None:
             payload["connection"] = connection
 

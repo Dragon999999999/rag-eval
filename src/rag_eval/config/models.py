@@ -45,7 +45,19 @@ class CorpusConfig(ExperimentModel):
 
     mode: CorpusMode
     corpus_id: str | None = None
+    version: str | None = None
+    content_hash: str | None = None
     parameters: JsonDict = Field(default_factory=dict)
+
+
+class IdentityConfig(ExperimentModel):
+    """Stable identity metadata for an architecture or prompt definition."""
+
+    id: str | None = None
+    name: str | None = None
+    version: str | None = None
+    content_hash: str | None = None
+    metadata: JsonDict = Field(default_factory=dict)
 
 
 class ExperimentTargetConfig(ExperimentModel):
@@ -56,6 +68,8 @@ class ExperimentTargetConfig(ExperimentModel):
     python_target: str | None = None
     authentication_env: str | None = None
     corpus: CorpusConfig
+    architecture: IdentityConfig | None = None
+    prompt: IdentityConfig | None = None
     parameters: JsonDict = Field(default_factory=dict)
 
     @model_validator(mode="after")
