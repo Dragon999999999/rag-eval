@@ -295,6 +295,15 @@ class MetricExecutionEngine:
         elif requirement == MetricRequirement.CITATIONS:
             return context.has_citations()
 
+        elif requirement == MetricRequirement.CLAIMS:
+            return context.has_claims()
+
+        elif requirement == MetricRequirement.ASSESSMENTS:
+            return context.has_assessments()
+
+        elif requirement == MetricRequirement.DECISION:
+            return context.has_decision()
+
         elif requirement == MetricRequirement.CONFIDENCE:
             return context.has_confidence()
 
@@ -303,6 +312,63 @@ class MetricExecutionEngine:
 
         elif requirement == MetricRequirement.USAGE:
             return context.has_usage()
+
+        elif requirement == MetricRequirement.USAGE_INPUT:
+            return (
+                context.has_usage()
+                and context.observation.usage.input_tokens is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_OUTPUT:
+            return (
+                context.has_usage()
+                and context.observation.usage.output_tokens is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_CONTEXT:
+            return (
+                context.has_usage()
+                and context.observation.usage.context_tokens is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_LLM_CALLS:
+            return (
+                context.has_usage()
+                and context.observation.usage.llm_calls is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_EMBEDDING_CALLS:
+            return (
+                context.has_usage()
+                and context.observation.usage.embedding_calls is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_RETRIEVAL_CALLS:
+            return (
+                context.has_usage()
+                and context.observation.usage.retrieval_calls is not None
+            )
+
+        elif requirement == MetricRequirement.USAGE_RERANKER_CALLS:
+            return (
+                context.has_usage()
+                and context.observation.usage.reranker_calls is not None
+            )
+
+        elif requirement == MetricRequirement.COMPONENT_TRACE:
+            return context.has_component_trace()
+
+        elif requirement in {
+            MetricRequirement.STAGE_BY_ID,
+            MetricRequirement.STAGE_BY_TYPE,
+        }:
+            return context.has_retrieval()
+
+        elif requirement == MetricRequirement.STAGE_PAIRS:
+            return any(
+                stage.parent_stage_ids
+                for stage in context.list_stages()
+            )
 
         elif requirement == MetricRequirement.JUDGE:
             return context.judge is not None

@@ -21,6 +21,10 @@ class RetrievalStageView:
     stage_id: str
     stage_type: RetrievalStageType
     parent_stage_id: str | None
+    parent_stage_ids: list[str]
+    component_name: str | None
+    parameters: dict[str, Any]
+    trace_span_id: str | None
     items: list[dict[str, Any]]
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -88,11 +92,33 @@ class MetricContext:
         return bool(self.case.gold_evidence)
 
     def has_citations(self) -> bool:
-        """Check if target produced citations."""
+        """Check if an answer observation exposed a citation collection.
+
+        An empty collection is present data and is intentionally different from
+        an absent answer observation.
+        """
         return (
             self.observation is not None
             and self.observation.answer is not None
-            and bool(self.observation.answer.citations)
+        )
+
+    def has_claims(self) -> bool:
+        """Check whether the target exposed claims, including an empty list."""
+        return self.observation is not None and self.observation.claims is not None
+
+    def has_assessments(self) -> bool:
+        """Check whether the target exposed assessments, including empty ones."""
+        return self.observation is not None and self.observation.assessments is not None
+
+    def has_decision(self) -> bool:
+        """Check whether the target exposed a decision."""
+        return self.observation is not None and self.observation.decision is not None
+
+    def has_component_trace(self) -> bool:
+        """Check whether the target trace contains at least one named component."""
+        return self.has_trace() and any(
+            span.component_name or span.name
+            for span in self.observation.trace.spans
         )
 
     def has_confidence(self) -> bool:
@@ -126,17 +152,76 @@ class MetricContext:
         if not retrieval.stages:
             return None
 
-        for stage in retrieval.stages:
-            if stage.type == stage_type:
-                return RetrievalStageView(
-                    stage_id=stage.stage_id,
-                    stage_type=stage.type,
-                    parent_stage_id=stage.parent_stage_id,
-                    items=[item.model_dump(mode="json") for item in stage.items],
-                    metadata=stage.metadata,
-                )
+        return self.get_retrieval_stage_by_type(stage_type)
 
+    def get_retrieval_stage_by_id(self, stage_id: str) -> RetrievalStageView | None:
+        """Get a stage by stable stage identity."""
+        if self.observation is None or self.observation.retrieval is None:
+            return None
+        for stage in self.observation.retrieval.stages:
+            if stage.stage_id == stage_id:
+                return self._stage_view(stage)
         return None
+
+    def get_retrieval_stage_by_type(
+        self, stage_type: RetrievalStageType
+    ) -> RetrievalStageView | None:
+        """Get the first stage of a canonical type."""
+        if self.observation is None or self.observation.retrieval is None:
+            return None
+        for stage in self.observation.retrieval.stages:
+            if stage.type == stage_type:
+                return self._stage_view(stage)
+        return None
+
+    def list_stages(
+        self, stage_type: RetrievalStageType | None = None
+    ) -> list[RetrievalStageView]:
+        """List all exposed stages, optionally filtered by canonical type."""
+        if self.observation is None or self.observation.retrieval is None:
+            return []
+        return [
+            self._stage_view(stage)
+            for stage in self.observation.retrieval.stages
+            if stage_type is None or stage.type == stage_type
+        ]
+
+    def stage_present(
+        self,
+        *,
+        stage_id: str | None = None,
+        stage_type: RetrievalStageType | None = None,
+    ) -> bool:
+        """Return whether a stage executed, including when it returned zero items."""
+        if stage_id is not None:
+            return self.get_retrieval_stage_by_id(stage_id) is not None
+        if stage_type is not None:
+            return bool(self.list_stages(stage_type))
+        return bool(self.list_stages())
+
+    def get_before_after_stage(
+        self, before_stage_id: str, after_stage_id: str
+    ) -> tuple[RetrievalStageView | None, RetrievalStageView | None]:
+        """Return a requested before/after pair without inferring missing stages."""
+        return (
+            self.get_retrieval_stage_by_id(before_stage_id),
+            self.get_retrieval_stage_by_id(after_stage_id),
+        )
+
+    @staticmethod
+    def _stage_view(stage: Any) -> RetrievalStageView:
+        """Convert a canonical stage to a metric-facing immutable view."""
+        return RetrievalStageView(
+            stage_id=stage.stage_id,
+            stage_type=stage.type,
+            parent_stage_id=stage.parent_stage_id,
+            parent_stage_ids=list(stage.parent_stage_ids),
+            component_name=stage.component_name,
+            parameters=dict(stage.parameters),
+            trace_span_id=stage.trace_span_id,
+            items=[item.model_dump(mode="json") for item in stage.items],
+            metadata=stage.metadata,
+        )
 
     def get_final_context(self) -> RetrievalStageView | None:
         """Get the FINAL_CONTEXT retrieval stage.
@@ -168,6 +253,21 @@ class MetricContext:
         return [
             citation.model_dump(mode="json")
             for citation in self.observation.answer.citations
+        ]
+
+    def get_claims(self) -> list[dict[str, Any]] | None:
+        """Return normalized claims, or None when claims were not exposed."""
+        if self.observation is None or self.observation.claims is None:
+            return None
+        return [claim.model_dump(mode="json") for claim in self.observation.claims]
+
+    def get_assessments(self) -> list[dict[str, Any]] | None:
+        """Return normalized assessments, or None when absent."""
+        if self.observation is None or self.observation.assessments is None:
+            return None
+        return [
+            assessment.model_dump(mode="json")
+            for assessment in self.observation.assessments
         ]
 
     def get_answer_text(self) -> str | None:

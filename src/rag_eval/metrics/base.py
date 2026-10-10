@@ -17,6 +17,7 @@ class MetricScope(Enum):
 
     CASE = auto()  # Single case/observation
     RETRIEVAL_STAGE = auto()  # Specific retrieval stage
+    RETRIEVAL_STAGE_PAIR = auto()  # Before/after retrieval stages
     CLAIM = auto()  # Individual claim
     RUN = auto()  # Entire run aggregation
 
@@ -43,6 +44,20 @@ class MetricRequirement(Enum):
     CONFIDENCE = auto()
     TRACE = auto()
     USAGE = auto()
+    CLAIMS = auto()
+    ASSESSMENTS = auto()
+    DECISION = auto()
+    STAGE_PAIRS = auto()
+    COMPONENT_TRACE = auto()
+    USAGE_INPUT = auto()
+    USAGE_OUTPUT = auto()
+    USAGE_CONTEXT = auto()
+    USAGE_LLM_CALLS = auto()
+    USAGE_EMBEDDING_CALLS = auto()
+    USAGE_RETRIEVAL_CALLS = auto()
+    USAGE_RERANKER_CALLS = auto()
+    STAGE_BY_ID = auto()
+    STAGE_BY_TYPE = auto()
 
     # Judge requirements
     JUDGE = auto()
