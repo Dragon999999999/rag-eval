@@ -108,6 +108,9 @@ class ExportService:
 
         # Export summary
         summary = self._create_summary(run, case_executions, aggregates)
+        summary["judge_result_count"] = len(
+            await self._repository.list_judge_results(run_id)
+        )
         summary_path = export_path / "summary.json"
         with open(summary_path, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
@@ -178,6 +181,7 @@ class ExportService:
             "created_at": run.created_at.isoformat() if run.created_at else None,
             "started_at": run.started_at.isoformat() if run.started_at else None,
             "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+            "judge_configuration": None,
         }
 
         # Extract benchmark info from config
@@ -194,6 +198,27 @@ class ExportService:
                 for key in ("architecture", "prompt", "corpus", "embedding")
                 if target.get(key) is not None
             }
+            judge = (
+                config.canonical_config.get("judge")
+                or config.canonical_config.get("judge_config")
+                or config.canonical_config.get("metric_config", {}).get("judge_config")
+            )
+            if judge:
+                manifest["judge_configuration"] = {
+                    key: judge.get(key)
+                    for key in (
+                        "provider",
+                        "model_id",
+                        "model_version",
+                        "prompt_id",
+                        "prompt_version",
+                        "temperature",
+                        "max_tokens",
+                        "retries",
+                        "timeout_seconds",
+                    )
+                    if judge.get(key) is not None
+                }
 
         return manifest
 
