@@ -45,6 +45,7 @@ class RunReport:
     reliability_metrics: dict[str, Any] = field(default_factory=dict)
     decision_metrics: dict[str, Any] = field(default_factory=dict)
     stage_metrics: dict[str, Any] = field(default_factory=dict)
+    advanced_metrics: dict[str, Any] = field(default_factory=dict)
     configuration_identity: dict[str, Any] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
@@ -101,6 +102,7 @@ class ReportGenerator:
         reliability_metrics = {}
         decision_metrics = {}
         stage_metrics = {}
+        advanced_metrics = {}
 
         for agg in aggregates:
             metric_id = agg.metric_id
@@ -142,6 +144,10 @@ class ReportGenerator:
                 )
             elif metric_id.startswith("stage."):
                 stage_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
+                    value, metric_id
+                )
+            elif "." in metric_id:
+                advanced_metrics[f"{metric_id}.{agg_name}"] = self._format_value(
                     value, metric_id
                 )
 
@@ -196,6 +202,7 @@ class ReportGenerator:
             reliability_metrics=reliability_metrics,
             decision_metrics=decision_metrics,
             stage_metrics=stage_metrics,
+            advanced_metrics=advanced_metrics,
             configuration_identity=configuration_identity,
             started_at=_format_timestamp(run.started_at) if run.started_at else None,
             finished_at=_format_timestamp(run.finished_at) if run.finished_at else None,

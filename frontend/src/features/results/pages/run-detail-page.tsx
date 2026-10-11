@@ -342,7 +342,8 @@ export function RunDetailPage() {
 
           {report && (report.warnings.length > 0 ||
             Object.keys(report.stage_metrics).length > 0 ||
-            Object.keys(report.decision_metrics).length > 0) && (
+            Object.keys(report.decision_metrics).length > 0 ||
+            Object.keys(report.advanced_metrics).length > 0) && (
             <Surface className="p-4">
               <h3 className="mb-3 text-sm font-medium text-text-primary">
                 Grounding Summary
@@ -368,6 +369,14 @@ export function RunDetailPage() {
                     <div className="text-xs text-text-tertiary">Decision metrics</div>
                     <pre className="mt-1 max-h-40 overflow-auto text-xs text-text-secondary">
                       {JSON.stringify(report.decision_metrics, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {Object.keys(report.advanced_metrics).length > 0 && (
+                  <div>
+                    <div className="text-xs text-text-tertiary">Advanced metrics</div>
+                    <pre className="mt-1 max-h-40 overflow-auto text-xs text-text-secondary">
+                      {JSON.stringify(report.advanced_metrics, null, 2)}
                     </pre>
                   </div>
                 )}

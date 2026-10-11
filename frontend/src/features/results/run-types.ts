@@ -301,6 +301,7 @@ export interface RunReport {
   reliability_metrics: Record<string, unknown>;
   decision_metrics: Record<string, unknown>;
   stage_metrics: Record<string, unknown>;
+  advanced_metrics: Record<string, unknown>;
   configuration_identity: Record<string, unknown>;
   warnings: string[];
   started_at: string | null;
